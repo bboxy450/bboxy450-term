@@ -71,6 +71,36 @@
       "glyphs": 0,
       "path_commands": 0,
       "xml_nodes": 7
+    },
+    {
+      "case": "isolation-composition-text-under-shape",
+      "glyphs": 4,
+      "path_commands": 0,
+      "xml_nodes": 3
+    },
+    {
+      "case": "isolation-composition-shape-over-text",
+      "glyphs": 4,
+      "path_commands": 0,
+      "xml_nodes": 4
+    },
+    {
+      "case": "isolation-composition-image-under-text",
+      "glyphs": 4,
+      "path_commands": 0,
+      "xml_nodes": 4
+    },
+    {
+      "case": "isolation-composition-clip-spanning-layers",
+      "glyphs": 4,
+      "path_commands": 0,
+      "xml_nodes": 8
+    },
+    {
+      "case": "isolation-fractional-viewport",
+      "glyphs": 4,
+      "path_commands": 0,
+      "xml_nodes": 3
     }
   ],
   "decision_gaps": [],
@@ -78,6 +108,7 @@
     {
       "cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-png-transform-clip"
       ],
       "category": "attribute",
@@ -93,6 +124,11 @@
           "case": "isolation-png-transform-clip",
           "source": "isolation/png-transform-clip.svg:/svg[1]/defs[1]/clipPath[1]/@id",
           "value": "clip"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/defs[1]/clipPath[1]/@id",
+          "value": "composition-clip"
         }
       ]
     },
@@ -129,6 +165,7 @@
     {
       "cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-png-transform-clip"
       ],
       "category": "attribute",
@@ -144,6 +181,11 @@
           "case": "isolation-png-transform-clip",
           "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/@clip-path",
           "value": "url(#clip)"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/@clip-path",
+          "value": "url(#composition-clip)"
         }
       ]
     },
@@ -271,6 +313,8 @@
     },
     {
       "cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
         "isolation-png-alpha",
         "isolation-png-transform-clip"
       ],
@@ -292,11 +336,23 @@
           "case": "isolation-png-transform-clip",
           "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[2]/@height",
           "value": "16"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/image[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/image[1]/@height",
+          "value": "64"
         }
       ]
     },
     {
       "cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
         "isolation-png-alpha",
         "isolation-png-transform-clip"
       ],
@@ -318,11 +374,23 @@
           "case": "isolation-png-transform-clip",
           "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[2]/@href",
           "value": "data:image/png;base64,  iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABy  tg0kAAAAF0lEQVR4nGP4z8DwHwwZGP43/P//nwEARk4IeZvz32MAAAAASUVORK5CYII="
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/image[1]/@href",
+          "value": "data:image/png;base64,  iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABy  tg0kAAAAF0lEQVR4nGP4z8DwHwwZGP43/P//nwEARk4IeZvz32MAAAAASUVORK5CYII="
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/image[1]/@href",
+          "value": "data:image/png;base64,  iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABy  tg0kAAAAF0lEQVR4nGP4z8DwHwwZGP43/P//nwEARk4IeZvz32MAAAAASUVORK5CYII="
         }
       ]
     },
     {
       "cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
         "isolation-png-alpha",
         "isolation-png-transform-clip"
       ],
@@ -344,11 +412,23 @@
           "case": "isolation-png-transform-clip",
           "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[2]/@width",
           "value": "16"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/image[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/image[1]/@width",
+          "value": "64"
         }
       ]
     },
     {
       "cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
         "isolation-png-alpha",
         "isolation-png-transform-clip"
       ],
@@ -370,11 +450,23 @@
           "case": "isolation-png-transform-clip",
           "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[2]/@x",
           "value": "12"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/image[1]/@x",
+          "value": "0"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/image[1]/@x",
+          "value": "0"
         }
       ]
     },
     {
       "cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
         "isolation-png-alpha",
         "isolation-png-transform-clip"
       ],
@@ -396,6 +488,16 @@
           "case": "isolation-png-transform-clip",
           "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[2]/@y",
           "value": "12"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/image[1]/@y",
+          "value": "0"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/image[1]/@y",
+          "value": "0"
         }
       ]
     },
@@ -965,6 +1067,11 @@
     },
     {
       "cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata"
       ],
@@ -986,12 +1093,47 @@
           "case": "isolation-metadata",
           "source": "isolation/metadata.svg:/svg[1]/g[1]/rect[1]/@fill",
           "value": "#347aa0"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/rect[1]/@fill",
+          "value": "#e05030"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/rect[1]/@fill",
+          "value": "#cceeff"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/rect[2]/@fill",
+          "value": "#e05030"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/rect[1]/@fill",
+          "value": "white"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/rect[1]/@fill",
+          "value": "#2050c0"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]/rect[1]/@fill",
+          "value": "#ddeeff"
         }
       ]
     },
     {
       "cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-png-transform-clip"
@@ -1024,12 +1166,52 @@
           "case": "isolation-metadata",
           "source": "isolation/metadata.svg:/svg[1]/g[1]/rect[1]/@height",
           "value": "64"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/rect[1]/@height",
+          "value": "40"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/rect[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/rect[2]/@height",
+          "value": "40"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/rect[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]/@height",
+          "value": "40"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/rect[1]/@height",
+          "value": "24"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]/rect[1]/@height",
+          "value": "64"
         }
       ]
     },
     {
       "cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-png-transform-clip"
@@ -1062,12 +1244,50 @@
           "case": "isolation-metadata",
           "source": "isolation/metadata.svg:/svg[1]/g[1]/rect[1]/@width",
           "value": "64"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/rect[1]/@width",
+          "value": "32"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/rect[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/rect[2]/@width",
+          "value": "32"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/rect[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]/@width",
+          "value": "48"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/rect[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]/rect[1]/@width",
+          "value": "64"
         }
       ]
     },
     {
       "cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ],
@@ -1089,12 +1309,40 @@
           "case": "isolation-png-transform-clip",
           "source": "isolation/png-transform-clip.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]/@x",
           "value": "8"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/rect[1]/@x",
+          "value": "24"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/rect[1]/@x",
+          "value": "0"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/rect[2]/@x",
+          "value": "24"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]/@x",
+          "value": "8"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/rect[1]/@x",
+          "value": "0"
         }
       ]
     },
     {
       "cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ],
@@ -1116,6 +1364,31 @@
           "case": "isolation-png-transform-clip",
           "source": "isolation/png-transform-clip.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]/@y",
           "value": "8"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/rect[1]/@y",
+          "value": "8"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/rect[1]/@y",
+          "value": "0"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/rect[2]/@y",
+          "value": "8"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]/@y",
+          "value": "8"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/rect[1]/@y",
+          "value": "36"
         }
       ]
     },
@@ -1208,6 +1481,11 @@
       "cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -1282,6 +1560,31 @@
           "case": "isolation-metadata",
           "source": "isolation/metadata.svg:/svg[1]/@data-bboxy-font-set",
           "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
         }
       ]
     },
@@ -1289,6 +1592,11 @@
       "cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -1368,6 +1676,31 @@
           "case": "isolation-metadata",
           "source": "isolation/metadata.svg:/svg[1]/@height",
           "value": "64"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]/@height",
+          "value": "63.25"
         }
       ]
     },
@@ -1390,6 +1723,11 @@
       "cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -1469,6 +1807,31 @@
           "case": "isolation-metadata",
           "source": "isolation/metadata.svg:/svg[1]/@viewBox",
           "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 63.25"
         }
       ]
     },
@@ -1476,6 +1839,11 @@
       "cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -1555,6 +1923,31 @@
           "case": "isolation-metadata",
           "source": "isolation/metadata.svg:/svg[1]/@width",
           "value": "64"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]/@width",
+          "value": "64"
         }
       ]
     },
@@ -1590,6 +1983,89 @@
     },
     {
       "cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@font-family",
+      "witnesses": [
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/text[1]/@font-family",
+          "value": "'Source Sans 3'"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/text[1]/@font-family",
+          "value": "'Source Sans 3'"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/text[1]/@font-family",
+          "value": "'Source Sans 3'"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/text[1]/@font-family",
+          "value": "'Source Sans 3'"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]/text[1]/@font-family",
+          "value": "'Source Sans 3'"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@font-size",
+      "witnesses": [
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/text[1]/@font-size",
+          "value": "14"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/text[1]/@font-size",
+          "value": "14"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/text[1]/@font-size",
+          "value": "14"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/text[1]/@font-size",
+          "value": "14"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]/text[1]/@font-size",
+          "value": "14"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-text"
       ],
       "category": "attribute",
@@ -1614,6 +2090,31 @@
         {
           "case": "isolation-text",
           "source": "isolation/text.svg:/svg[1]/g[1]/text[5]/@font-weight",
+          "value": "400"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/text[1]/@font-weight",
+          "value": "400"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/text[1]/@font-weight",
+          "value": "400"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/text[1]/@font-weight",
+          "value": "400"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/text[1]/@font-weight",
+          "value": "400"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]/text[1]/@font-weight",
           "value": "400"
         }
       ]
@@ -1665,6 +2166,11 @@
     },
     {
       "cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-text"
       ],
       "category": "attribute",
@@ -1690,11 +2196,41 @@
           "case": "isolation-text",
           "source": "isolation/text.svg:/svg[1]/g[1]/text[5]/@x",
           "value": "32"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/text[1]/@x",
+          "value": "4"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/text[1]/@x",
+          "value": "4"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/text[1]/@x",
+          "value": "4"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/text[1]/@x",
+          "value": "4"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]/text[1]/@x",
+          "value": "4"
         }
       ]
     },
     {
       "cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-text"
       ],
       "category": "attribute",
@@ -1720,6 +2256,31 @@
           "case": "isolation-text",
           "source": "isolation/text.svg:/svg[1]/g[1]/text[5]/@y",
           "value": "60"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/text[1]/@y",
+          "value": "32"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/text[1]/@y",
+          "value": "32"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/text[1]/@y",
+          "value": "32"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/text[1]/@y",
+          "value": "32"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]/text[1]/@y",
+          "value": "32"
         }
       ]
     },
@@ -1870,6 +2431,7 @@
     {
       "cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-png-transform-clip"
       ],
       "category": "element",
@@ -1883,12 +2445,17 @@
         {
           "case": "isolation-png-transform-clip",
           "source": "isolation/png-transform-clip.svg:/svg[1]/defs[1]/clipPath[1]"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/defs[1]/clipPath[1]"
         }
       ]
     },
     {
       "cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ],
@@ -1907,6 +2474,10 @@
         {
           "case": "isolation-png-transform-clip",
           "source": "isolation/png-transform-clip.svg:/svg[1]/defs[1]"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/defs[1]"
         }
       ]
     },
@@ -1928,6 +2499,7 @@
       "cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-png-transform-clip",
@@ -1964,11 +2536,17 @@
         {
           "case": "isolation-metadata",
           "source": "isolation/metadata.svg:/svg[1]/g[1]"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]"
         }
       ]
     },
     {
       "cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
         "isolation-png-alpha",
         "isolation-png-transform-clip"
       ],
@@ -1987,6 +2565,14 @@
         {
           "case": "isolation-png-transform-clip",
           "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[2]"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/image[1]"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/image[1]"
         }
       ]
     },
@@ -2111,6 +2697,11 @@
     {
       "cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-png-transform-clip"
@@ -2138,6 +2729,34 @@
         {
           "case": "isolation-metadata",
           "source": "isolation/metadata.svg:/svg[1]/g[1]/rect[1]"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/rect[1]"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/rect[1]"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/rect[2]"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/rect[1]"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/rect[1]"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]/rect[1]"
         }
       ]
     },
@@ -2189,6 +2808,11 @@
       "cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -2255,11 +2879,36 @@
         {
           "case": "isolation-metadata",
           "source": "isolation/metadata.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]"
         }
       ]
     },
     {
       "cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-text"
       ],
       "category": "element",
@@ -2285,6 +2934,26 @@
         {
           "case": "isolation-text",
           "source": "isolation/text.svg:/svg[1]/g[1]/text[5]"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/text[1]"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/text[1]"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/text[1]"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/text[1]"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]/text[1]"
         }
       ]
     },
@@ -2372,6 +3041,11 @@
       "cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -2434,6 +3108,26 @@
         {
           "case": "isolation-metadata",
           "source": "isolation/metadata.svg"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg"
         }
       ]
     },
@@ -2455,6 +3149,11 @@
       "cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -2517,6 +3216,26 @@
         {
           "case": "isolation-metadata",
           "source": "isolation/metadata.svg"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg"
         }
       ]
     },
@@ -2946,6 +3665,21 @@
     },
     {
       "cases": [
+        "isolation-composition-clip-spanning-layers"
+      ],
+      "category": "reference",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "#composition-clip",
+      "witnesses": [
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/@clip-path",
+          "value": "clipPath"
+        }
+      ]
+    },
+    {
+      "cases": [
         "isolation-gradient"
       ],
       "category": "reference",
@@ -2996,6 +3730,8 @@
     },
     {
       "cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
         "isolation-png-alpha",
         "isolation-png-transform-clip"
       ],
@@ -3016,6 +3752,16 @@
         {
           "case": "isolation-png-transform-clip",
           "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[2]/@href",
+          "value": "bounded inline PNG; inspect encoded bytes before reference capture"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/image[1]/@href",
+          "value": "bounded inline PNG; inspect encoded bytes before reference capture"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/image[1]/@href",
           "value": "bounded inline PNG; inspect encoded bytes before reference capture"
         }
       ]
@@ -3314,6 +4060,11 @@
   "font_usage": [
     {
       "cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-text"
       ],
       "family": "'Source Sans 3'",
@@ -3329,6 +4080,10 @@
         {
           "char": "E",
           "codepoint": "U+0045"
+        },
+        {
+          "char": "M",
+          "codepoint": "U+004D"
         },
         {
           "char": "R",
@@ -3427,6 +4182,56 @@
             "font-weight": "400"
           },
           "text": "V"
+        },
+        {
+          "case": "isolation-composition-text-under-shape",
+          "source": "isolation/composition-text-under-shape.svg:/svg[1]/text[1]",
+          "style": {
+            "font-family": "'Source Sans 3'",
+            "font-size": "14",
+            "font-weight": "400"
+          },
+          "text": "MMMM"
+        },
+        {
+          "case": "isolation-composition-shape-over-text",
+          "source": "isolation/composition-shape-over-text.svg:/svg[1]/text[1]",
+          "style": {
+            "font-family": "'Source Sans 3'",
+            "font-size": "14",
+            "font-weight": "400"
+          },
+          "text": "MMMM"
+        },
+        {
+          "case": "isolation-composition-image-under-text",
+          "source": "isolation/composition-image-under-text.svg:/svg[1]/text[1]",
+          "style": {
+            "font-family": "'Source Sans 3'",
+            "font-size": "14",
+            "font-weight": "400"
+          },
+          "text": "MMMM"
+        },
+        {
+          "case": "isolation-composition-clip-spanning-layers",
+          "source": "isolation/composition-clip-spanning-layers.svg:/svg[1]/g[1]/text[1]",
+          "style": {
+            "font-family": "'Source Sans 3'",
+            "font-size": "14",
+            "font-weight": "400"
+          },
+          "text": "MMMM"
+        },
+        {
+          "case": "isolation-fractional-viewport",
+          "source": "isolation/fractional-viewport.svg:/svg[1]/text[1]",
+          "style": {
+            "font-family": "'Source Sans 3'",
+            "font-size": "14",
+            "font-weight": "400"
+          },
+          "text": "MMMM"
         }
       ]
     },

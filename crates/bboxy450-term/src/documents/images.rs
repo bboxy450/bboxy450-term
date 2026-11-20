@@ -81,23 +81,7 @@ fn decode(root: &Path, name: &str) -> Result<Image, String> {
     let mut bytes=Vec::new();
     file.take(16*1024*1024+1).read_to_end(&mut bytes).map_err(|e|e.to_string())?;
     if bytes.len()>16*1024*1024 { return Err("image grew past its read bound".into()); }
-    // Adapted from bboxy450-term src/assets.rs PNG decoding; bounded local snapshots.
-    // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-    let mut decoder = png::Decoder::new(std::io::Cursor::new(&bytes));
-    decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
-    let mut reader = decoder.read_info().map_err(|e|e.to_string())?;
-    let (w,h) = (reader.info().width,reader.info().height);
-    if w==0 || h==0 || w>=2048 || h>=2048 { return Err("image dimensions exceed the color atlas".into()); }
-    let mut data = vec![0;reader.output_buffer_size().ok_or("PNG output unavailable")?];
-    let info=reader.next_frame(&mut data).map_err(|e|e.to_string())?;
-    let data=&data[..info.buffer_size()];
-    let rgba = match info.color_type {
-        png::ColorType::Rgba => data.to_vec(),
-        png::ColorType::Rgb => data.as_chunks::<3>().0.iter().flat_map(|p|[p[0],p[1],p[2],255]).collect(),
-        png::ColorType::Grayscale => data.iter().flat_map(|v|[*v,*v,*v,255]).collect(),
-        png::ColorType::GrayscaleAlpha => data.as_chunks::<2>().0.iter().flat_map(|p|[p[0],p[0],p[0],p[1]]).collect(),
-        _ => return Err("unsupported PNG color format".into()),
-    };
+    let image = bbt_render::image::decode_png(&bytes, 2047 * 2047).map_err(|e| e.to_string())?;
     use sha2::Digest;
-    Ok(Image {name:format!("document/{:x}",sha2::Sha256::digest(&bytes)),width:w,height:h,rgba})
+    Ok(Image {name:format!("document/{:x}",sha2::Sha256::digest(&bytes)),width:image.width,height:image.height,rgba:image.rgba})
 }

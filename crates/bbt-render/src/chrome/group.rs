@@ -85,6 +85,65 @@ fn pipeline(device: &wgpu::Device, format: wgpu::TextureFormat) -> wgpu::RenderP
     })
 }
 impl ChromeRenderer {
+    /// Retained consumers use the same pooled isolation layers as Prim::Group.
+    pub fn paint_group(
+        &mut self,
+        filter: Filter,
+        mask: Option<LinearAlphaMask>,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+        paint: impl FnOnce(&mut Self, ChromeTarget<'_>, &mut wgpu::CommandEncoder) -> Result<()>,
+    ) -> Result<()> {
+        self.paint_group_inner(filter, mask, None, target, encoder, paint)
+    }
+    /// A worker-prepared arbitrary path clip is applied once to the whole group.
+    pub fn paint_group_coverage(
+        &mut self,
+        filter: Filter,
+        coverage: Option<&super::PreparedPath>,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+        paint: impl FnOnce(&mut Self, ChromeTarget<'_>, &mut wgpu::CommandEncoder) -> Result<()>,
+    ) -> Result<()> {
+        self.paint_group_inner(filter, None, coverage, target, encoder, paint)
+    }
+    fn paint_group_inner(
+        &mut self,
+        filter: Filter,
+        mask: Option<LinearAlphaMask>,
+        coverage: Option<&super::PreparedPath>,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+        paint: impl FnOnce(&mut Self, ChromeTarget<'_>, &mut wgpu::CommandEncoder) -> Result<()>,
+    ) -> Result<()> {
+        let layer = self.take_group_layer(target.width, target.height);
+        let view = layer.create_view(&Default::default());
+        let group_target = ChromeTarget {
+            view: &view,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            ..target
+        };
+        let result = self.with_group_layer(|renderer| {
+            renderer.draw(
+                &bbt_ui_model::draw::DrawList::default(),
+                group_target,
+                encoder,
+            )?;
+            paint(renderer, group_target, encoder)
+        });
+        let result = result.and_then(|()| {
+            self.composite_with_load(
+                &view,
+                filter,
+                mask,
+                coverage,
+                (target, wgpu::LoadOp::Load),
+                encoder,
+            )
+        });
+        self.group_layers.push(layer);
+        result
+    }
     /// Paint an offscreen group using gamma-premultiplied storage. Chrome text
     /// uses the same CSS source-over rule inside and outside the group.
     pub fn with_group_layer<T, E>(
@@ -116,7 +175,14 @@ impl ChromeRenderer {
         target: ChromeTarget<'_>,
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<()> {
-        self.composite_with_load(layer, filter, mask, target, encoder, wgpu::LoadOp::Load)
+        self.composite_with_load(
+            layer,
+            filter,
+            mask,
+            None,
+            (target, wgpu::LoadOp::Load),
+            encoder,
+        )
     }
     /// As composite_group onto an uncleared target: the composite pass itself clears it to
     /// transparent, exactly what a separate clear pass followed by composite_group draws.
@@ -128,16 +194,16 @@ impl ChromeRenderer {
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<()> {
         let clear = wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT);
-        self.composite_with_load(layer, filter, None, target, encoder, clear)
+        self.composite_with_load(layer, filter, None, None, (target, clear), encoder)
     }
     fn composite_with_load(
         &mut self,
         layer: &wgpu::TextureView,
         filter: Filter,
         mask: Option<LinearAlphaMask>,
-        target: ChromeTarget<'_>,
+        coverage: Option<&super::PreparedPath>,
+        (target, load): (ChromeTarget<'_>, wgpu::LoadOp<wgpu::Color>),
         encoder: &mut wgpu::CommandEncoder,
-        load: wgpu::LoadOp<wgpu::Color>,
     ) -> Result<()> {
         filter.validate()?;
         if let Some(mask) = mask {
@@ -148,13 +214,32 @@ impl ChromeRenderer {
         {
             return Err("group layer and target sizes differ".into());
         }
+        let coverage = if let Some(path) = coverage {
+            let Some(part) = self.text.prepared_path(path)? else {
+                return Ok(());
+            };
+            self.glyph_reset_pending |= self.text.finish(&[part.id])?;
+            self.sync_glyph_atlases();
+            let rect = self.text.rect(part.id)?;
+            Some((
+                part,
+                rect,
+                self.color_glyph_gpu
+                    .as_ref()
+                    .ok_or("missing clip atlas")?
+                    .view
+                    .clone(),
+            ))
+        } else {
+            None
+        };
         let device = &self.context.device;
         let format = target.format.remove_srgb_suffix();
         let pipeline = self
             .group_pipelines
             .entry(format)
             .or_insert_with(|| pipeline(device, format));
-        let mut values = [0.; 12];
+        let mut values = [0.; 20];
         values[0] = filter.opacity;
         values[1] = filter.saturation;
         if let Some(mask) = mask {
@@ -167,6 +252,17 @@ impl ChromeRenderer {
             ]);
             values[8] = mask.alpha0;
             values[9] = mask.alpha1;
+        }
+        if let Some((part, rect, _)) = &coverage {
+            values[3] = 1.;
+            values[12..16].copy_from_slice(&[
+                part.offset[0] as f32,
+                part.offset[1] as f32,
+                f32::from(rect.x),
+                f32::from(rect.y),
+            ]);
+            values[16] = part.size[0] as f32;
+            values[17] = part.size[1] as f32;
         }
         let params = self
             .arenas
@@ -182,6 +278,12 @@ impl ChromeRenderer {
                 wgpu::BindGroupEntry {
                     binding: 1,
                     resource: params.binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(
+                        coverage.as_ref().map_or(layer, |(_, _, view)| view),
+                    ),
                 },
             ],
         });
@@ -307,6 +409,64 @@ impl ChromeRenderer {
 
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
+    // keeps: spec svg-renderer — a nonrectangular group clip clips all overlapping children once.
+    #[test]
+    fn svg_nonrectangular_clip_preserves_existing_group_opacity() {
+        use bbt_ui_model::draw::{Color, DrawList, Paint, PathCommand, VectorPath};
+        use bbt_ui_model::layout::Rect;
+        let path = VectorPath {
+            points: vec![
+                PathCommand::Move([0., 0.]),
+                PathCommand::Line([32., 0.]),
+                PathCommand::Line([0., 32.]),
+                PathCommand::Close,
+            ]
+            .into(),
+            fill: Some(Paint::Solid(Color::WHITE)),
+            transform: bbt_ui_model::draw::Affine::default(),
+            fill_rule: bbt_ui_model::draw::FillRule::NonZero,
+            fill_opacity: 1.,
+            stroke: bbt_ui_model::draw::PathStroke::default(),
+            stroke_paint: None,
+            stroke_opacity: 1.,
+            miter_limit: 4.,
+            dash_offset: 0.,
+        };
+        let clip = super::super::prepare_vector_path(&path, [32, 32], [0., 0., 32., 32.]).unwrap();
+        let mut r =
+            super::super::ChromeRenderer::new(Vec::<super::super::icons::Image>::new()).unwrap();
+        let pixels = r
+            .render_to_rgba_with(32, 32, 1., |r, t, e| {
+                let mut background = DrawList::default();
+                background.rect(Rect::new(0., 0., 32., 32.), 0., Color::WHITE);
+                r.draw(&background, t, e)?;
+                r.paint_group_coverage(
+                    super::Filter {
+                        opacity: 0.5,
+                        saturation: 1.,
+                    },
+                    Some(&clip),
+                    t,
+                    e,
+                    |r, t, e| {
+                        let mut child = DrawList::default();
+                        child.rect(Rect::new(0., 0., 32., 32.), 0., Color([1., 0., 0., 1.]));
+                        child.rect(Rect::new(0., 0., 32., 32.), 0., Color([0., 0., 1., 1.]));
+                        r.draw(&child, t, e)
+                    },
+                )
+            })
+            .unwrap();
+        assert_eq!(
+            &pixels[(4 * 32 + 4) * 4..(4 * 32 + 4) * 4 + 4],
+            &[128, 128, 255, 255]
+        );
+        assert_eq!(
+            &pixels[(28 * 32 + 28) * 4..(28 * 32 + 28) * 4 + 4],
+            &[255; 4]
+        );
+    }
+
     use super::*;
     use bbt_ui_model::{
         draw::{Color, DrawList, Prim},

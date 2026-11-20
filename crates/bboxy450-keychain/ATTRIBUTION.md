@@ -244,3 +244,29 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Native SVG corpus, shared coverage and bundled fonts
+
+`crates/bboxy450-svg` contains the bounded project-owned SVG parser and corpus
+loop. Deterministic chart exports retain the generator, input, exporter version,
+source digest and credit in their adjacent corpus manifests. The CDP transport
+in `crates/bboxybook/capture-cdp.mjs` is extracted from this project's existing
+capture program and shared by both capture callers.
+
+The SVG foreground shares `crates/bbt-render/src/chrome/path_masks.rs` with the
+existing shadow coverage primitive and its tiny-skia dependency. No SVG
+interpreter from resvg/usvg is used in native painting. resvg 0.48.1 remains an
+offline shape oracle. Its coverage is not independent of our tiny-skia coverage;
+Chrome is the independent pixel reference.
+
+Explicit-face RGB font smoothing in `chrome/text_glyphs.rs` is independently
+implemented using CoreGraphics. Inspired by the native dark-on-light coverage
+approach in [Skia's macOS scaler](https://skia.googlesource.com/skia/+/refs/heads/main/src/ports/SkScalerContext_mac_ct.cpp).
+
+Bundled Source Sans 3 Regular and Bold are unmodified Adobe Source Sans release
+3.052R (`ed1808970eb3c7301c9a523bee26473ba0bb62fa`). Copyright 2010–2022 Adobe;
+Reserved Font Name **Source**. They remain under SIL Open Font License 1.1,
+including Adobe's original notice and Reserved Font Name in
+`crates/bboxy450-svg/fonts/LICENSE.md`. The sole adjacent `manifest.json` records
+the exact face, weight, PostScript name, upstream revision and file/license
+hashes. App resources copy those same four files to `Resources/chart-fonts`.

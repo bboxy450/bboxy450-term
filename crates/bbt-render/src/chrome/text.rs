@@ -9,10 +9,20 @@
 #[cfg(not(target_vendor = "apple"))]
 pub use crate::text::portable::{measure, rasterize, rasterize_at, x_height};
 
-#[cfg(target_vendor = "apple")]
 use crate::Result;
-#[cfg(any(test, target_vendor = "apple"))]
 use bbt_ui_model::draw::TextStyle;
+
+/// A verified face painted from retained logical text at an affine baseline.
+/// `transform` maps baseline-relative SVG coordinates into target logical pixels.
+pub struct FaceText<'a> {
+    pub value: &'a str,
+    /// Optional UTF-16 subrange of a shared shaping run, preserving kerning across tspans.
+    pub range: Option<[usize; 2]>,
+    pub postscript: &'a str,
+    pub style: TextStyle,
+    pub transform: bbt_ui_model::draw::Affine,
+    pub color: bbt_ui_model::draw::Color,
+}
 
 pub struct LineMask {
     pub width: u32,
@@ -70,6 +80,150 @@ pub fn measure(text: &str, style: TextStyle, max_width: Option<f32>) -> Result<T
     let line = logical_line(text, style, max_width)?;
     Ok(typographic_bounds(&line).logical())
 }
+
+/// Baseline-relative SVG text cells, measured by the same kerned line builder.
+pub struct FaceLayout {
+    pub metrics: TextMetrics,
+    pub bounds: [f32; 4],
+    pub characters: Vec<[f32; 2]>,
+}
+#[cfg(target_os = "macos")]
+pub fn layout_face(
+    value: &str,
+    style: TextStyle,
+    postscript: &str,
+    range: Option<[usize; 2]>,
+) -> Result<FaceLayout> {
+    use objc2_core_text::CTFontOrientation;
+    let (runs, metrics) = face_runs(value, style, postscript, range)?;
+    let mut left = 0_f32;
+    let mut right = metrics.advance;
+    for run in &runs {
+        for (&id, p) in run.glyphs.iter().zip(&run.positions) {
+            let mut glyph = id;
+            let ink = unsafe {
+                run.font.bounding_rects_for_glyphs(
+                    CTFontOrientation::Horizontal,
+                    std::ptr::NonNull::from(&mut glyph),
+                    std::ptr::null_mut(),
+                    1,
+                )
+            };
+            left = left.min((p.x + ink.origin.x) as f32);
+            right = right.max((p.x + ink.origin.x + ink.size.width) as f32);
+        }
+    }
+    let ascent = metrics.ascent.round();
+    let descent = metrics.descent.round();
+    let positions: std::collections::BTreeMap<_, _> = runs
+        .iter()
+        .flat_map(|run| {
+            run.indices
+                .iter()
+                .copied()
+                .zip(run.positions.iter().map(|p| p.x as f32))
+        })
+        .collect();
+    let [start, end] = range.unwrap_or([0, value.encode_utf16().count()]);
+    let mut index = start;
+    let mut characters = Vec::new();
+    for ch in value.chars().skip_while({
+        let mut count = 0;
+        move |ch| {
+            let skip = count < start;
+            count += ch.len_utf16();
+            skip
+        }
+    }) {
+        if index >= end {
+            break;
+        }
+        let begin = positions
+            .get(&(index as isize))
+            .copied()
+            .ok_or("character has no independent glyph in bounded SVG text")?;
+        index += ch.len_utf16();
+        let finish = positions
+            .get(&(index as isize))
+            .copied()
+            .unwrap_or(metrics.advance);
+        characters.push([begin, finish]);
+    }
+    Ok(FaceLayout {
+        metrics,
+        bounds: [left, -ascent, right - left, ascent + descent],
+        characters,
+    })
+}
+/// Slice actual glyph runs, never independently reshape a tspan at its boundary.
+#[cfg(target_os = "macos")]
+pub(super) fn face_runs(
+    value: &str,
+    style: TextStyle,
+    postscript: &str,
+    range: Option<[usize; 2]>,
+) -> Result<(Vec<GlyphRun>, TextMetrics)> {
+    let line = logical_line_for(value, style, None, Some(postscript))?;
+    let mut metrics = typographic_bounds(&line).logical();
+    let mut runs = glyph_runs(&line, true)?;
+    if let Some([start, end]) = range {
+        if start >= end || end > value.encode_utf16().count() {
+            return Err("invalid face glyph range".into());
+        }
+        let positions: std::collections::BTreeMap<_, _> = runs
+            .iter()
+            .flat_map(|run| {
+                run.indices
+                    .iter()
+                    .copied()
+                    .zip(run.positions.iter().map(|p| p.x))
+            })
+            .collect();
+        let origin = *positions
+            .get(&(start as isize))
+            .ok_or("tspan begins inside a glyph cluster")?;
+        let finish = if end == value.encode_utf16().count() {
+            f64::from(metrics.advance)
+        } else {
+            *positions
+                .get(&(end as isize))
+                .ok_or("tspan ends inside a glyph cluster")?
+        };
+        metrics.advance = (finish - origin) as f32;
+        for run in &mut runs {
+            let selected: Vec<_> = (0..run.glyphs.len())
+                .filter(|&i| (start..end).contains(&(run.indices[i] as usize)))
+                .collect();
+            run.glyphs = selected.iter().map(|&i| run.glyphs[i]).collect();
+            run.positions = selected
+                .iter()
+                .map(|&i| {
+                    let mut p = run.positions[i];
+                    p.x -= origin;
+                    p
+                })
+                .collect();
+            run.indices = selected.iter().map(|&i| run.indices[i]).collect();
+        }
+    }
+    Ok((runs, metrics))
+}
+#[cfg(not(target_os = "macos"))]
+pub fn layout_face(_: &str, _: TextStyle, _: &str, _: Option<[usize; 2]>) -> Result<FaceLayout> {
+    Err("SVG text geometry requires CoreText".into())
+}
+
+/// Measure an explicitly verified face through the same CoreText line builder.
+#[cfg(target_os = "macos")]
+pub fn measure_face(text: &str, style: TextStyle, postscript: &str) -> Result<TextMetrics> {
+    let line = logical_line_for(text, style, None, Some(postscript))?;
+    Ok(typographic_bounds(&line).logical())
+}
+#[cfg(not(target_os = "macos"))]
+pub fn measure_face(_: &str, _: TextStyle, _: &str) -> Result<TextMetrics> {
+    Err("chrome text metrics require CoreText".into())
+}
+
 // The UI font has a CSS wght axis. Menlo uses CoreText's discrete faces.
 #[cfg(target_vendor = "apple")]
 fn upright_font(
@@ -131,16 +285,25 @@ fn upright_font(
 fn native_font(
     style: TextStyle,
 ) -> Result<objc2_core_foundation::CFRetained<objc2_core_text::CTFont>> {
+    native_font_for(style, None)
+}
+
+#[cfg(target_vendor = "apple")]
+fn native_font_for(
+    style: TextStyle,
+    postscript: Option<&str>,
+) -> Result<objc2_core_foundation::CFRetained<objc2_core_text::CTFont>> {
     use objc2_core_foundation::CFRetained;
     use objc2_core_text::CTFont;
     use std::{cell::RefCell, collections::HashMap};
     const FONT_BUDGET: usize = 64;
     /// (mono, italic, weight, pixel size bits): every input build_font reads.
-    type Fonts = HashMap<(bool, bool, u16, u32), CFRetained<CTFont>>;
+    type Fonts = HashMap<(Option<String>, bool, bool, u16, u32), CFRetained<CTFont>>;
     thread_local! {
         static FONTS: RefCell<Fonts> = RefCell::new(HashMap::new());
     }
     let key = (
+        postscript.map(str::to_owned),
         style.mono,
         style.italic,
         style.weight,
@@ -149,7 +312,24 @@ fn native_font(
     if let Some(font) = FONTS.with_borrow(|fonts| fonts.get(&key).cloned()) {
         return Ok(font);
     }
-    let font = build_font(style)?;
+    let font = if let Some(name) = postscript {
+        if style.italic || style.mono || !style.pixels().is_finite() || style.pixels() <= 0. {
+            return Err("invalid explicit-face text style".into());
+        }
+        let font = unsafe {
+            CTFont::with_name(
+                &objc2_core_foundation::CFString::from_str(name),
+                f64::from(style.pixels()),
+                std::ptr::null(),
+            )
+        };
+        if unsafe { font.post_script_name() }.to_string() != name {
+            return Err("explicit font face resolved through fallback".into());
+        }
+        font
+    } else {
+        build_font(style)?
+    };
     FONTS.with_borrow_mut(|fonts| {
         if fonts.len() >= FONT_BUDGET {
             fonts.clear();
@@ -256,6 +436,8 @@ pub(super) struct GlyphRun {
     pub font: objc2_core_foundation::CFRetained<objc2_core_text::CTFont>,
     pub glyphs: Vec<u16>,
     pub positions: Vec<objc2_core_foundation::CGPoint>,
+    #[cfg(target_os = "macos")]
+    pub indices: Vec<isize>,
 }
 #[cfg(target_vendor = "apple")]
 pub(super) struct ShapedLine {
@@ -275,6 +457,16 @@ fn logical_line(
     style: TextStyle,
     max_width: Option<f32>,
 ) -> Result<objc2_core_foundation::CFRetained<objc2_core_text::CTLine>> {
+    logical_line_for(text, style, max_width, None)
+}
+
+#[cfg(target_vendor = "apple")]
+pub(super) fn logical_line_for(
+    text: &str,
+    style: TextStyle,
+    max_width: Option<f32>,
+    postscript: Option<&str>,
+) -> Result<objc2_core_foundation::CFRetained<objc2_core_text::CTLine>> {
     use objc2_core_foundation::{
         CFAttributedString, CFBoolean, CFDictionary, CFNumber, CFRetained, CFString, CFType,
     };
@@ -283,7 +475,7 @@ fn logical_line(
         kCTKernAttributeName,
     };
     use std::ptr;
-    let font = native_font(style)?;
+    let font = native_font_for(style, postscript)?;
     let kern = CFNumber::new_f64(f64::from(style.tracking_em * style.pixels()));
     let mut keys = unsafe {
         vec![
@@ -354,6 +546,11 @@ fn logical_line(
 }
 
 #[cfg(target_vendor = "apple")]
+pub(super) fn quarter_pixel(value: f64) -> f64 {
+    (value * 4.).round() / 4.
+}
+
+#[cfg(target_vendor = "apple")]
 pub(super) fn shape_at(
     text: &str,
     style: TextStyle,
@@ -361,11 +558,6 @@ pub(super) fn shape_at(
     scale: f32,
     phase_x: f32,
 ) -> Result<ShapedLine> {
-    use objc2_core_foundation::{
-        CFArray, CFDictionary, CFRange, CFRetained, CFString, CFType, CGPoint,
-    };
-    use objc2_core_text::{CTFont, CTRun, kCTFontAttributeName};
-    use std::ptr::NonNull;
     if !scale.is_finite()
         || !(0.5..=4.).contains(&scale)
         || !phase_x.is_finite()
@@ -395,6 +587,35 @@ pub(super) fn shape_at(
     let height = dimension((ascent + descent) * f64::from(scale), 4)?;
     let device_scale = f64::from(scale);
     let baseline = ((descent * device_scale).ceil() + 2.) / device_scale;
+    let mut output = glyph_runs(&line, false)?;
+    for run in &mut output {
+        for position in &mut run.positions {
+            position.x =
+                quarter_pixel(position.x * device_scale + 2. + f64::from(phase_x)) / device_scale;
+            position.y += baseline;
+        }
+    }
+    Ok(ShapedLine {
+        width,
+        height,
+        baseline: height as f32 - (baseline * device_scale) as f32,
+        advance,
+        ascent: ascent as f32,
+        descent: descent as f32,
+        scale,
+        runs: output,
+    })
+}
+#[cfg(target_vendor = "apple")]
+fn glyph_runs(
+    line: &objc2_core_text::CTLine,
+    #[cfg_attr(not(target_os = "macos"), allow(unused_variables))] with_indices: bool,
+) -> Result<Vec<GlyphRun>> {
+    use objc2_core_foundation::{
+        CFArray, CFDictionary, CFRange, CFRetained, CFString, CFType, CGPoint,
+    };
+    use objc2_core_text::{CTFont, CTRun, kCTFontAttributeName};
+    use std::ptr::NonNull;
     let mut output = Vec::new();
     // SAFETY: immutable CoreText runs, checked buffer lengths and retained fonts.
     unsafe {
@@ -409,34 +630,30 @@ pub(super) fn shape_at(
             let range = CFRange::new(0, count as isize);
             run.glyphs(range, NonNull::new(glyphs.as_mut_ptr()).unwrap());
             run.positions(range, NonNull::new(positions.as_mut_ptr()).unwrap());
+            #[cfg(target_os = "macos")]
+            let indices = if with_indices {
+                let mut indices = vec![0; count];
+                run.string_indices(range, NonNull::new(indices.as_mut_ptr()).unwrap());
+                indices
+            } else {
+                Vec::new()
+            };
             let attrs =
                 CFRetained::cast_unchecked::<CFDictionary<CFString, CFType>>(run.attributes());
             let font = attrs
                 .get(kCTFontAttributeName)
                 .and_then(|v| v.downcast::<CTFont>().ok())
                 .ok_or("CoreText run font missing")?;
-            for position in &mut positions {
-                position.x = ((position.x * device_scale + 2. + f64::from(phase_x)) * 4.).round()
-                    / (4. * device_scale);
-                position.y += baseline;
-            }
             output.push(GlyphRun {
                 font,
                 glyphs,
                 positions,
+                #[cfg(target_os = "macos")]
+                indices,
             });
         }
     }
-    Ok(ShapedLine {
-        width,
-        height,
-        baseline: height as f32 - (baseline * device_scale) as f32,
-        advance,
-        ascent: ascent as f32,
-        descent: descent as f32,
-        scale,
-        runs: output,
-    })
+    Ok(output)
 }
 /// Grayscale chrome mask at a fractional device-pixel line origin in [0, 1).
 /// The reference raster path and glyph-cache path share shaping and fallback.
@@ -520,6 +737,71 @@ pub fn rasterize_at(
 }
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
+    // keeps: spec svg-renderer — affine text uses the existing glyph cache, with logical kerning/metrics unchanged.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn svg_affine_text_preserves_baseline_geometry_and_fresh_coverage() {
+        use super::super::{ChromeRenderer, icons};
+        use bbt_ui_model::draw::{Affine, Color, TypeScale};
+        let style = TextStyle {
+            scale: TypeScale::Custom(12.),
+            ..Default::default()
+        };
+        let postscript = unsafe {
+            native_font(TextStyle {
+                mono: true,
+                ..style
+            })
+            .unwrap()
+            .post_script_name()
+        }
+        .to_string();
+        let before = measure_face("AV", style, &postscript).unwrap();
+        let mut r = ChromeRenderer::new(Vec::<icons::Image>::new()).unwrap();
+        let paint = |r: &mut ChromeRenderer, transform| {
+            r.render_to_rgba_with(64, 64, 1., |r, t, e| {
+                r.draw_face_text(
+                    &FaceText {
+                        value: "AV",
+                        range: None,
+                        postscript: &postscript,
+                        style,
+                        transform,
+                        color: Color::BLACK,
+                    },
+                    t,
+                    e,
+                )
+            })
+            .unwrap()
+        };
+        let a = paint(&mut r, Affine([1., 0., 0., 1., 8., 24.]));
+        let b = paint(&mut r, Affine([0., 1., -1., 0., 32., 8.]));
+        let bounds = |data: &[u8]| {
+            let mut b = [64_i32, 64, 0, 0];
+            for (i, p) in data.as_chunks::<4>().0.iter().enumerate() {
+                if p[3] != 0 {
+                    let x = (i % 64) as i32;
+                    let y = (i / 64) as i32;
+                    b = [b[0].min(x), b[1].min(y), b[2].max(x + 1), b[3].max(y + 1)];
+                }
+            }
+            b
+        };
+        let a = bounds(&a);
+        let b = bounds(&b);
+        assert!(
+            a[2] > a[0] && b[2] > b[0],
+            "both transforms paint actual glyph coverage"
+        );
+        let expected = [56 - a[3], a[0], 56 - a[1], a[2]];
+        assert!(
+            b.into_iter().zip(expected).all(|(a, b)| (a - b).abs() <= 1),
+            "rotated baseline/ink bounds: {b:?}, expected {expected:?}"
+        );
+        assert_eq!(before, measure_face("AV", style, &postscript).unwrap());
+    }
+
     use super::*;
     // keeps: Unicode chrome ellipsis — native clusters are never split for available width.
     #[test]

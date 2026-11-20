@@ -125,6 +125,7 @@
   "boundary_materializer": "../fixtures.py:boundary_input",
   "cases": [
     {
+      "composition": false,
       "features": [
         "M",
         "L",
@@ -184,6 +185,7 @@
       ]
     },
     {
+      "composition": false,
       "features": [
         "fill",
         "fill-rule",
@@ -235,6 +237,7 @@
       ]
     },
     {
+      "composition": false,
       "features": [
         "stroke",
         "joins",
@@ -291,6 +294,7 @@
       ]
     },
     {
+      "composition": false,
       "features": [
         "translate",
         "rotate",
@@ -346,6 +350,7 @@
       ]
     },
     {
+      "composition": false,
       "features": [
         "defs",
         "use",
@@ -399,6 +404,7 @@
       ]
     },
     {
+      "composition": false,
       "features": [
         "viewport",
         "viewBox",
@@ -449,6 +455,7 @@
       ]
     },
     {
+      "composition": false,
       "features": [
         "linearGradient",
         "stop",
@@ -504,6 +511,7 @@
       ]
     },
     {
+      "composition": false,
       "features": [
         "inline-PNG",
         "whitespace-base64",
@@ -557,6 +565,7 @@
       ]
     },
     {
+      "composition": false,
       "features": [
         "inline-PNG",
         "placement",
@@ -609,6 +618,7 @@
       ]
     },
     {
+      "composition": false,
       "features": [
         "text",
         "tspan",
@@ -666,6 +676,7 @@
       ]
     },
     {
+      "composition": false,
       "features": [
         "outlined-text",
         "path-text"
@@ -715,6 +726,7 @@
       ]
     },
     {
+      "composition": false,
       "features": [
         "metadata",
         "namespaces",
@@ -764,6 +776,264 @@
             16,
             48,
             32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "composition": true,
+      "features": [
+        "text",
+        "rect",
+        "paint-order"
+      ],
+      "id": "isolation-composition-text-under-shape",
+      "image": false,
+      "sha256": "86a08e1b2a9691fb69aff7bc8aa4320687442d4b47b814590b79e1e89ba16c6b",
+      "svg": "isolation/composition-text-under-shape.svg",
+      "text": true,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "composition": true,
+      "features": [
+        "text",
+        "rect",
+        "paint-order",
+        "occlusion"
+      ],
+      "id": "isolation-composition-shape-over-text",
+      "image": false,
+      "sha256": "f74bf84761571c9cde6211075370bfdcefca97a51b7d103dcd269112c678ea25",
+      "svg": "isolation/composition-shape-over-text.svg",
+      "text": true,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "composition": true,
+      "features": [
+        "text",
+        "inline-PNG",
+        "paint-order"
+      ],
+      "id": "isolation-composition-image-under-text",
+      "image": true,
+      "sha256": "2370c644542177f9b2886c263cc6db608826382490283807842fd54dd6895e41",
+      "svg": "isolation/composition-image-under-text.svg",
+      "text": true,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "composition": true,
+      "features": [
+        "text",
+        "inline-PNG",
+        "rect",
+        "clip",
+        "paint-order"
+      ],
+      "id": "isolation-composition-clip-spanning-layers",
+      "image": true,
+      "sha256": "1db1b8bb2dc89c8a8839bfffeefe2e47d49bd862e77d03f250a49193e1110e6f",
+      "svg": "isolation/composition-clip-spanning-layers.svg",
+      "text": true,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "composition": false,
+      "features": [
+        "text",
+        "rect",
+        "fractional-viewport"
+      ],
+      "id": "isolation-fractional-viewport",
+      "image": false,
+      "sha256": "68403fdc15ee46f8ca18350e140ffbea0bd6adfb3e3c91a7931161aba686f8d6",
+      "svg": "isolation/fractional-viewport.svg",
+      "text": true,
+      "viewBox": [
+        0,
+        0,
+        64,
+        63.25
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            40,
+            48,
+            24
           ],
           "id": "8x",
           "scale": 8

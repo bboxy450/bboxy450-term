@@ -407,22 +407,25 @@ fn paths(list: &bbt_ui_model::draw::DrawList) -> Vec<Vec<[f32; 2]>> {
         .iter()
         .filter_map(|p| match p {
             Prim::Path { origin, points, .. } => Some(
-                points
-                    .iter()
-                    .map(|c| match c {
-                        bbt_ui_model::draw::PathCommand::Move(p)
-                        | bbt_ui_model::draw::PathCommand::Line(p) => {
-                            [origin[0] + p[0], origin[1] + p[1]]
-                        }
-                        bbt_ui_model::draw::PathCommand::Cubic(c) => {
-                            [origin[0] + c[2][0], origin[1] + c[2][1]]
-                        }
-                    })
+                bbt_ui_model::draw::path_geometry(points).1.into_iter()
+                    .map(|p| [origin[0] + p[0], origin[1] + p[1]])
                     .collect(),
             ),
             _ => None,
         })
         .collect()
+}
+// keeps: spec svg-renderer — existing canvas observations retain closing endpoints.
+#[test]
+fn canvas_path_observation_retains_close_without_inventing_a_cap_vertex() {
+    use bbt_ui_model::draw::{Color, DrawList, PathCommand, PathStroke};
+    let list = DrawList { primitives: vec![Prim::Path {
+        origin: [10., 20.], scale: 1.,
+        points: vec![PathCommand::Move([1., 2.]), PathCommand::Line([5., 2.]),
+                     PathCommand::Line([5., 6.]), PathCommand::Close].into(),
+        stroke: PathStroke::default(), color: Color([1.; 4]), fill: None,
+    }], ..Default::default() };
+    assert_eq!(paths(&list), [vec![[11., 22.], [15., 22.], [15., 26.], [11., 22.]]]);
 }
 fn text_rect(list: &bbt_ui_model::draw::DrawList, value: &str) -> Option<Rect> {
     list.primitives.iter().find_map(|p| match p {

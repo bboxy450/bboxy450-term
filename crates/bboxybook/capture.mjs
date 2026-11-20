@@ -14,6 +14,7 @@ import {createHash} from 'node:crypto';
 import vm from 'node:vm';
 import {captureExercises} from './capture-exercises.mjs';
 import {waitForDevToolsPort} from './capture-startup.mjs';
+import {CDP} from './capture-cdp.mjs';
 const root=process.cwd(),out=path.resolve(process.argv[2]||'target/parity');
 const manifest=JSON.parse(await fs.readFile(process.argv[3]||path.join(out,'requested.json'),'utf8'));
 // Baseline components use the exact review tag. New built design entries are
@@ -51,11 +52,7 @@ const profile=await fs.mkdtemp(path.join(os.tmpdir(),'bboxybook-chrome-'));
 const browser=spawn(binary,['--headless=new','--remote-debugging-port=0',`--user-data-dir=${profile}`,'--no-first-run','--no-default-browser-check','--disable-extensions','--hide-scrollbars','--enable-unsafe-swiftshader','about:blank'],{stdio:['ignore','ignore','pipe']});
 let stderr='';browser.stderr.on('data',b=>{stderr=(stderr+b).slice(-8000);});
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
-class CDP{
-  constructor(ws){this.ws=ws;this.id=0;this.pending=new Map();this.errors=[];ws.addEventListener('message',ev=>{const m=JSON.parse(ev.data);if(m.id){const p=this.pending.get(m.id);if(p){this.pending.delete(m.id);clearTimeout(p.timer);m.error?p.reject(Error(JSON.stringify(m.error))):p.resolve(m.result);}}else if(m.method==='Runtime.exceptionThrown'){this.errors.push(m.params.exceptionDetails);}});}
-  call(method,params={}){return new Promise((resolve,reject)=>{const id=++this.id;const timer=setTimeout(()=>{this.pending.delete(id);reject(Error(`CDP timeout: ${method}`));},15000);this.pending.set(id,{resolve,reject,timer});this.ws.send(JSON.stringify({id,method,params}));});}
-  async eval(expression){const r=await this.call('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(r.exceptionDetails.text+': '+(r.exceptionDetails.exception?.description||''));return r.result.value;}
-}
+
 let ws;const failures=[];const captured=[];
 try{
   const port=await waitForDevToolsPort(profile,()=>stderr);

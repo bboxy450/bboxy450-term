@@ -606,6 +606,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "bboxy450-svg"
+version = "0.2.0"
+dependencies = [
+ "base64 0.22.1",
+ "bboxy450-render",
+ "bboxy450-ui-core",
+ "png",
+ "roxmltree",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "svgtypes",
+ "wgpu",
+]
+
+[[package]]
 name = "bboxy450-term"
 version = "0.2.0"
 dependencies = [

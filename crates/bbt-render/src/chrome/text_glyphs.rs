@@ -37,6 +37,8 @@ pub(super) struct Key {
     pub scale: u32,
     pub glyphs: Vec<Glyph>,
     pub blur_sigma: u32,
+    /// Native RGB font smoothing; part of mask identity, never applied to legacy UI coverage.
+    pub font_smoothing: bool,
 }
 #[derive(Clone)]
 pub(super) struct Placed {
@@ -157,6 +159,7 @@ fn place(font: Font, id: u16, physical: [f64; 2], scale: f32, run: usize) -> Pla
         key: Key {
             scale: scale.to_bits(),
             blur_sigma: 0,
+            font_smoothing: false,
             glyphs: vec![Glyph {
                 font,
                 id,
@@ -167,6 +170,64 @@ fn place(font: Font, id: u16, physical: [f64; 2], scale: f32, run: usize) -> Pla
         origin,
         run,
     }
+}
+
+/// The same native glyph coverage/cache as UI text, with an explicitly verified
+/// face and an affine font matrix. Positions remain logical until this draw.
+#[cfg(target_os = "macos")]
+pub(super) fn shape_face(text: &super::text::FaceText<'_>) -> Result<Shape> {
+    use objc2_core_foundation::CGAffineTransform;
+    text.transform.validate()?;
+    let [a, b, c, d, e, f] = text.transform.0.map(f64::from);
+    let (runs, metrics) =
+        super::text::face_runs(text.value, text.style, text.postscript, text.range)?;
+    let advance = metrics.advance;
+    let mut glyphs = Vec::new();
+    // CoreText glyphs are y-up; SVG positions and target quads are y-down.
+    let matrix = CGAffineTransform {
+        a,
+        b: -b,
+        c: -c,
+        d,
+        tx: 0.,
+        ty: 0.,
+    };
+    for (run_index, run) in runs.iter().enumerate() {
+        if glyphs.len() + run.glyphs.len() > 65_536 {
+            return Err("face glyph bound exceeded".into());
+        }
+        // SAFETY: immutable fonts from the same logical CoreText line builder.
+        let font = unsafe {
+            if run.font.post_script_name().to_string() != text.postscript {
+                return Err("face run used fallback".into());
+            }
+            Font(run.font.copy_with_attributes(0., &matrix, None))
+        };
+        for (&id, p) in run.glyphs.iter().zip(&run.positions) {
+            let physical =
+                [a * p.x - c * p.y + e, -b * p.x + d * p.y - f].map(super::text::quarter_pixel);
+            if physical
+                .iter()
+                .any(|v| !v.is_finite() || v.abs() > f64::from(i32::MAX / 4))
+            {
+                return Err("face position overflow".into());
+            }
+            let mut placed = place(font.clone(), id, physical, 1., run_index);
+            placed.key.font_smoothing = true;
+            glyphs.push(placed);
+        }
+    }
+    Ok(Shape {
+        width: 0,
+        height: 0,
+        baseline: 0.,
+        advance,
+        glyphs,
+    })
+}
+#[cfg(not(target_os = "macos"))]
+pub(super) fn shape_face(_: &super::text::FaceText<'_>) -> Result<Shape> {
+    Err("verified affine text requires CoreText".into())
 }
 
 /// Minimal connected overlaps retain native run boundaries, never a text key.
@@ -195,6 +256,7 @@ pub(super) fn component(shape: &Shape, indices: &[usize]) -> (Key, [i32; 2]) {
             scale: first.key.scale,
             glyphs,
             blur_sigma: 0,
+            font_smoothing: first.key.font_smoothing,
         },
         origin,
     )
@@ -373,9 +435,15 @@ pub(super) fn rasterize(key: &Key) -> Result<Mask> {
         unsafe { g.font.0.symbolic_traits() }.contains(CTFontSymbolicTraits::TraitColorGlyphs)
     });
     let format = if color { Format::Bgra } else { Format::Mask };
-    let channels = format.channels();
-    let mut pixels = vec![0; width * height * channels];
-    let space = if color {
+    // Inspired by Skia's macOS scaler: dark-on-light RGB with native smoothing,
+    // then coverage extraction. Existing UI masks retain their original gray path.
+    // https://skia.googlesource.com/skia/+/refs/heads/main/src/ports/SkScalerContext_mac_ct.cpp
+    let inverse = key.font_smoothing && !color;
+    let channels = if inverse { 4 } else { format.channels() };
+    let mut pixels = vec![if inverse { 255 } else { 0 }; width * height * channels];
+    let space = if inverse {
+        CGColorSpace::new_device_rgb()
+    } else if color {
         CGColorSpace::with_name(Some(unsafe { kCGColorSpaceSRGB }))
     } else {
         CGColorSpace::new_device_gray()
@@ -390,19 +458,25 @@ pub(super) fn rasterize(key: &Key) -> Result<Mask> {
             8,
             width * channels,
             Some(&space),
-            if color { 0x2002 } else { 0 },
+            if color {
+                0x2002
+            } else if inverse {
+                0x2006
+            } else {
+                0
+            },
         )
     }
     .ok_or("chrome glyph bitmap")?;
-    // These settings are identical to the line reference in text.rs.
+    // Legacy gray settings match the line reference; explicit SVG faces request RGB smoothing.
     if color {
         CGContext::set_rgb_fill_color(Some(&context), 1., 1., 1., 1.);
     } else {
-        CGContext::set_gray_fill_color(Some(&context), 1., 1.);
+        CGContext::set_gray_fill_color(Some(&context), if inverse { 0. } else { 1. }, 1.);
     }
     CGContext::set_should_antialias(Some(&context), true);
-    CGContext::set_should_smooth_fonts(Some(&context), false);
-    CGContext::set_allows_font_smoothing(Some(&context), false);
+    CGContext::set_should_smooth_fonts(Some(&context), inverse);
+    CGContext::set_allows_font_smoothing(Some(&context), inverse);
     CGContext::set_allows_font_subpixel_positioning(Some(&context), true);
     CGContext::set_should_subpixel_position_fonts(Some(&context), true);
     CGContext::set_allows_font_subpixel_quantization(Some(&context), false);
@@ -434,6 +508,15 @@ pub(super) fn rasterize(key: &Key) -> Result<Mask> {
         start = end;
     }
     drop(context);
+    if inverse {
+        pixels = pixels
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| 255 - p[0])
+            .collect();
+    }
+    let channels = format.channels();
     let mut crop = [width, height, 0, 0];
     for (i, pixel) in pixels.chunks_exact(channels).enumerate() {
         if pixel[channels - 1] == 0 {

@@ -43,19 +43,30 @@ def generate(out):
         "outlined-text": ('<path d="M8 52L24 12H32L48 52H40L36 40H20L16 52Z M23 32H33L28 20Z" fill="#224f81" fill-rule="evenodd"/>', ["outlined-text", "path-text"]),
         "metadata": ('<metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:title>Inert credit</dc:title></metadata><title>Accessible title</title><desc>Inert description</desc><g role="img" aria-label="blue square" pointer-events="none" class="case"><rect width="64" height="64" fill="#347aa0"/></g>', ["metadata", "namespaces", "aria", "role", "pointer-events", "class", "title", "desc", "PUBLIC-doctype"]),
     }
+    label=f'<text x="4" y="32" font-family="\'{fonts["family"]}\'" font-size="14" font-weight="400">MMMM</text>'
+    square='<rect x="24" y="8" width="32" height="40" fill="#e05030"/>'
+    image_markup=f'<image x="0" y="0" width="64" height="64" href="{uri}"/>'
+    source.update({
+        "composition-text-under-shape":(label+square,["text","rect","paint-order"]),
+        "composition-shape-over-text":('<rect x="0" y="0" width="64" height="64" fill="#cceeff"/>'+label+square,["text","rect","paint-order","occlusion"]),
+        "composition-image-under-text":('<rect width="64" height="64" fill="white"/>'+image_markup+label,["text","inline-PNG","paint-order"]),
+        "composition-clip-spanning-layers":('<defs><clipPath id="composition-clip"><rect x="8" y="8" width="48" height="40"/></clipPath></defs><g clip-path="url(#composition-clip)">'+image_markup+label+'<rect x="0" y="36" width="64" height="24" fill="#2050c0"/></g>',["text","inline-PNG","rect","clip","paint-order"]),
+        "fractional-viewport":('<rect width="64" height="64" fill="#ddeeff"/>'+label,["text","rect","fractional-viewport"]),
+    })
     cases = []
     directory = out / "isolation"
     directory.mkdir(parents=True, exist_ok=True)
     for name, (body, features) in source.items():
-        svg = f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="64" viewBox="0 0 64 64" data-bboxy-font-set="{identity}">{body}</svg>\n'
+        height=63.25 if name=="fractional-viewport" else 64
+        svg = f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="64" height="{height}" viewBox="0 0 64 {height}" data-bboxy-font-set="{identity}">{body}</svg>\n'
         if name == "metadata":
             svg = '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">\n' + svg
         file = directory / (name + ".svg")
         file.write_text(svg)
         cases.append({"id": "isolation-"+name, "svg": "isolation/"+file.name, "sha256": digest(file.read_bytes()),
-                      "features": features, "text": name == "text", "image": name.startswith("png-"),
-                      "viewBox": [0, 0, 64, 64], "views": [{"id": str(s)+"x", "scale": s,
-                      "camera": [16, 16, 48, 32] if s == 8 else [0, 0, 64, 64]} for s in (1, 2, 8)]})
+                      "features": features, "text": name == "text" or name.startswith("composition-") or name=="fractional-viewport", "image": name.startswith("png-") or name in ("composition-image-under-text","composition-clip-spanning-layers"),
+                      "composition": name.startswith("composition-"), "viewBox": [0, 0, 64, height], "views": [{"id": str(s)+"x", "scale": s,
+                      "camera": ([16,40,48,24] if name=="fractional-viewport" else [16,16,48,32]) if s==8 else [0,0,64,64]} for s in (1, 2, 8)]})
     negatives = {
         "script": '<script>alert(1)</script>', "event": '<rect onclick="alert(1)"/>',
         "foreign-object": '<foreignObject/>', "external-href": '<use href="https://invalid.example/x.svg#p"/>',

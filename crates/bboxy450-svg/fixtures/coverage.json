@@ -12,6 +12,7 @@
       "feature": "{http://www.w3.org/2000/svg}clipPath/@id",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ]
@@ -50,6 +51,7 @@
       "feature": "{http://www.w3.org/2000/svg}g/@clip-path",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-png-transform-clip"
       ]
     },
@@ -60,6 +62,11 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -76,6 +83,7 @@
       "feature": "{http://www.w3.org/2000/svg}g/@id",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ]
@@ -122,6 +130,11 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -140,6 +153,7 @@
       "feature": "{http://www.w3.org/2000/svg}image/@id",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ]
@@ -162,6 +176,11 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -180,6 +199,11 @@
       "feature": "{http://www.w3.org/2000/svg}image/@x",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-png-alpha",
         "isolation-png-transform-clip",
@@ -193,6 +217,11 @@
       "feature": "{http://www.w3.org/2000/svg}image/@y",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-png-alpha",
         "isolation-png-transform-clip",
@@ -275,6 +304,7 @@
       "feature": "{http://www.w3.org/2000/svg}linearGradient/@id",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ]
@@ -349,6 +379,7 @@
       "feature": "{http://www.w3.org/2000/svg}path/@clip-path",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-png-transform-clip"
       ]
     },
@@ -381,6 +412,11 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -397,6 +433,7 @@
       "feature": "{http://www.w3.org/2000/svg}path/@id",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ]
@@ -476,6 +513,11 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -493,6 +535,11 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -512,6 +559,11 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -530,6 +582,11 @@
       "feature": "{http://www.w3.org/2000/svg}rect/@x",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-png-alpha",
         "isolation-png-transform-clip",
@@ -543,6 +600,11 @@
       "feature": "{http://www.w3.org/2000/svg}rect/@y",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-png-alpha",
         "isolation-png-transform-clip",
@@ -589,6 +651,11 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -608,6 +675,11 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -633,6 +705,11 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -652,6 +729,11 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -671,6 +753,11 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -686,6 +773,11 @@
       "disposition": "isolation/reference present; native witness pending",
       "feature": "{http://www.w3.org/2000/svg}text/@font-family",
       "isolation_cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-text"
       ]
     },
@@ -694,6 +786,11 @@
       "disposition": "isolation/reference present; native witness pending",
       "feature": "{http://www.w3.org/2000/svg}text/@font-size",
       "isolation_cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-text"
       ]
     },
@@ -702,6 +799,11 @@
       "disposition": "isolation/reference present; native witness pending",
       "feature": "{http://www.w3.org/2000/svg}text/@font-weight",
       "isolation_cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-text"
       ]
     },
@@ -748,6 +850,11 @@
       "feature": "{http://www.w3.org/2000/svg}text/@x",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-png-alpha",
         "isolation-png-transform-clip",
@@ -761,6 +868,11 @@
       "feature": "{http://www.w3.org/2000/svg}text/@y",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-png-alpha",
         "isolation-png-transform-clip",
@@ -783,6 +895,11 @@
       "feature": "{http://www.w3.org/2000/svg}use/@x",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-png-alpha",
         "isolation-png-transform-clip",
@@ -796,6 +913,11 @@
       "feature": "{http://www.w3.org/2000/svg}use/@y",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-png-alpha",
         "isolation-png-transform-clip",
@@ -867,6 +989,7 @@
       "feature": "{http://www.w3.org/2000/svg}clipPath",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-png-transform-clip"
       ]
     },
@@ -876,6 +999,7 @@
       "feature": "{http://www.w3.org/2000/svg}defs",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ]
@@ -887,6 +1011,7 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-png-transform-clip",
@@ -898,6 +1023,8 @@
       "disposition": "isolation/reference present; native witness pending",
       "feature": "{http://www.w3.org/2000/svg}image",
       "isolation_cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
         "isolation-png-alpha",
         "isolation-png-transform-clip"
       ]
@@ -946,6 +1073,11 @@
       "feature": "{http://www.w3.org/2000/svg}rect",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-png-transform-clip"
@@ -974,6 +1106,11 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -991,6 +1128,11 @@
       "disposition": "isolation/reference present; native witness pending",
       "feature": "{http://www.w3.org/2000/svg}text",
       "isolation_cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-text"
       ]
     },
@@ -1037,6 +1179,11 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -1076,6 +1223,11 @@
       "isolation_cases": [
         "isolation-affine-opacity",
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
+        "isolation-composition-shape-over-text",
+        "isolation-composition-text-under-shape",
+        "isolation-fractional-viewport",
         "isolation-gradient",
         "isolation-metadata",
         "isolation-outlined-text",
@@ -1181,6 +1333,7 @@
       "feature": "#C0_0_83a0ce2cdc",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ]
@@ -1191,6 +1344,7 @@
       "feature": "#gradient_0",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ]
@@ -1201,6 +1355,7 @@
       "feature": "#m4afc1d86d3",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ]
@@ -1211,6 +1366,7 @@
       "feature": "#m6e4236408b",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ]
@@ -1221,6 +1377,7 @@
       "feature": "#m8348d2ce95",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ]
@@ -1231,6 +1388,7 @@
       "feature": "#m9dd2d371d2",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ]
@@ -1241,6 +1399,7 @@
       "feature": "#mfe4437de93",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ]
@@ -1251,6 +1410,7 @@
       "feature": "#p85b95fb715",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ]
@@ -1261,6 +1421,7 @@
       "feature": "#pacc9fe07a0",
       "isolation_cases": [
         "isolation-clip-use",
+        "isolation-composition-clip-spanning-layers",
         "isolation-gradient",
         "isolation-png-transform-clip"
       ]
@@ -1270,6 +1431,8 @@
       "disposition": "isolation/reference present; native witness pending",
       "feature": "data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAcAAACPCAYAAAA2scFmAAAA8klEQVR4nM2X0Q3CMBBDz07SyZiB/QehPcQAvA+jAP21nu3eRWqjm+9db56pMSoTy0rJgaJTWynNtMNC9YPMRtIVZjYX0o5CzaSAHFhIYKvaYdssFhRySnZOKrYdSNaWrXiTKBBV8aGuHWLlE9KfFap8Qvo3W6WZ5f76VgozFWe6txRySiovpNRWcaaIdJxpfBWlmcPXFrKQ7NB2oCgqJMicZDvJdiLpdELTZ1zofC8untAVkpMzT8rskFwo+hGSg7aylNouFh9QSGmhI85cRRPSFZLHBxO64pU1iEQedBeET9krE65BC/4/5hJcMVE02D4Bbh1rQia35x0AAAAASUVORK5CYII=",
       "isolation_cases": [
+        "isolation-composition-clip-spanning-layers",
+        "isolation-composition-image-under-text",
         "isolation-png-alpha",
         "isolation-png-transform-clip"
       ]

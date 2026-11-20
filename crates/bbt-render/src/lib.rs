@@ -12,6 +12,7 @@ pub mod chrome;
 pub mod device;
 pub mod fx;
 pub mod headless;
+pub mod image;
 pub mod passes;
 pub mod text;
 
