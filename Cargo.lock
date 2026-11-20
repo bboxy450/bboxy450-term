@@ -446,7 +446,6 @@ dependencies = [
  "libc",
  "png",
  "portable-pty",
- "process-wrap",
  "proptest",
  "regex",
  "reqwest",
