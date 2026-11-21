@@ -137,21 +137,32 @@ impl App {
                             root
                         }
                     });
+                let artifacts = model.artifact_images.as_ref().and_then(|port| {
+                    let scope = model
+                        .swarm_scope(bbt_ui_model::SwarmId::from_u128(row.record.swarm.0))
+                        .ok()?;
+                    Some(crate::documents::images::Binding {
+                        port: port.clone(),
+                        scope,
+                        epoch: model.artifact_epoch,
+                    })
+                });
                 Some((
                     *id,
                     *r,
                     row.state.generation,
                     row.rich_socket.clone()?,
                     image_root,
+                    artifacts,
                 ))
             })
             .collect();
         self.rich_panes
-            .retain(|id, _| visible.iter().any(|(s, _, _, _, _)| s == id));
+            .retain(|id, _| visible.iter().any(|(s, _, _, _, _, _)| s == id));
         let theme = self.scene.ui_context().theme;
         let focused = self.rich_target();
         let mut focus_changed = false;
-        for (id, rect, generation, path, image_root) in visible {
+        for (id, rect, generation, path, image_root, artifacts) in visible {
             if self.rich_panes.get(&id).is_some_and(|p| {
                 p.generation != generation || p.path != path || p.image_root != image_root
             }) {
@@ -187,6 +198,7 @@ impl App {
                 self.rich_panes.insert(id, pane);
             }
             let pane = self.rich_panes.get_mut(&id).unwrap();
+            pane.set_artifacts(artifacts);
             pane.set_theme(theme);
             pane.resize(rect);
             if self.rich_focused.get(&id) != Some(&(focused == Some(id)))

@@ -66,6 +66,7 @@ impl Input {
 pub struct Snapshot {
     pub theme: ui::Theme,
     pub appearance_revision: u64,
+    artifact_stamp: Option<(bbt_proto::gui::SwarmScope, u64)>,
     pub paints: Arc<Vec<c::Paint>>,
     pub text_runs: Arc<Vec<ui::text_selection::Run>>,
     pub controls: Arc<Vec<(Rect, ui::cursor::Cursor)>>,
@@ -131,6 +132,7 @@ pub struct Parked {
     retained: bboxy450_harness::frontends::gui::bridge::Retained,
     image_root: Option<PathBuf>,
     image_preparation: Option<Arc<ImagePreparation>>,
+    artifacts: Option<crate::documents::images::Binding>,
     started: Instant,
 }
 /// The UI exclusively reserves each seat's next draft position before workers
@@ -161,6 +163,7 @@ fn reserve_draft(draft: &mut Draft) -> DraftReservation {
 pub struct Pane {
     appearance: Arc<AtomicU64>,
     appearance_wake: Arc<Notify>,
+    artifacts: tokio::sync::watch::Sender<Option<crate::documents::images::Binding>>,
     pub generation: u64,
     pub path: PathBuf,
     pub image_root: Option<PathBuf>,
@@ -246,6 +249,8 @@ impl Pane {
         let dirty = bbt_rt::DirtySet::new(1, waker);
         let latest = Arc::new(bbt_rt::Latest::new(dirty.paint_source(0)));
         let (commands, mut input) = mpsc::channel(64);
+        let (artifacts, mut image_bindings) =
+            tokio::sync::watch::channel(None::<crate::documents::images::Binding>);
         let appearance = Arc::new(AtomicU64::new(0));
         let appearance_wake = Arc::new(Notify::new());
         let worker_appearance = appearance.clone();
@@ -265,10 +270,11 @@ impl Pane {
             let saved = match previous_draft { Some(previous) => previous.await.ok(), None => None };
             let notify=Arc::new(Notify::new());
             let mut bridge=Bridge::new(Arc::new(Signal(notify.clone())));
-            let image_preparation = saved.as_ref()
-                .filter(|parked| parked.image_root == worker_image_root)
+            let mut images = image_bindings.borrow_and_update().clone();
+            let mut image_preparation = saved.as_ref()
+                .filter(|parked| parked.image_root == worker_image_root && parked.artifacts == images)
                 .and_then(|parked| parked.image_preparation.clone())
-                .or_else(|| worker_image_root.clone().map(crate::documents::images::transcript));
+                .or_else(|| worker_image_root.clone().map(|root| crate::documents::images::transcript(root,images.clone())));
             bridge.set_image_preparation(image_preparation.clone());
             let (mut view, started) = match saved {
                 // Same view, same clock: what was on screen, then only newer events.
@@ -295,8 +301,15 @@ impl Pane {
                 if control==DraftControl::DropAcceptedTail && worker_retired.load(Ordering::Acquire) {break;}
                 let mut batch=Vec::new();
                 let animation=view.anim.next_frame();
-                tokio::select!{biased;cmd=input.recv()=>{let Some(cmd)=cmd else{break;};batch.push(cmd);},_=notify.notified()=>{},_=worker_appearance_wake.notified()=>{},_=async { match animation { Some(ms)=>tokio::time::sleep(Duration::from_secs_f32((ms/1000.).max(1./60.))).await,None=>std::future::pending::<()>().await }}=>{}}
+                tokio::select!{biased;cmd=input.recv()=>{let Some(cmd)=cmd else{break;};batch.push(cmd);},_=notify.notified()=>{},_=worker_appearance_wake.notified()=>{},changed=image_bindings.changed()=>{if changed.is_err(){break;}},_=async { match animation { Some(ms)=>tokio::time::sleep(Duration::from_secs_f32((ms/1000.).max(1./60.))).await,None=>std::future::pending::<()>().await }}=>{}}
                 while batch.len()<64 {match input.try_recv(){Ok(cmd)=>batch.push(cmd),Err(_)=>break}}
+                let binding=image_bindings.borrow_and_update().clone();
+                if binding != images {
+                    images=binding;
+                    image_preparation=worker_image_root.clone().map(|root|crate::documents::images::transcript(root,images.clone()));
+                    bridge.set_image_preparation(image_preparation.clone());
+                }
+                let artifact_stamp=images.as_ref().map(crate::documents::images::Binding::stamp);
                 let appearance=worker_appearance.clone();
                 let retired=worker_retired.clone();
                 let published=worker_published.clone();
@@ -357,7 +370,7 @@ impl Pane {
                     let ime_caret=view.frame.layout.as_ref().and_then(|l|ui::modules::composer::Regions::new(l).ok()).and_then(|r|r.caret);
                     let mut images = view.attachment_images();
                     images.extend(view.transcript_images());
-                    let snapshot=Snapshot{theme,appearance_revision,text_runs,controls,links:view.frame.links.clone(),image_intake:bridge.image_intake_available(),images,attachment_count:view.attachment_count(),pending_attachment_count:view.pending_attachment_count(),generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,ime_caret,focused:view.focused,composer_len:view.composer.view.text.len(),scroll:[view.frame.scroll,view.frame.max_scroll],approval_choices,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
+                    let snapshot=Snapshot{theme,appearance_revision,artifact_stamp,text_runs,controls,links:view.frame.links.clone(),image_intake:bridge.image_intake_available(),images,attachment_count:view.attachment_count(),pending_attachment_count:view.pending_attachment_count(),generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,ime_caret,focused:view.focused,composer_len:view.composer.view.text.len(),scroll:[view.frame.scroll,view.frame.max_scroll],approval_choices,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
                     out.publish(snapshot);
                     published.store(completed_inputs, Ordering::Release);
                     (bridge,view,rect,out,completed_inputs)
@@ -365,11 +378,12 @@ impl Pane {
                 let (b,v,r,o,c)=prepared;bridge=b;view=v;rect=r;out=o;completed_inputs=c;
             }
             let retained=bridge.retained();
-            let _ = save_draft.send(Parked{view,retained,image_root:worker_image_root,image_preparation,started});
+            let _ = save_draft.send(Parked{view,retained,image_root:worker_image_root,image_preparation,artifacts:images,started});
         });
         Self {
             appearance,
             appearance_wake,
+            artifacts,
             generation,
             path,
             image_root,
@@ -385,6 +399,16 @@ impl Pane {
     }
     /// Latest local appearance bypasses the bounded input queue. No agent op,
     /// identity grant or OS lookup is involved; obsolete completed paint is fenced.
+    pub fn set_artifacts(&self, binding: Option<crate::documents::images::Binding>) {
+        self.artifacts.send_if_modified(|current| {
+            if *current == binding {
+                return false;
+            }
+            *current = binding;
+            true
+        });
+    }
+
     pub fn set_theme(&self, theme: ui::Theme) -> bool {
         let light = u64::from(theme == ui::Theme::Light);
         let changed = self
@@ -423,7 +447,16 @@ impl Pane {
     /// Constant-work Latest exchange; callers share one aggregate deadline.
     pub fn drain(&mut self) -> bool {
         self.dirty.drain();
-        let changed = if let Some(next) = self.latest.take() {
+        let expected = self
+            .artifacts
+            .borrow()
+            .as_ref()
+            .map(crate::documents::images::Binding::stamp);
+        let changed = if let Some(next) = self
+            .latest
+            .take()
+            .filter(|next| next.artifact_stamp == expected)
+        {
             self.snapshot = next;
             true
         } else {
@@ -643,6 +676,7 @@ mod tests {
             retained: bridge.retained(),
             image_root: None,
             image_preparation: None,
+            artifacts: None,
             started: Instant::now(),
         }
     }

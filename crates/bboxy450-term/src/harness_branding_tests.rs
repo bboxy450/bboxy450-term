@@ -27,7 +27,7 @@ fn nodes(node: &c::Layout) -> Vec<&c::Layout> {
 }
 fn has_mark(layout: &c::Layout, kind: &str) -> bool {
     nodes(layout).iter().any(|n| match &n.kind {
-        c::LayoutKind::Image { asset, .. } => harness::icon(kind) == asset,
+        c::LayoutKind::Image { asset, .. } => harness::icon(kind) == asset.as_ref(),
         c::LayoutKind::Icon { name, .. } => harness::icon(kind) == name,
         _ => false,
     })
@@ -343,7 +343,7 @@ fn harness_branding_headless_menu() {
     assert!(std::fs::metadata(&path).unwrap().len() > 1000);
     let fox = nodes(menu.solved())
         .into_iter()
-        .find(|n| matches!(&n.kind, c::LayoutKind::Image { asset, .. } if asset == "bboxy"))
+        .find(|n| matches!(&n.kind, c::LayoutKind::Image { asset, .. } if asset.as_ref() == "bboxy"))
         .unwrap()
         .rect;
     let mut reader =

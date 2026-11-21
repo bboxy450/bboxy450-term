@@ -86,6 +86,8 @@ fn action_schema() -> Value {
         object(json!({"type":{"const":"text"},"bounds":bounds,"text":string,"role":{"enum":["heading","paragraph","note"]}}),json!(["type","bounds","text","role"])),
         object(json!({"type":{"const":"frame"},"bounds":bounds,"name":string,"members":{"type":"array","items":string}}),json!(["type","bounds","name","members"])),
         object(json!({"type":{"const":"connector"},"from":string,"to":string,"label":{"type":["string","null"]},"arrowheads":arrowheads,"dashed":{"type":"boolean"},"route":{"enum":["straight","orthogonal","curved"]},"from_side":side,"to_side":side,"waypoints":points,"label_at":{"type":"number","minimum":0,"maximum":1}}),json!(["type","from","to","arrowheads","dashed"])),
+        object(json!({"type":{"const":"image"},"bounds":bounds,"artifact":{"type":"string","maxLength":47,
+            "description":"Stored image artifact ID, optionally :N for an exact revision."}}),json!(["type","bounds","artifact"])),
         object(json!({"type":{"const":"path"},"points":{"type":"array","items":point,"minItems":2,"maxItems":bboxy450_canvas::MAX_POINTS},"closed":{"type":"boolean"},"smooth":{"type":"boolean"},"arrowheads":arrowheads}),json!(["type","points"]))
     ]});
     let element = object(
@@ -110,7 +112,7 @@ pub(crate) fn catalogue() -> Vec<Value> {
     [
         ("canvas_open", "Create or open a swarm canvas by title, number or id. Enqueues presentation beside the calling seat when a GUI is attached; shown:false names a detached or busy reason. Retry a busy presentation with the same operation ID. Never waits for the GUI. Default drawing authority is creator plus Oracle; explicit grants are a later step.", open, false),
         ("canvas_list", "List this swarm's canvases, newest activity first, in bounded pages. Filter by tag; pass next as cursor.", object(json!({"tag":{"type":"string","minLength":1},"cursor":{"type":"string","maxLength":256}}),json!([])), true),
-        ("canvas_draw", "Append a batch of ops: add, change, patch (bounds, label, style, status or emphasis of one element), remove, tag. A batch is one set: a frame may list members added later in the same batch. Elements: shape (box, rounded, ellipse, diamond, cylinder, actor, hexagon, triangle, parallelogram, star, cloud), text, frame, connector (route straight, orthogonal or curved; from_side/to_side ports; waypoints; label_at 0..1) and path (free world points, closed, smooth, arrowheads). Meaning (kind, emphasis, status) sets the house look; an optional style overrides it: fill, stroke, stroke_width, opacity, glow, shadow, radius, text, font_size, weight, italic, mono, align, with colours as theme tokens, named hues or hex. Store assigns seq; op_id dedupes delivery across restart. Stale expect_seq is recorded, not refused. MAX_ELEMENTS, MAX_BATCH_OPS, MAX_POINTS and MAX_OPS_PER_MINUTE bound drawing. Read the canvas skill for the full reference.", object(json!({"id":id,"ops":{"type":"array","items":action_schema(),"minItems":1,"maxItems":bboxy450_canvas::store::MAX_BATCH_OPS},"expect_seq":{"type":"integer","minimum":0}}),json!(["id","ops"])), false),
+        ("canvas_draw", "Append a batch of ops: add, change, patch (bounds, label, style, status or emphasis of one element), remove, tag. A batch is one set: a frame may list members added later in the same batch. Elements: shape (box, rounded, ellipse, diamond, cylinder, actor, hexagon, triangle, parallelogram, star, cloud), text, frame, connector (route straight, orthogonal or curved; from_side/to_side ports; waypoints; label_at 0..1) path (free world points, closed, smooth, arrowheads) and image (bounds and an artifact ID, optionally :N). Meaning (kind, emphasis, status) sets the house look; an optional style overrides it: fill, stroke, stroke_width, opacity, glow, shadow, radius, text, font_size, weight, italic, mono, align, with colours as theme tokens, named hues or hex. Store assigns seq; op_id dedupes delivery across restart. Stale expect_seq is recorded, not refused. MAX_ELEMENTS, MAX_BATCH_OPS, MAX_POINTS and MAX_OPS_PER_MINUTE bound drawing. Read the canvas skill for the full reference.", object(json!({"id":id,"ops":{"type":"array","items":action_schema(),"minItems":1,"maxItems":bboxy450_canvas::store::MAX_BATCH_OPS},"expect_seq":{"type":"integer","minimum":0}}),json!(["id","ops"])), false),
         ("canvas_close", "Retire a canvas: it leaves canvas_list and the GUI; its record and log are kept under closed/, nothing is deleted. Granted to the creator and Oracle class. Closing an already closed canvas is a no-op.", object(json!({"id":id}),json!(["id"])), false),
         ("canvas_archived_list", "List this swarm's closed canvases, newest first, so one can be restored.", object(json!({}),json!([])), true),
         ("canvas_restore", "Bring a closed canvas back: it returns to canvas_list and the GUI with its drawing. Granted to the creator and Oracle class. Restoring an open canvas is a no-op.", object(json!({"id":id}),json!(["id"])), false),
@@ -255,6 +257,7 @@ pub(crate) fn execute(
     actor: &Actor,
     task: Option<&str>,
     call: &Call,
+    artifacts: &super::artifacts::CanvasReads<'_>,
 ) -> d::Result<Value> {
     let directory = if root.join(".bboxy").is_dir() {
         root.join(".bboxy")
@@ -264,6 +267,7 @@ pub(crate) fn execute(
     .join("canvases");
     let store = Store::new(directory);
     let mut image = None;
+    let mut resources = Vec::new();
     let value = match call.tool.as_str() {
         "canvas_open" => {
             let args: Open = parse(&call.args)?;
@@ -494,10 +498,49 @@ pub(crate) fn execute(
                 value["elements"] = json!(s.canvas.elements().filter(shown).collect::<Vec<_>>());
             }
             if args.image {
-                let (png, [width, height]) =
-                    render::png(&s.canvas, frame.map(|(bounds, _)| bounds))?;
+                use crate::artifact_images::{GeometryCache, Images, Prepared};
+                use crate::provenance::stored::Address;
+                let mut entries = std::collections::BTreeMap::new();
+                let mut images = Images::default();
+                let geometry = GeometryCache::default();
+                images.canvas(&s.canvas, |target, remaining| {
+                    let (id, revision) = bboxy450_canvas::artifact_address(target)
+                        .ok_or_else(|| crate::store::invalid("invalid image address"))?;
+                    let found = artifacts.store.descriptor(id, revision, artifacts.caller)?;
+                    let prepared =
+                        Prepared::artifact(&found, artifacts.runtime, &geometry, remaining)?;
+                    let link = json!({
+                        "type":"resource_link",
+                        "uri":super::artifacts::uri(Address { id, revision: found.revision }, 0),
+                        "name":found.reference(),
+                        "mimeType":found.media_type,
+                        "size":found.bytes,
+                    });
+                    entries.insert(
+                        target.to_owned(),
+                        json!({
+                            "pin":found.reference(), "digest":found.digest, "resource":link.clone()
+                        }),
+                    );
+                    resources.push(link);
+                    Ok(prepared)
+                });
+                let assets = images.assets();
+                let (png, [width, height]) = render::png(
+                    &s.canvas,
+                    frame.map(|(bounds, _)| bounds),
+                    &assets,
+                    images.into_rasters(),
+                )?;
                 image = Some(png);
                 value["image"] = json!({"mimeType":"image/png","width":width,"height":height});
+                if !entries.is_empty() {
+                    let fonts = bboxy450_svg::FontSet::bundled()
+                        .map_err(|e| error("canvas_render", e.to_string()))?;
+                    value["image"]["artifacts"] = json!(entries);
+                    value["image"]["font_set"] = json!(fonts.identity());
+                    value["image"]["renderer"] = json!(bboxy450_svg::RENDERER);
+                }
             }
             value
         }
@@ -508,6 +551,10 @@ pub(crate) fn execute(
         use base64::Engine;
         result["content"].as_array_mut().unwrap().push(json!({"type":"image","mimeType":"image/png","data":base64::engine::general_purpose::STANDARD.encode(png)}));
     }
+    result["content"]
+        .as_array_mut()
+        .expect("MCP content")
+        .extend(resources);
     if serde_json::to_vec(&result)
         .map_err(|e| error("canvas_result", e.to_string()))?
         .len()

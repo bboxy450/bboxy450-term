@@ -147,7 +147,21 @@ pub(crate) fn summary(envelope: &Envelope) -> Result<ActivitySummary> {
         position: None,
         payload_digest: digest(&serde_json::to_vec(payload)?),
     };
-    if envelope.event.subject.starts_with("artifact/") || payload["artifact"].is_object() {
+    if envelope.event.source == "artifact/content" {
+        let revision = &payload["revision"];
+        result.action = if matches!(
+            revision["media_type"].as_str(),
+            Some("image/svg+xml" | "image/png")
+        ) {
+            "image_revision"
+        } else {
+            "stored_revision"
+        }
+        .into();
+        result.id = id(&revision["id"]);
+        result.digest = hash(&revision["digest"]);
+        result.producer = text(&payload["producer"], 128);
+    } else if envelope.event.subject.starts_with("artifact/") || payload["artifact"].is_object() {
         let item = payload
             .get("observation")
             .or_else(|| payload.get("artifact"))

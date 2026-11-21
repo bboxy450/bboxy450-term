@@ -12,8 +12,13 @@ use bboxy450_canvas::{
     Align, Bounds, Camera, Canvas, Content, Detail, Element, Kind, Route, Shape, Side, Status,
     TextRole, semantic_zoom,
 };
-use bbt_ui_model::{STYLE, TOKENS, Theme, draw::Color, layout::Rect};
+use bbt_ui_model::{
+    STYLE, TOKENS, Theme,
+    draw::{Color, ImageAsset},
+    layout::Rect,
+};
 use c::{LineCap, LineJoin, PathCommand as P, PathStroke};
+use std::collections::BTreeMap;
 use ui::TypeStep;
 
 type Pt = [f64; 2];
@@ -25,6 +30,16 @@ pub fn render(
     camera: &Camera,
     viewport: Rect,
     theme: Theme,
+) -> Result<c::Element, &'static str> {
+    render_with_images(canvas, camera, viewport, theme, &BTreeMap::new())
+}
+
+pub fn render_with_images(
+    canvas: &Canvas,
+    camera: &Camera,
+    viewport: Rect,
+    theme: Theme,
+    images: &BTreeMap<String, ImageAsset>,
 ) -> Result<c::Element, &'static str> {
     camera.validate()?;
     if [viewport.x, viewport.y, viewport.w, viewport.h]
@@ -45,8 +60,10 @@ pub fn render(
     // Shapes and text are what connectors route around and what labels avoid.
     let mut world_obstacles: Vec<(&str, Bounds)> = vec![];
     for e in canvas.elements() {
-        if matches!(e.content, Content::Shape { .. } | Content::Text { .. })
-            && let Some(b) = e.content.bounds()
+        if matches!(
+            e.content,
+            Content::Shape { .. } | Content::Text { .. } | Content::Image { .. }
+        ) && let Some(b) = e.content.bounds()
         {
             world_obstacles.push((&e.id, b));
             if let Some((rect, _)) = project_bounds(*camera, b, viewport)? {
@@ -126,7 +143,11 @@ pub fn render(
                     let Some((rect, detail)) = project_bounds(*camera, bounds, viewport)? else {
                         continue;
                     };
-                    out.element(e, rect, detail, &look, theme);
+                    if let Content::Image { artifact, .. } = &e.content {
+                        out.image(rect, images.get(artifact), &look);
+                    } else {
+                        out.element(e, rect, detail, &look, theme);
+                    }
                 }
             }
         }
@@ -872,6 +893,40 @@ impl Composition {
             false,
         );
     }
+    fn image(&mut self, rect: Rect, asset: Option<&ImageAsset>, look: &Look) {
+        let Some(asset) = asset else {
+            box_prim(self, rect, 0., look.fill, look.ink, look);
+            let px = self.floor_px(TypeStep::Caption);
+            text_sized(
+                self,
+                rect,
+                "Image unavailable",
+                look.font(TypeStep::Caption, px, look.ink, false),
+            );
+            return;
+        };
+        let [w, h] = asset.size();
+        let scale = (rect.w / w).min(rect.h / h);
+        let [w, h] = [w * scale, h * scale];
+        let fitted = Rect::new(rect.x + (rect.w - w) / 2., rect.y + (rect.h - h) / 2., w, h);
+        let image = c::Element::ImageRect {
+            asset: asset.source(),
+            size: [w, h],
+            radius: ui::Length::Px(0.),
+        };
+        self.place(image, fitted);
+        if let Some(pin) = &asset.revision {
+            let px = self.floor_px(TypeStep::Caption);
+            let label = Rect::new(rect.x, rect.bottom(), rect.w, px * 1.35);
+            text_sized(
+                self,
+                label,
+                pin,
+                look.font(TypeStep::Caption, px, look.ink, false),
+            );
+        }
+    }
+
     fn element(&mut self, e: &Element, rect: Rect, detail: Detail, look: &Look, theme: Theme) {
         let surface_color = Color::hex(theme.palette().surface);
         match &e.content {
@@ -1019,7 +1074,9 @@ impl Composition {
                     }
                 }
             }
-            Content::Connector { .. } | Content::Path { .. } => unreachable!(),
+            Content::Connector { .. } | Content::Path { .. } | Content::Image { .. } => {
+                unreachable!()
+            }
         }
     }
 }
@@ -1180,7 +1237,7 @@ fn stroke(
         match p {
             P::Move(p) | P::Line(p) => seen(*p),
             P::Cubic(c) => c.iter().for_each(|p| seen(*p)),
-            P::Close => {},
+            P::Close => {}
         }
     }
     if lo.iter().chain(hi.iter()).any(|v| !v.is_finite()) {

@@ -8,6 +8,7 @@
 use super::*;
 use serde_json::json;
 
+#[track_caller]
 pub(super) fn wait<T>(mut read: impl FnMut() -> Option<T>) -> T {
     let until = Instant::now() + Duration::from_secs(35);
     loop {
@@ -705,4 +706,245 @@ fn app_detach(replace: bool) {
         active["cursor"],
         final_frame["cursor"]
     );
+}
+
+#[test]
+#[ignore = "make test-chart-artifacts supplies the native harness and pinned exporter"]
+fn chart_artifact_live_and_pinned_images_paint_in_private_app() {
+    let harness = PathBuf::from(std::env::var_os("BBOXY_HARNESS_TEST_BIN").unwrap());
+    let python = PathBuf::from(std::env::var_os("BBOXY_CHART_PYTHON_BIN").unwrap());
+    let mut f = Fixture::with_directory(
+        tempfile::Builder::new()
+            .prefix("chart-app-")
+            .tempdir_in("/tmp")
+            .unwrap(),
+    );
+    fs::copy(BIN, f.root.join("bin/bboxy450-term")).unwrap();
+    let root = f.root.join("repository");
+    fs::create_dir_all(root.join(".bboxy/notes")).unwrap();
+    let shared = r#"
+import altair as alt
+import json, time
+from pathlib import Path
+def chart(colour):
+    return alt.Chart(alt.Data(values=[{'label':'A','value':3}, {'label':'B','value':5}])).mark_bar(color=colour).encode(x='label:N',y='value:Q').properties(title='Native chart',width=160,height=74)
+"#;
+    let first = r#"
+saved = display(chart('#11f183'))
+bboxy.knowledge_write(path='notes/live-chart.md',
+    frontmatter={'type':'note','title':'Private chart revisions'},
+    body='# Chart revisions\n\n' + saved.reference + '\n\n' + saved.snapshot_reference + '\n')
+Path('chart-1.json').write_text(json.dumps(saved))
+"#;
+    let update = |revision: u64, colour: &str| {
+        format!(
+            r#"
+previous = json.loads(Path('chart-{}.json').read_text())
+for _ in range(500):
+    if Path('publish-{revision}').is_file():
+        break
+    time.sleep(.02)
+else:
+    raise RuntimeError('fixture update did not receive its trigger')
+saved = display(chart('{colour}'), update=previous)
+Path('chart-{revision}.json').write_text(json.dumps(saved))
+"#,
+            revision - 1
+        )
+    };
+    let turns = [first.to_owned(), update(2, "#bb2484"), update(3, "#11f183")];
+    let mut scripts = Vec::new();
+    for (index, source) in turns.iter().enumerate() {
+        let args = json!({"source":format!("{shared}{source}"),"wait_ms":25000}).to_string();
+        let invocation = json!({"choices":[{"index":0,"delta":{"tool_calls":[{
+            "index":0,"id":format!("chart-{index}"),"type":"function",
+            "function":{"name":"mcp__bboxy_python__python_execute","arguments":args}
+        }]},"finish_reason":"tool_calls"}]});
+        let ready = json!({"choices":[{"index":0,"delta":{"content":"Chart saved."},"finish_reason":"stop"}]});
+        for (name, event) in [("call", invocation), ("ready", ready)] {
+            let path = f.root.join(format!("chart-{index}-{name}.sse"));
+            fs::write(&path, format!("data: {event}\n\ndata: [DONE]\n\n")).unwrap();
+            scripts.extend(["--scripted".to_owned(), path.to_string_lossy().into_owned()]);
+        }
+    }
+    let shim = f.root.join("bin/bboxy450-harness");
+    fs::write(&shim, format!(
+        "#!/usr/bin/python3\nimport os,sys\nos.environ['PATH']={0}+':'+os.environ['PATH']\nos.environ['MPLCONFIGDIR']={1}\nos.execv({2},[{2},*sys.argv[1:],'--yolo',*{3}])\n",
+        json!(python), json!(f.root.join("mpl-cache")), json!(harness), json!(scripts)
+    )).unwrap();
+    fs::set_permissions(shim, fs::Permissions::from_mode(0o700)).unwrap();
+    f.start();
+    let swarm = f.ctl(&["ui", "layout"])["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    f.ctl(&["ui", "swarm-workdir", &swarm, root.to_str().unwrap()]);
+    let seat = f.spawn("bboxy450-harness", &swarm, None);
+    rich(&f, &seat, 1);
+    let saved = |revision| {
+        let path = root.join(format!("chart-{revision}.json"));
+        let deadline = Instant::now() + Duration::from_secs(35);
+        loop {
+            if let Some(value) = fs::read(&path)
+                .ok()
+                .and_then(|raw| serde_json::from_slice::<Value>(&raw).ok())
+            {
+                break value;
+            }
+            assert!(Instant::now() < deadline, "chart revision {revision} was not stored: {}", f.log());
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    };
+    let evidence = std::env::var_os("BBOXY_CHART_EVIDENCE").map(PathBuf::from);
+    let capture = |name: &str, colours: &[[u8; 3]]| {
+        let image = f.root.join(format!("view-{name}.png"));
+        wait(|| {
+            f.ctl(&["seat", "capture", "window", image.to_str().unwrap()]);
+            let file = fs::File::open(&image).ok()?;
+            let mut reader = png::Decoder::new(std::io::BufReader::new(file))
+                .read_info()
+                .ok()?;
+            let mut rgb = vec![0; reader.output_buffer_size()?];
+            let info = reader.next_frame(&mut rgb).ok()?;
+            let channels = match info.color_type {
+                png::ColorType::Rgb => 3,
+                png::ColorType::Rgba => 4,
+                _ => return None,
+            };
+            let matching = |colour: &[u8; 3]| {
+                rgb[..info.buffer_size()]
+                    .chunks_exact(channels)
+                    .filter(|px| px[..3].iter().zip(colour).all(|(a, b)| a.abs_diff(*b) <= 3))
+                    .count()
+            };
+            let counts: Vec<_> = colours.iter().map(matching).collect();
+            if !counts.iter().all(|count| *count > 250) {
+                return None;
+            }
+            if let Some(dir) = &evidence {
+                fs::create_dir_all(dir).unwrap();
+                fs::copy(&image, dir.join(format!("{name}.png"))).unwrap();
+            }
+            println!("chart {name}: {counts:?} paint pixels");
+            Some(counts)
+        })
+    };
+    let a = [17, 241, 131];
+    let b = [187, 36, 132];
+    submit(&f, "Save the first chart.");
+    let one = saved(1);
+    let id = one["id"].as_str().unwrap();
+    let pinned = format!("{id}:1");
+    let document_label = |revision: u64| {
+        let pin = format!("artifact:{id}:{revision}");
+        wait(|| {
+            let frame = f.ctl(&["ui", "layout"]);
+            let observed = &frame["document_observation"];
+            (observed["source"]["path"] == "notes/live-chart.md"
+                && observed["frame_seq"] == frame["frame_seq"]
+                && observed["texts"]
+                    .as_array()?
+                    .iter()
+                    .any(|run| run["text"] == pin))
+            .then_some(())
+        });
+    };
+    capture("transcript-one", &[a]);
+    f.ctl(&["ui", "open", "docs", "notes/live-chart.md"]);
+    document_label(1);
+    capture("document-one", &[a]);
+    f.ctl(&["ui", "key", "esc"]);
+    let canvas = |verb: &str, arguments: &Value| {
+        f.ctl(&["canvas", verb, &arguments.to_string(), "--swarm", &swarm])
+    };
+    let drawing = canvas("open", &json!({"title":"Private image placements"}));
+    let drawing_id = &drawing["id"];
+    let placement = |id, artifact, x| {
+        json!({"op":"add","element":{"id":id,"tags":[],"kind":null,
+        "content":{"type":"image","bounds":{"origin":[x,0],"size":[300,200]},"artifact":artifact}}})
+    };
+    canvas(
+        "draw",
+        &json!({"id":drawing_id,"ops":[placement("live",id,0),placement("pinned",&pinned,330)]}),
+    );
+    capture("canvas-one", &[a]);
+
+    f.ctl(&["ui", "focus", &seat]);
+    submit(&f, "Update the chart to B.");
+    f.ctl(&["ui", "open", "docs", "notes/live-chart.md"]);
+    capture("document-before-update", &[a]);
+    fs::write(root.join("publish-2"), b"publish").unwrap();
+    let two = saved(2);
+    assert_eq!(two["id"], id);
+    assert_eq!(two["revision"], 2);
+    document_label(2);
+    document_label(1);
+    capture("document-two-unchanged-text", &[a, b]);
+    f.ctl(&["ui", "key", "esc"]);
+    canvas("open", &json!({"id":drawing_id}));
+    capture("canvas-two", &[a, b]);
+    let zoom = || {
+        let frame = f.ctl(&["ui", "layout"]);
+        frame["canvases"]
+            .as_object()?
+            .values()
+            .find(|row| row["source"]["id"] == *drawing_id)?["camera"][2]
+            .as_f64()
+    };
+    let fitted = wait(&zoom);
+    f.ctl(&["ui", "key", "=", "="]);
+    wait(|| zoom().filter(|scale| *scale > fitted));
+    capture("canvas-two-zoomed", &[a, b]);
+    f.ctl(&["ui", "key", "f"]);
+    let exported = canvas("read", &json!({"id":drawing_id,"image":true}));
+    assert_eq!(
+        exported["image"]["artifacts"][id]["pin"],
+        format!("artifact:{id}:2")
+    );
+    assert_eq!(
+        exported["image"]["artifacts"][&pinned]["pin"],
+        format!("artifact:{id}:1")
+    );
+    assert!(
+        exported["image"]["artifacts"][id]["resource"]["uri"]
+            .as_str()
+            .unwrap()
+            .ends_with("/2")
+    );
+    assert!(
+        exported["image"]["font_set"]
+            .as_str()
+            .unwrap()
+            .starts_with("sha256:")
+    );
+    assert!(exported["image"]["renderer"].is_string());
+
+    f.ctl(&["ui", "focus", &seat]);
+    submit(&f, "Return to the first chart pixels.");
+    fs::write(root.join("publish-3"), b"publish").unwrap();
+    let three = saved(3);
+    assert_eq!(three["revision"], 3);
+    assert_eq!(three["digest"], one["digest"]);
+    canvas("open", &json!({"id":drawing_id}));
+    capture("canvas-three", &[a]);
+    let finished = canvas("read", &json!({"id":drawing_id,"image":true}));
+    assert_eq!(
+        finished["image"]["artifacts"][id]["pin"],
+        format!("artifact:{id}:3")
+    );
+    assert_eq!(finished["image"]["artifacts"][id]["digest"], one["digest"]);
+    assert_eq!(
+        finished["image"]["artifacts"][&pinned]["pin"],
+        format!("artifact:{id}:1")
+    );
+    if let Some(dir) = &evidence {
+        fs::write(
+            dir.join("chart-canvas-revisions.json"),
+            serde_json::to_vec_pretty(
+                &json!({"before":exported["image"],"after":finished["image"]}),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+    }
 }

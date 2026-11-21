@@ -6,8 +6,11 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! IO-owned canvas snapshots. Appends notify; focus/startup re-read external writers.
 use bboxy450_canvas::store::{Snapshot, Store};
-use bbt_proto::gui::UiCanvasSource;
+use bbt_proto::gui::{SwarmScope, UiCanvasSource};
+use bbt_render::chrome::icons::Image;
+use bbt_ui_model::draw::ImageAsset;
 use std::{
+    collections::{BTreeMap, BTreeSet},
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -30,6 +33,9 @@ pub fn normalize_root(root: &str) -> String {
 pub struct Row {
     pub source: UiCanvasSource,
     pub snapshot: Arc<Snapshot>,
+    pub assets: Arc<BTreeMap<String, ImageAsset>>,
+    pub rasters: Vec<Arc<Image>>,
+    pub image_scope: Option<SwarmScope>,
 }
 impl Row {
     pub fn change(&self) -> u64 {
@@ -98,6 +104,15 @@ pub fn expire_closed(model: &mut crate::model::Model, now: std::time::Instant) {
     }
 }
 pub fn load(root: &str, swarm: bbt_mux::Ulid) -> Result<Vec<Row>, String> {
+    load_scoped(root, swarm, None, &BTreeSet::new())
+}
+
+pub fn load_scoped(
+    root: &str,
+    swarm: bbt_mux::Ulid,
+    binding: Option<&crate::documents::images::Binding>,
+    open: &BTreeSet<String>,
+) -> Result<Vec<Row>, String> {
     let root = Path::new(root);
     let directory = if root.join(".bboxy").is_dir() {
         root.join(".bboxy")
@@ -114,7 +129,19 @@ pub fn load(root: &str, swarm: bbt_mux::Ulid) -> Result<Vec<Row>, String> {
         .filter(|r| r.swarm == swarm.to_string())
     {
         let snapshot = Arc::new(store.load(&record).map_err(|e| e.to_string())?);
+        let mut images = bbt_mux::artifact_images::Images::default();
+        let image_scope = binding
+            .filter(|_| open.contains(&record.id))
+            .map(|binding| {
+                images.canvas(&snapshot.canvas, |target, remaining| {
+                    binding.port.image(target, binding.scope, remaining)
+                });
+                binding.scope
+            });
         rows.push(Row {
+            assets: Arc::new(images.assets()),
+            rasters: images.into_rasters(),
+            image_scope,
             source: UiCanvasSource {
                 root: normalize_root(&root.to_string_lossy()),
                 swarm,
@@ -127,7 +154,13 @@ pub fn load(root: &str, swarm: bbt_mux::Ulid) -> Result<Vec<Row>, String> {
     rows.sort_by(|a, b| (b.change(), &b.source.id).cmp(&(a.change(), &a.source.id)));
     Ok(rows)
 }
-pub type Completion = (bbt_mux::Ulid, String, u64, Result<Vec<Row>, String>);
+pub type Completion = (
+    bbt_mux::Ulid,
+    String,
+    u64,
+    Option<(SwarmScope, u64)>,
+    Result<Vec<Row>, String>,
+);
 
 /// Each swarm/root has an independent generation and retained result. Returning
 /// to A cannot admit an earlier A completion or cancel a valid B read.

@@ -7,17 +7,29 @@
 //! Bounded PNG snapshots from the captured workspace's one images folder.
 use bbt_doc::{Block, BlockKind, Inline, Markdown, markdown::ImageAsset};
 use bbt_render::chrome::icons::Image;
-use std::{collections::BTreeMap, path::Path, sync::Arc};
+use std::{path::Path, sync::Arc};
 
 fn visit(values: &mut [Inline], load: &mut impl FnMut(&str) -> Option<ImageAsset>) {
     for value in values {
         match value {
-            Inline::Image { target, asset, wiki, .. } => {
-                let normalized=target.strip_prefix(".bboxy/").unwrap_or(target);
-                let local=normalized.strip_prefix("images/");
-                *asset=if *wiki || local.is_some() { load(local.unwrap_or(normalized)) } else {None};
-            },
-            Inline::Emphasis(v) | Inline::Strong(v) | Inline::Strike(v) | Inline::Link { content: v, .. } => visit(v,load),
+            Inline::Image {
+                target,
+                asset,
+                wiki,
+                ..
+            } => {
+                let normalized = target.strip_prefix(".bboxy/").unwrap_or(target);
+                let local = normalized.strip_prefix("images/");
+                *asset = if *wiki || local.is_some() {
+                    load(local.unwrap_or(normalized))
+                } else {
+                    None
+                };
+            }
+            Inline::Emphasis(v)
+            | Inline::Strong(v)
+            | Inline::Strike(v)
+            | Inline::Link { content: v, .. } => visit(v, load),
             _ => {}
         }
     }
@@ -34,44 +46,168 @@ fn blocks(values: &mut [Block], load: &mut impl FnMut(&str) -> Option<ImageAsset
     }
 }
 
+pub(crate) fn load_targets(
+    markdown: &mut Markdown,
+    mut load: impl FnMut(&str) -> Option<ImageAsset>,
+) {
+    blocks(&mut markdown.blocks, &mut load);
+}
+
 pub fn clear(markdown: &mut Markdown) {
     blocks(&mut markdown.blocks, &mut |_| None);
 }
 
-/// Bind the same local PNG resolver to a seat's admitted workspace.
+#[derive(Clone)]
+pub struct Binding {
+    pub port: Arc<Port>,
+    pub scope: bbt_proto::gui::SwarmScope,
+    pub epoch: u64,
+}
+impl PartialEq for Binding {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.port, &other.port) && self.stamp() == other.stamp()
+    }
+}
+impl Binding {
+    pub fn stamp(&self) -> (bbt_proto::gui::SwarmScope, u64) {
+        (self.scope, self.epoch)
+    }
+}
+
+/// Bind the same resolver to a seat's admitted workspace.
 pub(crate) fn transcript(
     root: std::path::PathBuf,
+    artifacts: Option<Binding>,
 ) -> Arc<bboxy450_harness::frontends::gui::rich::ImagePreparation> {
     bboxy450_harness::frontends::gui::rich::ImagePreparation::new(move |markdown| {
-        load(markdown, &root)
+        load_with_artifacts(
+            markdown,
+            &root,
+            artifacts
+                .as_ref()
+                .map(|binding| (binding.port.as_ref(), binding.scope)),
+        )
     })
 }
 
 pub fn load(markdown: &mut Markdown, root: &Path) -> Vec<Arc<Image>> {
+    load_with_artifacts(markdown, root, None)
+}
+
+pub fn load_with_artifacts(
+    markdown: &mut Markdown,
+    root: &Path,
+    artifacts: Option<(&Port, bbt_proto::gui::SwarmScope)>,
+) -> Vec<Arc<Image>> {
+    load_for_host(markdown, root, artifacts).0
+}
+
+pub(crate) fn load_for_host(
+    markdown: &mut Markdown,
+    root: &Path,
+    artifacts: Option<(&Port, bbt_proto::gui::SwarmScope)>,
+) -> (Vec<Arc<Image>>, bool) {
+    use bbt_mux::artifact_images::{Images, Prepared};
     bbt_rt::assert_not_ui_thread();
-    let mut images = BTreeMap::<String,Arc<Image>>::new();
-    let mut pixels = 0;
-    let mut attempts = BTreeMap::<String, Option<ImageAsset>>::new();
-    blocks(&mut markdown.blocks, &mut |target| {
-        if let Some(asset) = attempts.get(target) {
-            return asset.clone();
+    let mut images = Images::default();
+    let mut follows_artifact = false;
+    load_targets(markdown, |target| {
+        if let Some(address) = target.strip_prefix("artifact:") {
+            follows_artifact |= bboxy450_canvas::artifact_address(address)
+                .is_some_and(|(_, revision)| revision.is_none());
         }
-        if attempts.len() >= 16 {
-            return None;
-        }
-        attempts.insert(target.into(), None);
-        let image = decode(root, target, 4_000_000 - pixels).ok()?;
-        pixels += u64::from(image.width) * u64::from(image.height);
-        let asset = ImageAsset {
-            key: image.name.clone(),
-            width: image.width,
-            height: image.height,
-        };
-        images.insert(target.into(), Arc::new(image));
-        attempts.insert(target.into(), Some(asset.clone()));
-        Some(asset)
+        images.prepare(target, |remaining| {
+            if target.starts_with("artifact:") {
+                let (port, scope) = artifacts
+                    .ok_or_else(|| bbt_mux::store::invalid("artifact host unavailable"))?;
+                port.image(target, scope, remaining)
+            } else {
+                decode(root, target, remaining)
+                    .map(Prepared::raster)
+                    .map_err(bbt_mux::store::invalid)
+            }
+        })
     });
-    images.into_values().collect()
+    (images.into_rasters(), follows_artifact)
+}
+
+/// The document and rich transcript workers share one native read door and
+/// a disposable geometry cache. They never derive a filesystem path from Markdown.
+pub struct Port {
+    runtime: std::path::PathBuf,
+    sender: tokio::sync::mpsc::WeakSender<crate::cockpit::UiMsg>,
+    geometry: bbt_mux::artifact_images::GeometryCache,
+}
+
+impl Port {
+    pub fn new(
+        runtime: std::path::PathBuf,
+        sender: tokio::sync::mpsc::WeakSender<crate::cockpit::UiMsg>,
+    ) -> Self {
+        Self {
+            runtime,
+            sender,
+            geometry: Default::default(),
+        }
+    }
+    pub fn resolve(
+        &self,
+        target: &str,
+        scope: bbt_proto::gui::SwarmScope,
+    ) -> bbt_mux::store::Result<bbt_mux::artifact_images::Resolved> {
+        use bbt_mux::store::invalid;
+        bbt_rt::assert_not_ui_thread();
+        let (id, revision) =
+            bboxy450_canvas::artifact_address(target.strip_prefix("artifact:").unwrap_or(target))
+                .ok_or_else(|| invalid("invalid artifact address"))?;
+        let sender = self
+            .sender
+            .upgrade()
+            .ok_or_else(|| invalid("artifact reader detached"))?;
+        let (reply, receive) = tokio::sync::oneshot::channel();
+        sender
+            .try_send(crate::cockpit::UiMsg::ArtifactImage {
+                id,
+                revision,
+                scope,
+                reply,
+            })
+            .map_err(|_| invalid("artifact reader busy"))?;
+        bbt_rt::handle().block_on(async {
+            tokio::time::timeout(std::time::Duration::from_secs(3), receive)
+                .await
+                .map_err(|_| invalid("artifact read expired"))?
+                .map_err(|_| invalid("artifact reader detached"))?
+                .map_err(invalid)
+        })
+    }
+    pub fn prepare(
+        &self,
+        found: &bbt_mux::artifact_images::Resolved,
+        remaining: u64,
+    ) -> bbt_mux::store::Result<bbt_mux::artifact_images::Prepared> {
+        bbt_mux::artifact_images::Prepared::artifact(
+            found,
+            &self.runtime,
+            &self.geometry,
+            remaining,
+        )
+    }
+    pub fn bytes(
+        &self,
+        found: &bbt_mux::artifact_images::Resolved,
+    ) -> bbt_mux::store::Result<Vec<u8>> {
+        found.bytes(&self.runtime)
+    }
+    pub fn image(
+        &self,
+        target: &str,
+        scope: bbt_proto::gui::SwarmScope,
+        remaining: u64,
+    ) -> bbt_mux::store::Result<bbt_mux::artifact_images::Prepared> {
+        let found = self.resolve(target, scope)?;
+        self.prepare(&found, remaining)
+    }
 }
 
 #[allow(

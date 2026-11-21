@@ -192,3 +192,45 @@ fn fractional_camera_preserves_the_integer_root_clip() {
     assert_eq!(&capture.rgba[..4], &[255, 0, 0, 255]);
     assert_eq!(&capture.rgba[32..36], &[255, 255, 255, 255]);
 }
+
+#[cfg(target_os = "macos")]
+#[test]
+fn retained_picture_repaints_a_deep_zoom_through_the_visible_rounded_clip() {
+    use bbt_ui_model::{
+        draw::{DrawList, ImageAsset, Prim},
+        layout::Rect,
+    };
+    let scene = prepare(&svg(r#"<rect width="64" height="64" fill="red"/>"#), None).unwrap();
+    let asset = ImageAsset {
+        key: "svg-test".into(),
+        width: 64,
+        height: 64,
+        retained: Some(scene.retained_image()),
+        revision: Some("artifact:test:3".into()),
+    };
+    let mut list = DrawList::default();
+    list.clip(Rect::new(6.25, 8.25, 19.75, 19.75), [5.; 4]);
+    list.push(Prim::Image {
+        rect: Rect::new(-20_000., -20_000., 80_000., 80_000.),
+        image: asset.source(),
+        radius: 0.,
+    });
+    list.unclip();
+
+    let mut renderer = bbt_render::chrome::ChromeRenderer::new(Vec::new()).unwrap();
+    for scale in [1, 2] {
+        let width = 40 * scale;
+        let rgba = renderer
+            .render_to_rgba(&list, width, 40 * scale, scale as f32)
+            .unwrap();
+        let pixel = |x: u32, y: u32| {
+            let i = (4 * (y * scale * width + x * scale)) as usize;
+            &rgba[i..i + 4]
+        };
+        let red = &[255, 0, 0, 255];
+        assert_eq!(pixel(14, 14), red);
+        assert_ne!(pixel(6, 8), red, "rounded edge must clip");
+        assert_ne!(pixel(26, 15), red, "right edge must clip");
+        assert_ne!(pixel(15, 28), red, "bottom edge must clip");
+    }
+}

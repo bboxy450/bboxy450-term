@@ -175,6 +175,7 @@ impl std::ops::Deref for CommandSender {
 struct Commands {
     startup_retry: Arc<tokio::sync::Notify>,
     messages: mpsc::Receiver<UiMsg>,
+    image_messages: mpsc::WeakSender<UiMsg>,
     stop: oneshot::Receiver<CloseMode>,
     knowledge: Arc<KnowledgeDemand>,
     workspace: tokio::sync::watch::Receiver<Option<KnowledgeContext>>,
@@ -184,6 +185,7 @@ struct Commands {
 fn command_channel() -> (CommandSender, Commands) {
     let startup_retry = Arc::new(tokio::sync::Notify::new());
     let (sender, messages) = mpsc::channel(COMMAND_CAPACITY);
+    let image_messages = sender.downgrade();
     let (context, contexts) = tokio::sync::watch::channel(None);
     let (desktop, desktop_contexts) = tokio::sync::watch::channel(None);
     let (workspace, workspaces) = tokio::sync::watch::channel(None);
@@ -202,6 +204,7 @@ fn command_channel() -> (CommandSender, Commands) {
         Commands {
             startup_retry,
             messages,
+            image_messages,
             stop: stopped,
             knowledge,
             workspace: workspaces,
@@ -1123,6 +1126,52 @@ async fn run(
     .await
 }
 
+fn schedule_canvas_read(
+    model: &Model,
+    reads: &mut bboxy450_term::canvas_host::Reads,
+    jobs: &mut tokio::task::JoinSet<bboxy450_term::canvas_host::Completion>,
+    swarm: Ulid,
+    root: String,
+) {
+    use bboxy450_term::{canvas_host, documents::images::Binding};
+    let generation = reads.begin(swarm, &root);
+    let key = bbt_ui_model::SwarmId::from_u128(swarm.0);
+    let selected_root = model
+        .ui
+        .window
+        .sidebar
+        .swarms
+        .iter()
+        .find(|row| row.id == key)
+        .and_then(|row| row.workdir.as_deref())
+        .or_else(|| {
+            let scope = model.knowledge_scope?;
+            if scope.swarm != swarm { return None; }
+            let root = model.knowledge_roots.as_ref()?.roots.first()?;
+            (root.refusal.is_none()).then_some(root.path.as_str())
+        });
+    let binding = selected_root
+        .filter(|selected| canvas_host::normalize_root(selected) == root)
+        .and_then(|_| model.swarm_scope(key).ok())
+        .zip(model.artifact_images.as_ref())
+        .map(|(scope, port)| Binding {
+            scope,
+            port: port.clone(),
+            epoch: model.artifact_epoch,
+        });
+    let open = model
+        .canvas_sources
+        .values()
+        .filter(|source| source.swarm == swarm && canvas_host::normalize_root(&source.root) == root)
+        .map(|source| source.id.clone())
+        .collect();
+    jobs.spawn_blocking(move || {
+        let stamp = binding.as_ref().map(Binding::stamp);
+        let rows = canvas_host::load_scoped(&root, swarm, binding.as_ref(), &open);
+        (swarm, root, generation, stamp, rows)
+    });
+}
+
 #[allow(clippy::too_many_arguments)] // Both GUI entry points share these independent runtime callbacks.
 async fn run_with_control(
     updates: Arc<Latest<Arc<Model>>>,
@@ -1215,6 +1264,10 @@ async fn run_with_control(
     let mut window_writes =
         bboxy450_term::window_writes::Writes::new(session.endpoint.window.as_ref());
     let mut window_requested = std::collections::BTreeSet::new();
+    initial.artifact_images = Some(Arc::new(documents::images::Port::new(
+        session.run_dir().to_path_buf(),
+        commands.image_messages.clone(),
+    )));
     let mut model = Arc::new(initial);
     publish(
         &seats,
@@ -1233,8 +1286,13 @@ async fn run_with_control(
     let mut swarm_mutations = SwarmMutations::default();
     let mut seat_drops: BTreeMap<SeatId, Option<SeatId>> = BTreeMap::new();
     let mut canvas_reads = bboxy450_term::canvas_host::Reads::default();
-    let mut canvas_jobs: tokio::task::JoinSet<bboxy450_term::canvas_host::Completion> = tokio::task::JoinSet::new();
+    let mut canvas_jobs: tokio::task::JoinSet<bboxy450_term::canvas_host::Completion> =
+        tokio::task::JoinSet::new();
     let mut document_reader = documents::Reader::default();
+    let mut artifact_reads = BTreeMap::<
+        Ulid,
+        oneshot::Sender<std::result::Result<bbt_mux::artifact_images::Resolved, String>>,
+    >::new();
     let mut document_preparation: Option<(Ulid, tokio::task::JoinHandle<Arc<documents::Reply>>)> =
         None;
     let mut knowledge_watch = knowledge::Watch::new(knowledge::promises().map_err(invalid)?);
@@ -1417,8 +1475,10 @@ async fn run_with_control(
                     }
                 },
                 canvas=canvas_jobs.join_next(), if !canvas_jobs.is_empty()=> {
-                    if let Some(Ok((swarm,root,generation,result)))=canvas
-                        && canvas_reads.current(swarm,&root,generation) { match result {
+                    if let Some(Ok((swarm,root,generation,stamp,result)))=canvas
+                        && canvas_reads.current(swarm,&root,generation)
+                        && stamp.is_none_or(|(scope,epoch)| epoch == model.artifact_epoch
+                            && model.swarm_scope(bbt_ui_model::SwarmId::from_u128(swarm.0)) == Ok(scope)) { match result {
                             Ok(rows)=> {
                                 let current=Arc::make_mut(&mut model);
                                 // A pane whose canvas a seat closed (canvas_close) leaves with it;
@@ -1453,6 +1513,20 @@ async fn run_with_control(
                     if !lost && let Some(message)=retained.pop_front() { return Some(message); }
                     commands.messages.recv().await
                 }, if (lost && retained.len() < COMMAND_CAPACITY) || (!lost && outgoing.is_empty())=>match command {
+                    Some(UiMsg::ArtifactImage {id,revision,scope,reply})=> {
+                        artifact_reads.retain(|_, pending| !pending.is_closed());
+                        if lost || artifact_reads.len() >= 16 {
+                            let _ = reply.send(Err("artifact reader unavailable".into()));
+                        } else if !reply.is_closed() {
+                            let op=Ulid::new();
+                            let mut args=serde_json::json!({"id":id});
+                            if let Some(revision)=revision {args["revision"]=serde_json::json!(revision);}
+                            artifact_reads.insert(op, reply);
+                            queue_action(&mut outgoing,GuiAction::Knowledge {
+                                id:op,scope:Some(scope),method:"artifact_image".into(),args,
+                            });
+                        }
+                    },
                     Some(message) if lost=>retained.push_back(message),
                     Some(message)=> {
                     let message=match message {
@@ -1461,6 +1535,7 @@ async fn run_with_control(
                     };
                     in_flight=Some(message);
                     match in_flight.as_ref().unwrap() {
+                    UiMsg::ArtifactImage {..}=>unreachable!("image reads are admitted before window intents"),
                     message @ (UiMsg::Spawn {id,..}|UiMsg::SpawnSpec {id,..})=> {
                         let mut spec=spawn_spec(message,swarm,&cwd).expect("spawn intent branch");
                         if !matches!(message,UiMsg::SpawnSpec {..})
@@ -1545,7 +1620,10 @@ async fn run_with_control(
                         }
                         publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                         let swarm=model.canvas_sources.get(pane).map(|s|s.swarm);
-                        if let Some(swarm)=swarm { let root=model.canvas_sources[pane].root.clone(); let generation=canvas_reads.begin(swarm,&root); canvas_jobs.spawn_blocking(move || {let result=bboxy450_term::canvas_host::load(&root,swarm);(swarm,root,generation,result)}); }
+                        if let Some(swarm)=swarm {
+                            let root=model.canvas_sources[pane].root.clone();
+                            schedule_canvas_read(&model,&mut canvas_reads,&mut canvas_jobs,swarm,root);
+                        }
                     },
                     UiMsg::RestoreCanvas {pane}=> {
                         let current=Arc::make_mut(&mut model);
@@ -1557,14 +1635,16 @@ async fn run_with_control(
                         }
                         publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                         let swarm=model.canvas_sources.get(pane).map(|s|s.swarm);
-                        if let Some(swarm)=swarm { let root=model.canvas_sources[pane].root.clone(); let generation=canvas_reads.begin(swarm,&root); canvas_jobs.spawn_blocking(move || {let result=bboxy450_term::canvas_host::load(&root,swarm);(swarm,root,generation,result)}); }
+                        if let Some(swarm)=swarm {
+                            let root=model.canvas_sources[pane].root.clone();
+                            schedule_canvas_read(&model,&mut canvas_reads,&mut canvas_jobs,swarm,root);
+                        }
                     },
                     UiMsg::Canvas {source,beside}=> {
                         Arc::make_mut(&mut model).open_canvas(source.clone(),*beside);
                         publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                         let source=source.clone();let root=bboxy450_term::canvas_host::normalize_root(&source.root);
-                        let generation=canvas_reads.begin(source.swarm,&root);
-                        canvas_jobs.spawn_blocking(move || {let result=bboxy450_term::canvas_host::load(&root,source.swarm);(source.swarm,root,generation,result)});
+                        schedule_canvas_read(&model,&mut canvas_reads,&mut canvas_jobs,source.swarm,root);
                     },
                     UiMsg::CanvasRefresh {swarm}=> {
                         let mut roots=std::collections::BTreeSet::new();
@@ -1579,7 +1659,8 @@ async fn run_with_control(
                             let id=Ulid(id.0.0);
                             if swarm.is_none_or(|s|s==id) {roots.insert((id,root.clone()));}
                         }
-                        for (swarm,root) in roots {let generation=canvas_reads.begin(swarm,&root); canvas_jobs.spawn_blocking(move || {let result=bboxy450_term::canvas_host::load(&root,swarm);(swarm,root,generation,result)});
+                        for (swarm,root) in roots {
+                            schedule_canvas_read(&model,&mut canvas_reads,&mut canvas_jobs,swarm,root);
                         }
                     },
                     UiMsg::NewSwarm(id) => {
@@ -1663,7 +1744,9 @@ async fn run_with_control(
                         let root=scope.and_then(|scope|model.ui.window.sidebar.swarms.iter()
                             .find(|row|row.id.0.0==scope.swarm.0).and_then(|row|row.workdir.as_ref()))
                             .map_or_else(||cwd.clone(),PathBuf::from);
-                        document_reader.image_root(root);
+                        let artifacts=model.artifact_images.as_ref().zip(*scope)
+                            .map(|(port,scope)|(port.clone(),scope));
+                        document_reader.image_host(root,artifacts);
                         if let Some((_,previous))=document_preparation.take() {previous.abort();}
                         match document_reader.admit_latest_scoped(*id,read.clone(),*scope) {
                             Ok(action)=>queue_action(&mut outgoing,action),
@@ -1727,6 +1810,17 @@ async fn run_with_control(
                             match publish_delivery(&mut model,&updates,GuiEventRecord::Event(envelope)) {
                                 Ok(action)=>ack=action,
                                 Err(error)=> {logger.write(format!("event rejected (no ACK): {error}"));return Ok(());}
+                            }
+                            if matches!(&payload, GuiEventPayload::Activity {summary} if summary.action=="image_revision") {
+                                let current=Arc::make_mut(&mut model);
+                                current.artifact_epoch=current.artifact_epoch.wrapping_add(1);
+                                updates.publish(model.clone());
+                                let open: std::collections::BTreeSet<_> = model.canvas_sources.values()
+                                    .map(|source| (source.swarm, bboxy450_term::canvas_host::normalize_root(&source.root)))
+                                    .collect();
+                                for (swarm,root) in open {
+                                    schedule_canvas_read(&model,&mut canvas_reads,&mut canvas_jobs,swarm,root);
+                                }
                             }
                             if subject=="activity/knowledge-provider" {
                                 knowledge_watch.source_changed();
@@ -1976,7 +2070,12 @@ async fn run_with_control(
                             if terminal_reply == Some(ActionReply::Knowledge(op)) {
                                 let result:bbt_mux::knowledge::data_source::Result<serde_json::Value>=serde_json::from_value(response).unwrap_or_else(|error| Err(bbt_mux::knowledge::data_source::CommandError::new("invalid_provider_result",format!("invalid knowledge reply: {error}"))));
                                 if result.as_ref().err().is_some_and(|error|error.code=="swarm_root_changed") {queue_action(&mut outgoing,GuiAction::SwarmList{id:Ulid::new()});}
-                                if let Some(work)=document_reader.response(op,result.clone()) {
+                                if let Some(reply)=artifact_reads.remove(&op) {
+                                    let resolved=result.map_err(|e|e.to_string()).and_then(|value|{
+                                        serde_json::from_value::<bbt_mux::artifact_images::Resolved>(value).map_err(|e|e.to_string())
+                                    });
+                                    let _=reply.send(resolved);
+                                } else if let Some(work)=document_reader.response(op,result.clone()) {
                                     document_preparation=Some((op,tokio::task::spawn_blocking(move ||work.prepare())));
                                 } else {knowledge_watch.response(op,result);}
                             }

@@ -82,7 +82,7 @@ impl<'a> BboxySource<'a> {
         }
         Ok(bytes)
     }
-    fn open_resource(root: &Path, relative: &Path) -> d::Result<(File, PathBuf, u64)> {
+    pub(crate) fn open_resource(root: &Path, relative: &Path) -> d::Result<(File, PathBuf, u64)> {
         use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
         if relative.as_os_str().is_empty()
             || relative
@@ -194,6 +194,10 @@ impl<'a> BboxySource<'a> {
         image_blocks(&parsed.blocks, &mut targets);
         let mut links = BTreeMap::new();
         for (target, wiki) in targets {
+            // Stored images resolve through the captured artifact reader.
+            if target.starts_with("artifact:") {
+                continue;
+            }
             if target.contains("://")
                 || target.starts_with("data:")
                 || Path::new(&target).is_absolute()
@@ -623,9 +627,7 @@ fn image_blocks(blocks: &[bbt_doc::Block], targets: &mut Vec<(String, bool)>) {
             }
             BlockKind::Quote(blocks)
             | BlockKind::Callout { blocks, .. }
-            | BlockKind::Footnote { blocks, .. } => {
-                image_blocks(blocks, targets)
-            }
+            | BlockKind::Footnote { blocks, .. } => image_blocks(blocks, targets),
             BlockKind::Table { header, rows, .. } => {
                 for values in header {
                     image_inlines(values, targets)

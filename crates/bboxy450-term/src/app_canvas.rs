@@ -25,6 +25,7 @@ pub(super) struct View {
 #[derive(Clone, PartialEq)]
 struct PaintKey {
     digest: String,
+    images: Option<Arc<BTreeMap<String, bbt_ui_model::draw::ImageAsset>>>,
     camera: [f64; 3],
     rect: [f32; 4],
     theme: bbt_ui::Theme,
@@ -209,8 +210,17 @@ impl App {
                 if !view.fitted {
                     view.fit(&row.snapshot.canvas);
                 }
+                let scope = model
+                    .swarm_scope(bbt_ui_model::SwarmId::from_u128(source.swarm.0))
+                    .ok();
+                let images = row
+                    .image_scope
+                    .zip(scope)
+                    .filter(|(prepared, current)| prepared == current)
+                    .map(|_| row.assets.clone());
                 let key = PaintKey {
                     digest: row.snapshot.canvas.digest(),
+                    images,
                     camera: [
                         view.camera.center[0],
                         view.camera.center[1],
@@ -224,10 +234,12 @@ impl App {
                 {
                     paints.extend(ops.iter().cloned());
                 } else {
-                    match self
-                        .scene
-                        .canvas_paint(&row.snapshot.canvas, &view.camera, *rect)
-                    {
+                    match self.scene.canvas_paint(
+                        &row.snapshot.canvas,
+                        key.images.as_deref().unwrap_or(&BTreeMap::new()),
+                        &view.camera,
+                        *rect,
+                    ) {
                         Ok(ops) => {
                             paints.extend(ops.iter().cloned());
                             view.cache = Some((key, ops));
@@ -254,6 +266,37 @@ impl App {
         self.canvas_observation = facts;
         paints
     }
+    pub(super) fn canvas_rasters(&self) -> Vec<Arc<bbt_render::chrome::icons::Image>> {
+        let Some(model) = &self.live_state else {
+            return Vec::new();
+        };
+        let mut images = BTreeMap::new();
+        for (pane, _) in &self.pane_bounds {
+            let Some(source) = model.canvas_sources.get(pane) else {
+                continue;
+            };
+            let swarm = bbt_ui_model::SwarmId::from_u128(source.swarm.0);
+            let Some(scope) = model.swarm_scope(swarm).ok() else {
+                continue;
+            };
+            let key = (
+                swarm,
+                bboxy450_term::canvas_host::normalize_root(&source.root),
+            );
+            if let Some(row) = model.canvas_catalog.get(&key).and_then(|rows| {
+                rows.iter()
+                    .find(|row| row.source.id == source.id && row.image_scope == Some(scope))
+            }) {
+                images.extend(
+                    row.rasters
+                        .iter()
+                        .map(|image| (image.name.clone(), image.clone())),
+                );
+            }
+        }
+        images.into_values().collect()
+    }
+
     pub(super) fn canvas_key(&mut self, input: &keyboard::Input<'_>) -> bool {
         if self.composer.view.focus || self.reject_focus {
             return false;

@@ -746,6 +746,7 @@ dependencies = [
  "bboxy450-plugin",
  "bboxy450-render",
  "bboxy450-rt",
+ "bboxy450-svg",
  "bboxy450-term-core",
  "bboxy450-term-plugin-fixture",
  "bboxy450-term-proto",
@@ -850,6 +851,7 @@ name = "bboxy450-ui-core"
 version = "0.2.0"
 dependencies = [
  "regex",
+ "serde",
  "serde_json",
  "toml 0.9.12+spec-1.1.0",
 ]

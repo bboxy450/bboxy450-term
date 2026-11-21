@@ -534,6 +534,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         gpu.install_document_images(&pane.snapshot.images)?;
                     }
                     let layouts = app.solve_ui(size)?;
+                    gpu.install_document_images(&app.canvas_rasters())?;
                     app.focus_layout_ready();
                     let (next, changed) = crate::pane_controls(
                         &model,

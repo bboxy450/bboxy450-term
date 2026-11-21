@@ -243,6 +243,116 @@ impl TextShadow {
     }
 }
 
+/// A prepared image owned by its draw command. The payload is process-local.
+#[derive(Clone)]
+pub struct RetainedImage {
+    size: [f32; 2],
+    payload: Arc<dyn std::any::Any + Send + Sync>,
+}
+impl RetainedImage {
+    pub fn new<T: Send + Sync + 'static>(size: [f32; 2], payload: T) -> Self {
+        Self {
+            size,
+            payload: Arc::new(payload),
+        }
+    }
+    pub fn size(&self) -> [f32; 2] {
+        self.size
+    }
+    pub fn payload<T: 'static>(&self) -> Option<&T> {
+        self.payload.downcast_ref()
+    }
+}
+impl std::fmt::Debug for RetainedImage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RetainedImage")
+            .field("size", &self.size)
+            .finish_non_exhaustive()
+    }
+}
+impl PartialEq for RetainedImage {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.payload, &other.payload)
+            && self.size.map(f32::to_bits) == other.size.map(f32::to_bits)
+    }
+}
+impl Eq for RetainedImage {}
+
+/// The existing image primitive resolves either an atlas key or retained paint.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ImageSource {
+    key: Arc<str>,
+    retained: Option<RetainedImage>,
+    opacity: f32,
+}
+impl ImageSource {
+    pub fn is_empty(&self) -> bool {
+        self.key.is_empty()
+    }
+
+    pub fn picture(&self) -> Option<(&RetainedImage, f32)> {
+        self.retained
+            .as_ref()
+            .map(|picture| (picture, self.opacity))
+    }
+
+    pub fn with_opacity(mut self, opacity: f32) -> Self {
+        self.opacity = opacity;
+        self
+    }
+}
+impl AsRef<str> for ImageSource {
+    fn as_ref(&self) -> &str {
+        &self.key
+    }
+}
+impl From<Arc<str>> for ImageSource {
+    fn from(key: Arc<str>) -> Self {
+        Self {
+            key,
+            retained: None,
+            opacity: 1.,
+        }
+    }
+}
+impl From<&str> for ImageSource {
+    fn from(key: &str) -> Self {
+        Self::from(Arc::<str>::from(key))
+    }
+}
+impl From<String> for ImageSource {
+    fn from(key: String) -> Self {
+        Self::from(Arc::<str>::from(key))
+    }
+}
+
+/// Local preparation binds one bitmap key or an owned retained drawing.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ImageAsset {
+    pub key: String,
+    pub width: u32,
+    pub height: u32,
+    #[serde(skip)]
+    pub retained: Option<RetainedImage>,
+    #[serde(skip)]
+    pub revision: Option<String>,
+}
+impl ImageAsset {
+    pub fn source(&self) -> ImageSource {
+        ImageSource {
+            key: Arc::from(self.key.as_str()),
+            retained: self.retained.clone(),
+            opacity: 1.,
+        }
+    }
+
+    pub fn size(&self) -> [f32; 2] {
+        self.retained
+            .as_ref()
+            .map_or([self.width as f32, self.height as f32], RetainedImage::size)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Prim {
     /// Vector path; fill precedes stroke, with retained tessellation for each.
@@ -317,7 +427,7 @@ pub enum Prim {
     },
     Image {
         rect: Rect,
-        image: Arc<str>,
+        image: ImageSource,
         radius: f32,
     },
     Clip {

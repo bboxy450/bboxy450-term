@@ -10,7 +10,7 @@ use crate::{
     knowledge::{data_source::CommandError, workspaces::RootBinding},
     mcp::{Call, SeatActor, tools},
     registry::{Class, SeatRecord},
-    store::{Store, events::Envelope},
+    store::{Events, Store, events::Envelope},
 };
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD};
 use petgraph::visit::EdgeRef;
@@ -57,7 +57,9 @@ fn visible(doc: &Document, actor: &SeatActor, seat: &SeatRecord) -> bool {
         doc.metadata["created_by"] == own
             || doc.metadata["updated_by"] == own
             || doc.metadata["authorship"]["signer"] == own
-            || doc.metadata["type"] == "artifact" && doc.metadata["produced_by"] == own
+            || doc.metadata["type"] == "artifact"
+                && (doc.metadata["produced_by"] == own
+                    || doc.metadata["custody"] == "stored" && doc.metadata["owner"] == own)
     };
     doc.error.is_none() && (actor.role.class == Class::Oracle || owned)
 }
@@ -79,6 +81,11 @@ pub(crate) fn authority_paths(
         return Ok(Vec::new());
     }
     let data = &value["structuredContent"];
+    // The read worker verified each immutable owner in the signed root stream.
+    // The completion still checks the actor, generation and captured root.
+    if data["stored_revision_authority"] == true {
+        return Ok(Vec::new());
+    }
     let ids: Vec<&str> = match call.tool.as_str() {
         "provenance_search" => data["items"]
             .as_array()
@@ -158,10 +165,14 @@ pub(crate) fn retained(
     // A worker response can never contain unresolved nodes. Missing records
     // must not turn a revoked page into an empty, authorized witness set.
     let data = &value["structuredContent"];
-    let expected = match call.tool.as_str() {
-        "provenance_search" => data["items"].as_array().map_or(LIMIT + 1, Vec::len),
-        "provenance_lineage" => data["nodes"].as_array().map_or(LIMIT + 1, Vec::len),
-        _ => 1,
+    let expected = if data["stored_revision_authority"] == true {
+        0
+    } else {
+        match call.tool.as_str() {
+            "provenance_search" => data["items"].as_array().map_or(LIMIT + 1, Vec::len),
+            "provenance_lineage" => data["nodes"].as_array().map_or(LIMIT + 1, Vec::len),
+            _ => 1,
+        }
     };
     paths.len() == expected && current_authority(index, actor, seat, &paths)
 }
@@ -226,7 +237,7 @@ fn summary(doc: &Document) -> Value {
         "responsibility":{"claimed":m["claimed"]==true,"produced_by":text(&m["produced_by"]),"grade":text(&m["grade"])},
         "last_observation":{"sequence":text(&m["last_observation_sequence"]),"kind":text(&last["kind"]),"commit":text(&last["commit"])},
         "document_signer":{"principal":text(&m["authorship"]["signer"]),"kind":text(&m["authorship"]["kind"]),"public_key":text(&m["authorship"]["public_key"])},
-        "verification":"not_checked"})
+        "custody":text(&m["custody"]),"revision":m["revision"],"verification":"not_checked"})
 }
 fn snapshot(docs: &[&Document]) -> String {
     let mut hash = Sha256::new();
@@ -326,6 +337,7 @@ pub(crate) fn read(
     binding: &RootBinding,
     revision: u64,
     call: &Call,
+    stored: &super::stored::Store<'_>,
 ) -> Result<Value> {
     bbt_rt::assert_not_ui_thread();
     let docs = catalogue(index, actor, seat);
@@ -340,25 +352,39 @@ pub(crate) fn read(
         ))
         .map_err(internal)?,
     );
-    let result = match call.tool.as_str() {
-        "provenance_search" => search(&docs, call, &scope, head),
-        "provenance_get" => {
-            let args: Get = parse(call)?;
-            let doc = resolve(&docs, &args.locator)?;
-            let mut value = summary(doc);
-            value["publication"] = if doc.metadata["type"] == "artifact" {
-                json!({"state":if doc.metadata["history"].as_array().is_some_and(|v|v.iter().any(|row|row["commit"].is_string())) {"committed"} else {"unknown"},"basis":"recorded_observation"})
-            } else {
-                crate::knowledge::commit::state(index, &doc.id, &doc.digest).map_err(internal)?
-            };
-            value["links"]=json!(doc.links.iter().filter(|l| RELATIONS.contains(&l.relation.as_str()) || l.relation=="wasAttributedTo").take(LIMIT).map(|l|json!({"to":tools::clip(&l.to,512),"relation":l.relation,"basis":"declared_link","causation_verified":false})).collect::<Vec<_>>());
-            value["links_truncated"] = json!(doc.links.len() > LIMIT);
-            Ok(json!({"entity":value}))
+    let caller = (actor.role.class != Class::Oracle).then_some(actor.seat_id);
+    let exact = stored_query(index, stored, caller, call, &scope, head)?;
+    let result = if let Some(exact) = exact {
+        Ok(exact)
+    } else {
+        match call.tool.as_str() {
+            "provenance_search" => search(&docs, call, &scope, head, stored, caller),
+            "provenance_get" => {
+                let args: Get = parse(call)?;
+                let doc = resolve(&docs, &args.locator)?;
+                let mut value = summary(doc);
+                if doc.metadata["custody"] == "stored" {
+                    let id = doc.id.parse().map_err(internal)?;
+                    if let Some(revision) = stored.provenance(id, None, caller).map_err(internal)? {
+                        value["stored"] = revision;
+                        value["digest"] = value["stored"]["digest"].clone();
+                    }
+                }
+                value["publication"] = if doc.metadata["type"] == "artifact" {
+                    json!({"state":if doc.metadata["history"].as_array().is_some_and(|v|v.iter().any(|row|row["commit"].is_string())) {"committed"} else {"unknown"},"basis":"recorded_observation"})
+                } else {
+                    crate::knowledge::commit::state(index, &doc.id, &doc.digest)
+                        .map_err(internal)?
+                };
+                value["links"]=json!(doc.links.iter().filter(|l| RELATIONS.contains(&l.relation.as_str()) || l.relation=="wasAttributedTo").take(LIMIT).map(|l|json!({"to":tools::clip(&l.to,512),"relation":l.relation,"basis":"declared_link","causation_verified":false})).collect::<Vec<_>>());
+                value["links_truncated"] = json!(doc.links.len() > LIMIT);
+                Ok(json!({"entity":value}))
+            }
+            "provenance_lineage" => lineage(index, &docs, actor, call),
+            "provenance_history" => history(index, &docs, call, &scope, head),
+            "provenance_verify" => verify(index, &docs, call, head),
+            _ => Err(fail("unknown_tool", "unknown provenance tool")),
         }
-        "provenance_lineage" => lineage(index, &docs, actor, call),
-        "provenance_history" => history(index, &docs, call, &scope, head),
-        "provenance_verify" => verify(index, &docs, call, head),
-        _ => Err(fail("unknown_tool", "unknown provenance tool")),
     }?;
     let cursor = index
         .mirror()
@@ -377,7 +403,253 @@ pub(crate) fn read(
     }
     Ok(result)
 }
-fn search(docs: &[&Document], call: &Call, scope: &str, head: u64) -> Result<Value> {
+fn stored_query(
+    index: &Index,
+    store: &super::stored::Store<'_>,
+    caller: Option<crate::Ulid>,
+    call: &Call,
+    scope: &str,
+    head: u64,
+) -> Result<Option<Value>> {
+    let is_search = call.tool == "provenance_search";
+    if !is_search
+        && !matches!(
+            call.tool.as_str(),
+            "provenance_get" | "provenance_history" | "provenance_lineage"
+        )
+    {
+        return Ok(None);
+    }
+    let field = if is_search { "query" } else { "locator" };
+    let Some(locator) = call.args[field].as_str() else {
+        return Ok(None);
+    };
+    let explicit = locator.starts_with("artifact:");
+    let Ok((id, revision)) = super::stored::Address::target(locator) else {
+        return if explicit && !is_search {
+            Err(fail("invalid_arguments", "invalid artifact address"))
+        } else {
+            Ok(None)
+        };
+    };
+    let Some(found) = store.provenance(id, revision, caller).map_err(internal)? else {
+        if explicit && !is_search {
+            return Err(fail(
+                "not_found",
+                "No stored artifact matches this address. Use the record ID for reference custody.",
+            ));
+        }
+        return Ok(None);
+    };
+    let mut value = match call.tool.as_str() {
+        "provenance_get" => {
+            let _: Get = parse(call)?;
+            json!({"entity":found})
+        }
+        "provenance_history" => {
+            let args: History = parse(call)?;
+            if let Some(revision) = revision {
+                limit(args.limit)?;
+                if args.cursor.is_some() {
+                    return Err(fail(
+                        "invalid_cursor",
+                        "an exact artifact revision has one history event",
+                    ));
+                }
+                let event = index
+                    .activity()
+                    .artifact_content(id, Some(revision))
+                    .map_err(internal)?
+                    .ok_or_else(|| {
+                        fail(
+                            "provenance_unavailable",
+                            "signed artifact revision is unavailable",
+                        )
+                    })?;
+                json!({"entity":id,"items":[content_history(&event)?],"next":null,
+                    "event_head":head.to_string(),"complete":true,"full_history_audited":false})
+            } else {
+                entity_history(index, &id.to_string(), args, scope, head)?
+            }
+        }
+        "provenance_lineage" => stored_lineage(index, store, caller, found, parse(call)?, head)?,
+        "provenance_search" => {
+            let args: Search = parse(call)?;
+            limit(args.limit)?;
+            if args.cursor.is_some() {
+                return Err(fail(
+                    "invalid_cursor",
+                    "an exact artifact search has one candidate",
+                ));
+            }
+            let matches = args.commit.is_none()
+                && args.digest.is_none_or(|digest| found["digest"] == digest)
+                && args
+                    .seat_id
+                    .is_none_or(|seat| found["owner"] == json!(seat));
+            json!({"items":if matches { vec![found] } else { Vec::new() }, "next":null,"scanned":1,"complete":true})
+        }
+        _ => unreachable!("stored query admitted above"),
+    };
+    value["stored_revision_authority"] = json!(true);
+    Ok(Some(value))
+}
+
+fn stored_lineage(
+    index: &Index,
+    store: &super::stored::Store<'_>,
+    caller: Option<crate::Ulid>,
+    origin: Value,
+    args: Lineage,
+    head: u64,
+) -> Result<Value> {
+    let depth = args.depth.unwrap_or(2);
+    let limit = limit(args.limit)?;
+    let direction = args.direction.as_deref().unwrap_or("upstream");
+    if !(1..=8).contains(&depth) || !["upstream", "downstream"].contains(&direction) {
+        return Err(fail(
+            "invalid_arguments",
+            "use upstream or downstream with depth 1..8",
+        ));
+    }
+    let origin_pin = origin["pin"]
+        .as_str()
+        .ok_or_else(|| internal("signed revision missing pin"))?
+        .to_owned();
+    // Search a bounded canonical window after the exact origin event, even
+    // when that revision was created long before this query.
+    let mut recent = Vec::new();
+    let mut truncated = false;
+    if direction == "downstream" {
+        let (id, revision) = super::stored::Address::target(&origin_pin).map_err(internal)?;
+        let after = index
+            .activity()
+            .artifact_content(id, revision)
+            .map_err(internal)?
+            .ok_or_else(|| internal("historical origin event disappeared"))?
+            .seq;
+        truncated = head.saturating_sub(after) > 64;
+        for event in index.activity().after(after, 64).map_err(internal)? {
+            if event.seq > head || event.event.source != "artifact/content" {
+                continue;
+            }
+            let value = super::stored::event_provenance(&event).map_err(internal)?;
+            let pin = value["pin"]
+                .as_str()
+                .ok_or_else(|| internal("signed revision missing pin"))?;
+            let (id, revision) = super::stored::Address::target(pin).map_err(internal)?;
+            if caller.is_none_or(|seat| value["owner"] == json!(seat))
+                && let Some(value) = store.provenance(id, revision, caller).map_err(internal)?
+            {
+                recent.push(value);
+            }
+        }
+    }
+    let mut edges = Vec::new();
+    let mut nodes = BTreeMap::from([(origin_pin.clone(), origin)]);
+    let mut queue = VecDeque::from([(origin_pin.clone(), 0)]);
+    let mut frontier = BTreeSet::new();
+    let mut scanned = 0;
+    let mut size = 2048;
+    while let Some((pin, level)) = queue.pop_front() {
+        let value = &nodes[&pin];
+        let links = if direction == "upstream" {
+            stored_edges(value)
+                .map(|(basis, input)| (basis, input, value["pin"].clone()))
+                .collect::<Vec<_>>()
+        } else {
+            recent
+                .iter()
+                .flat_map(|output| {
+                    stored_edges(output)
+                        .filter(|(_, input)| {
+                            input["id"] == value["id"] && input["revision"] == value["revision"]
+                        })
+                        .map(|(basis, input)| (basis, input, output["pin"].clone()))
+                })
+                .collect()
+        };
+        for (basis, input, output) in links {
+            scanned += 1;
+            let id =
+                serde_json::from_value::<crate::Ulid>(input["id"].clone()).map_err(internal)?;
+            let revision = input["revision"]
+                .as_u64()
+                .ok_or_else(|| internal("signed input missing revision"))?;
+            let input_pin = format!("artifact:{id}:{revision}");
+            if level == depth || edges.len() >= LIMIT * 2 {
+                frontier.insert(pin.clone());
+                break;
+            }
+            let recovered;
+            let peer = if direction == "upstream" {
+                let result = store.provenance(id, Some(revision), caller);
+                recovered = match result {
+                    Ok(Some(value)) if value["digest"] == input["digest"] => value,
+                    Ok(Some(_)) => {
+                        return Err(internal("signed input digest disagrees with its revision"));
+                    }
+                    Ok(None) => return Err(internal("signed input revision is missing")),
+                    Err(error) if error.to_string().starts_with("artifact_forbidden:") => continue,
+                    Err(error) => return Err(internal(error)),
+                };
+                &recovered
+            } else {
+                recent
+                    .iter()
+                    .find(|value| value["pin"] == output)
+                    .expect("recent authorized output")
+            };
+            let peer_pin = peer["pin"]
+                .as_str()
+                .ok_or_else(|| internal("signed peer missing pin"))?;
+            let is_new = !nodes.contains_key(peer_pin);
+            let edge = json!({"input":input_pin,"output":output,"digest":input["digest"],
+                "basis":basis,"relation":"used","causation_verified":false});
+            let addition = serde_json::to_vec(&edge).map_err(internal)?.len()
+                + if is_new {
+                    serde_json::to_vec(peer).map_err(internal)?.len()
+                } else {
+                    0
+                };
+            if is_new && nodes.len() == limit || size + addition > BYTES - 2048 {
+                frontier.insert(pin.clone());
+                continue;
+            }
+            if is_new {
+                nodes.insert(peer_pin.to_owned(), peer.clone());
+                queue.push_back((peer_pin.to_owned(), level + 1));
+            }
+            edges.push(edge);
+            size += addition;
+        }
+    }
+    Ok(
+        json!({"root":origin_pin,"direction":direction,"depth":depth,
+        "nodes":nodes.into_values().collect::<Vec<_>>(),"edges":edges,"frontier":frontier,
+        "truncated":truncated || !frontier.is_empty(),"scanned_edges":scanned}),
+    )
+}
+
+fn stored_edges(value: &Value) -> impl Iterator<Item = (&'static str, Value)> + '_ {
+    ["observed", "declared"].into_iter().flat_map(|basis| {
+        value["capture"][basis]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .cloned()
+            .map(move |pin| (basis, pin))
+    })
+}
+
+fn search(
+    docs: &[&Document],
+    call: &Call,
+    scope: &str,
+    head: u64,
+    stored: &super::stored::Store<'_>,
+    caller: Option<crate::Ulid>,
+) -> Result<Value> {
     let args: Search = parse(call)?;
     let limit = limit(args.limit)?;
     if args.query.as_ref().is_some_and(|v| v.len() > 1024)
@@ -417,6 +689,13 @@ fn search(docs: &[&Document], call: &Call, scope: &str, head: u64) -> Result<Val
     while at < docs.len() && at - start < SCAN && items.len() < limit {
         let doc = docs[at];
         let m = &doc.metadata;
+        let revision = if m["custody"] == "stored" {
+            stored
+                .provenance(doc.id.parse().map_err(internal)?, None, caller)
+                .map_err(internal)?
+        } else {
+            None
+        };
         let matches = (terms.is_empty()
             || [
                 &doc.id,
@@ -426,12 +705,17 @@ fn search(docs: &[&Document], call: &Call, scope: &str, head: u64) -> Result<Val
             ]
             .iter()
             .any(|v| v.to_lowercase().contains(&terms)))
-            && args
-                .digest
-                .as_ref()
-                .is_none_or(|v| m["digest"] == *v || doc.digest == *v)
+            && args.digest.as_ref().is_none_or(|v| {
+                revision
+                    .as_ref()
+                    .map_or(&m["digest"], |value| &value["digest"])
+                    .as_str()
+                    == Some(v.as_str())
+                    || doc.digest == *v
+            })
             && args.seat_id.is_none_or(|v| {
                 m["produced_by"] == format!("seat:{v}")
+                    || m["owner"] == format!("seat:{v}")
                     || m["created_by"] == format!("seat:{v}")
                     || m["updated_by"] == format!("seat:{v}")
             })
@@ -441,7 +725,14 @@ fn search(docs: &[&Document], call: &Call, scope: &str, head: u64) -> Result<Val
                     .is_some_and(|rows| rows.iter().any(|r| r["commit"] == *v))
             });
         if matches {
-            items.push(summary(doc));
+            let mut item = summary(doc);
+            if let Some(revision) = revision {
+                item["digest"] = revision["digest"].clone();
+                item["revision"] = revision["revision"].clone();
+                item["pin"] = revision["pin"].clone();
+                item["basis"] = revision["basis"].clone();
+            }
+            items.push(item);
             if serde_json::to_vec(&items).map_err(internal)?.len() > BYTES - 2048 {
                 items.pop();
                 if items.is_empty() {
@@ -588,6 +879,14 @@ fn lineage(index: &Index, docs: &[&Document], actor: &SeatActor, call: &Call) ->
 fn sequence(value: &Value) -> Option<u64> {
     value.as_u64().or_else(|| value.as_str()?.parse().ok())
 }
+fn content_history(event: &Envelope) -> Result<Value> {
+    let mut value = event_summary(event).map_err(internal)?;
+    if event.event.source == "artifact/content" {
+        value["stored"] = super::stored::event_provenance(event).map_err(internal)?;
+    }
+    Ok(value)
+}
+
 fn event_summary(event: &Envelope) -> crate::store::Result<Value> {
     let payload = &event.event.payload;
     let mut facts = serde_json::Map::new();
@@ -641,12 +940,16 @@ fn history(
 ) -> Result<Value> {
     let args: History = parse(call)?;
     let doc = resolve(docs, &args.locator)?;
+    entity_history(index, &doc.id, args, scope, head)
+}
+
+fn entity_history(index: &Index, id: &str, args: History, scope: &str, head: u64) -> Result<Value> {
     let limit = limit(args.limit)?;
-    let query = hash(&serde_json::to_vec(&("history", &doc.id, limit)).map_err(internal)?);
+    let query = hash(&serde_json::to_vec(&("history", id, limit)).map_err(internal)?);
     let cursor = args
         .cursor
         .as_deref()
-        .map(|v| decode(v, scope, &query, &doc.id, head))
+        .map(|v| decode(v, scope, &query, id, head))
         .transpose()?;
     let after = cursor.as_ref().map_or(0, |v| v.position);
     let captured = cursor.as_ref().map_or(head, |v| v.head);
@@ -658,13 +961,13 @@ fn history(
     }
     let page = index
         .activity()
-        .entity_page(&doc.id, after, captured, limit)
+        .entity_page(id, after, captured, limit)
         .map_err(|e| fail("integrity_failed", e.to_string()))?;
     let mut items = Vec::new();
     let mut position = after;
     let mut more = page.more;
     for event in &page.events {
-        items.push(event_summary(event).map_err(internal)?);
+        items.push(content_history(event)?);
         if serde_json::to_vec(&items).map_err(internal)?.len() > BYTES - 2048 {
             items.pop();
             more = true;
@@ -677,7 +980,7 @@ fn history(
             version: 1,
             scope: scope.into(),
             query,
-            snapshot: doc.id.clone(),
+            snapshot: id.to_owned(),
             position,
             head: captured,
         })?)
@@ -685,7 +988,7 @@ fn history(
         None
     };
     Ok(
-        json!({"entity":doc.id,"items":items,"next":next,"event_head":captured.to_string(),"complete":next.is_none(),"full_history_audited":false}),
+        json!({"entity":id,"items":items,"next":next,"event_head":captured.to_string(),"complete":next.is_none(),"full_history_audited":false}),
     )
 }
 pub(crate) fn document_signature(doc: &Document) -> Value {

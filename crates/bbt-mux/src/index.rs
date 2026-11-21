@@ -1149,6 +1149,25 @@ impl Index {
             .map_err(|_| Box::new(IndexBusy) as crate::store::Error)?;
         self.write_locked(update, author, guarded, None)
     }
+    pub(crate) fn owns_projection(&self) -> bool {
+        self.writer.is_some()
+    }
+
+    /// Lend the existing projection lease and take the short root lock for
+    /// the authoritative CAS and signed content event.
+    pub(crate) fn with_publication<T>(&self, publish: impl FnOnce() -> Result<T>) -> Result<T> {
+        bbt_rt::assert_not_ui_thread();
+        let _writer = self
+            .writer
+            .as_ref()
+            .ok_or_else(|| Box::new(IndexBusy) as crate::store::Error)?;
+        let number_lock = std::fs::File::open(&self.root)?;
+        number_lock
+            .try_lock()
+            .map_err(|_| Box::new(IndexBusy) as crate::store::Error)?;
+        publish()
+    }
+
     // Inactive import staging uses a provisional number range; the importer
     // checks it again under the active root's short publication lock.
     fn write_locked(
@@ -1633,7 +1652,10 @@ mod tests {
         std::fs::create_dir(root.join("research")).unwrap();
         std::fs::write(root.join("log/activity.jsonl"), "{}\n").unwrap();
         std::fs::write(root.join("research/source.md"), "# Evidence\n").unwrap();
-        let modification = |path: &str| notify::Event::new(notify::EventKind::Modify(notify::event::ModifyKind::Any)).add_path(root.join(path));
+        let modification = |path: &str| {
+            notify::Event::new(notify::EventKind::Modify(notify::event::ModifyKind::Any))
+                .add_path(root.join(path))
+        };
         assert!(!knowledge_event(root, &modification("log/activity.jsonl")));
         assert!(knowledge_event(root, &modification("research/source.md")));
         assert!(knowledge_event(root, &modification("research")));
@@ -1938,9 +1960,6 @@ mod tests {
         assert!(!index.documents.contains_key("large.md"));
         assert_eq!(index.documents["good.md"].body, "edited valid");
     }
-
-
-
 }
 
 #[cfg(test)]

@@ -56,7 +56,9 @@ pub(super) fn texture(device: &wgpu::Device, width: u32, height: u32) -> wgpu::T
 fn pipeline(device: &wgpu::Device, format: wgpu::TextureFormat) -> wgpu::RenderPipeline {
     let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("isolated group composite"),
-        source: wgpu::ShaderSource::Wgsl(include_str!("group.wgsl").into()),
+        source: wgpu::ShaderSource::Wgsl(
+            concat!(include_str!("shapes.wgsl"), include_str!("group.wgsl")).into(),
+        ),
     });
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("sRGB group source-over"),
@@ -133,7 +135,7 @@ impl ChromeRenderer {
         });
         let result = result.and_then(|()| {
             self.composite_with_load(
-                &view,
+                (&view, None),
                 filter,
                 mask,
                 coverage,
@@ -176,7 +178,7 @@ impl ChromeRenderer {
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<()> {
         self.composite_with_load(
-            layer,
+            (layer, None),
             filter,
             mask,
             None,
@@ -194,11 +196,62 @@ impl ChromeRenderer {
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<()> {
         let clear = wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT);
-        self.composite_with_load(layer, filter, None, None, (target, clear), encoder)
+        self.composite_with_load((layer, None), filter, None, None, (target, clear), encoder)
     }
+    /// A native retained picture reuses group storage and source-over on only
+    /// the intersecting physical rectangle. No device-sized scratch or readback.
+    pub fn paint_image_region(
+        &mut self,
+        region: super::ImageRegion,
+        opacity: f32,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+        paint: impl FnOnce(&mut Self, ChromeTarget<'_>, &mut wgpu::CommandEncoder) -> Result<()>,
+    ) -> Result<()> {
+        let [x, y, width, height] = region.pixels;
+        if width == 0
+            || height == 0
+            || width > 4096
+            || height > 4096
+            || u64::from(width) * u64::from(height) > 4_000_000
+            || x.saturating_add(width) > target.width
+            || y.saturating_add(height) > target.height
+        {
+            return Err("image exceeds its visible render budget".into());
+        }
+        let layer = self.take_group_layer(width, height);
+        let view = layer.create_view(&Default::default());
+        let own_target = ChromeTarget {
+            width,
+            height,
+            view: &view,
+            scale: 1.,
+            format: wgpu::TextureFormat::Rgba8Unorm,
+        };
+        let result = self.with_group_layer(|renderer| {
+            super::clear(&view, wgpu::Color::TRANSPARENT, encoder);
+            paint(renderer, own_target, encoder)
+        });
+        let result = result.and_then(|()| {
+            self.composite_with_load(
+                (&view, Some(region)),
+                Filter {
+                    opacity,
+                    saturation: 1.,
+                },
+                None,
+                None,
+                (target, wgpu::LoadOp::Load),
+                encoder,
+            )
+        });
+        self.group_layers.push(layer);
+        result
+    }
+
     fn composite_with_load(
         &mut self,
-        layer: &wgpu::TextureView,
+        (layer, region): (&wgpu::TextureView, Option<super::ImageRegion>),
         filter: Filter,
         mask: Option<LinearAlphaMask>,
         coverage: Option<&super::PreparedPath>,
@@ -209,10 +262,15 @@ impl ChromeRenderer {
         if let Some(mask) = mask {
             mask.validate()?;
         }
-        if layer.texture().size().width != target.width
-            || layer.texture().size().height != target.height
+        let size = layer.texture().size();
+        let origin = region.map_or([0, 0], |crop| [crop.pixels[0], crop.pixels[1]]);
+        if region.is_none() && (size.width != target.width || size.height != target.height) {
+            return Err("group layer size differs from target".into());
+        }
+        if origin[0].saturating_add(size.width) > target.width
+            || origin[1].saturating_add(size.height) > target.height
         {
-            return Err("group layer and target sizes differ".into());
+            return Err("group layer exceeds target bounds".into());
         }
         let coverage = if let Some(path) = coverage {
             let Some(part) = self.text.prepared_path(path)? else {
@@ -239,9 +297,15 @@ impl ChromeRenderer {
             .group_pipelines
             .entry(format)
             .or_insert_with(|| pipeline(device, format));
-        let mut values = [0.; 20];
+        let mut values = [0.; 28];
         values[0] = filter.opacity;
         values[1] = filter.saturation;
+        values[18..20].copy_from_slice(&origin.map(|n| n as f32));
+        if let Some(region) = region {
+            values[10] = 1.;
+            values[20..24].copy_from_slice(&region.clip);
+            values[24..28].copy_from_slice(&region.radii);
+        }
         if let Some(mask) = mask {
             values[2] = 1.;
             values[4..8].copy_from_slice(&[
@@ -310,6 +374,16 @@ impl ChromeRenderer {
         });
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, &bindings, &[]);
+        if region.is_some() {
+            pass.set_viewport(
+                origin[0] as f32,
+                origin[1] as f32,
+                size.width as f32,
+                size.height as f32,
+                0.,
+                1.,
+            );
+        }
         pass.draw(0..3, 0..1);
         Ok(())
     }

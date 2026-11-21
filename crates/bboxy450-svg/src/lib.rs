@@ -9,13 +9,15 @@ mod fonts;
 mod path;
 mod prepare;
 mod render;
-pub use fonts::{Face, FontSet};
+pub use fonts::{Face, FontSet, chart_font_directory};
 pub use path::parse_path;
-pub use prepare::{Scene, prepare};
+pub use prepare::{Scene, prepare, prepare_image};
 pub use render::{Capture, Geometry, Layer, RenderRequest};
 
 use serde::Serialize;
 
+/// Identifies the retained Chrome paint implementation in exported captures.
+pub const RENDERER: &str = "bboxy450-svg/chrome-retained-v1";
 pub const MAX_SVG_BYTES: usize = 16_777_216;
 pub const MAX_XML_NODES: usize = 50_000;
 pub const MAX_DEPTH: usize = 64;

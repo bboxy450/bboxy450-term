@@ -85,6 +85,11 @@ impl Fixture {
                 tool: tool.into(),
                 args,
             },
+            &super::super::stored::Store::new(
+                &self.index,
+                &self.binding.root_id,
+                self._temp.path(),
+            ),
         )
     }
 }
@@ -138,7 +143,8 @@ fn provenance_queries_page_owned_records_and_bind_cursor_to_scope_query_and_snap
                     op_id: Ulid::new(),
                     tool: "provenance_search".into(),
                     args: json!({"query":"own","limit":1,"cursor":cursor})
-                }
+                },
+                &super::super::stored::Store::new(&f.index, &binding.root_id, f._temp.path()),
             )
             .is_err()
         );
@@ -300,7 +306,10 @@ fn provenance_queries_verify_separates_cached_signature_event_integrity_and_trus
     assert_eq!(verified["limits"]["account_key_trust"], "not_checked");
     assert_eq!(verified["limits"]["external_artifact_bytes"], "not_checked");
     assert_eq!(verified["limits"]["historical_chain"], "not_audited");
-    std::sync::Arc::make_mut(&mut f.index.documents).get_mut("notes/0001.md").unwrap().body = "tampered cached bytes".into();
+    std::sync::Arc::make_mut(&mut f.index.documents)
+        .get_mut("notes/0001.md")
+        .unwrap()
+        .body = "tampered cached bytes".into();
     let changed = f.call("provenance_verify", json!({"locator":id})).unwrap();
     assert_eq!(changed["document_signature"]["status"], "invalid");
     assert_eq!(changed["event"]["recorded_state_matches"], false);
@@ -376,8 +385,10 @@ fn provenance_queries_revoked_task_assignment_blocks_old_replay_and_completion_w
     let paths = authority_paths(&f.index, &call, &response).unwrap();
     assert!(retained(&f.index, &f.actor, &f.seat, &call, &response));
     assert!(current_authority(&f.index, &f.actor, &f.seat, &paths));
-    std::sync::Arc::make_mut(&mut f.index.documents).get_mut("notes/0001.md").unwrap().metadata["assignee"] =
-        json!(format!("seat:{}", Ulid(99)));
+    std::sync::Arc::make_mut(&mut f.index.documents)
+        .get_mut("notes/0001.md")
+        .unwrap()
+        .metadata["assignee"] = json!(format!("seat:{}", Ulid(99)));
     assert!(!retained(&f.index, &f.actor, &f.seat, &call, &response));
     assert!(!current_authority(&f.index, &f.actor, &f.seat, &paths));
     assert!(f.call("provenance_get", json!({"locator":id})).is_err());
@@ -397,7 +408,13 @@ fn a_header_signed_in_written_order_verifies_and_still_detects_edits() {
     assert_eq!(document_signature(&sorted_only)["status"], "invalid");
     // An edit to the header or the body still fails.
     let header = text.replacen("title: Storage — decided", "title: Storage — edited", 1);
-    assert_eq!(document_signature(&Document::parse("specs/storage.md", &header))["status"], "invalid");
+    assert_eq!(
+        document_signature(&Document::parse("specs/storage.md", &header))["status"],
+        "invalid"
+    );
     let body = text.replacen("\n---\n", "\n---\nEdited after signing.\n", 1);
-    assert_eq!(document_signature(&Document::parse("specs/storage.md", &body))["status"], "invalid");
+    assert_eq!(
+        document_signature(&Document::parse("specs/storage.md", &body))["status"],
+        "invalid"
+    );
 }

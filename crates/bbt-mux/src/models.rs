@@ -15,6 +15,7 @@ use bboxy450_tlc::build::{action, all, eq, implies, model, ne, no_bad, safe};
 use bboxy450_tlc::{Expr, Model, Response};
 
 /// Every shipped family of this crate.
+mod artifacts;
 mod hook_budget;
 mod managed_workspace;
 mod transport_launch;
@@ -53,6 +54,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
             managed_workspace::broken_managed_workspace_writer_probe(),
             "safety",
         )])
+        .chain(artifacts::cases())
         .collect()
 }
 

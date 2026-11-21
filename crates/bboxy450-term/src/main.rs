@@ -5335,25 +5335,23 @@ impl App {
         let now = Instant::now();
         let latest = self.live_state.as_ref().and_then(|m| {
             // Seats and canvases share one undo: the most recent grace wins.
-            let seat = m.closes.latest(now).map(|seat| {
-                (
-                    seat,
-                    m.closes
-                        .until(seat)
-                        .unwrap_or(now),
-                )
-            });
-            let canvas = m
-                .ui
-                .window
-                .sidebar
-                .swarms
-                .iter()
-                .flat_map(|s| &s.closed)
-                .filter(|c| now < c.until && m.canvas_sources.contains_key(&c.seat))
-                .max_by_key(|c| c.until)
-                .map(|c| (c.seat, c.until));
-            [seat, canvas].into_iter().flatten().max_by_key(|(_, until)| *until)
+            let seat = m
+                .closes
+                .latest(now)
+                .map(|seat| (seat, m.closes.until(seat).unwrap_or(now)));
+            let canvas =
+                m.ui.window
+                    .sidebar
+                    .swarms
+                    .iter()
+                    .flat_map(|s| &s.closed)
+                    .filter(|c| now < c.until && m.canvas_sources.contains_key(&c.seat))
+                    .max_by_key(|c| c.until)
+                    .map(|c| (c.seat, c.until));
+            [seat, canvas]
+                .into_iter()
+                .flatten()
+                .max_by_key(|(_, until)| *until)
         });
         if let Some((seat, _)) = latest {
             self.close_seat(seat, bbt_mux::Ulid::new(), true);
@@ -5972,7 +5970,15 @@ impl App {
                 self.queue(message);
             }
             self.composer_notice();
-            self.document_binding(&state);
+            let artifact_refreshed = self.document_binding(&state)
+                && self
+                    .live_state
+                    .as_ref()
+                    .is_some_and(|old| old.artifact_epoch != state.artifact_epoch)
+                && self.document.artifact_changed();
+            if artifact_refreshed {
+                self.document_layout = None;
+            }
             if let Some(reply) = &state.document_reply
                 && self.document.apply(reply)
             {
@@ -6098,7 +6104,7 @@ impl App {
             // provider selection or revision re-reads the Tasks section.
             self.task_records
                 .knowledge(state.knowledge_roots.as_deref());
-            if root_changed && self.document.open {
+            if root_changed && !artifact_refreshed && self.document.open {
                 self.document.unavailable(
                     "document_source_changed: provider changed; open the record again",
                 );
@@ -8379,6 +8385,11 @@ impl App {
                 .install_document_images(&pane.snapshot.images)?;
         }
         let layouts = self.solve_ui(logical)?;
+        let canvas_rasters = self.canvas_rasters();
+        self.gpu
+            .as_mut()
+            .unwrap()
+            .install_document_images(&canvas_rasters)?;
         self.attention_origins = self.scene.attention_frame_origins(&layouts);
         let bounds = self.pane_bounds.clone();
         self.focus_layout_ready();
@@ -11880,6 +11891,7 @@ mod input_tests {
                 | live::UiMsg::SpawnSpec { .. } => spawns += 1,
                 live::UiMsg::ConsumeSpawn { .. }
                 | live::UiMsg::Scroll { .. }
+                | live::UiMsg::ArtifactImage { .. }
                 | live::UiMsg::DocumentRead { .. }
                 | live::UiMsg::ConsumeDocument { .. } => {}
                 live::UiMsg::CloseCanvas { .. }
@@ -14063,6 +14075,7 @@ mod ctl_ui_key_tests {
             document: markdown.document("notes/doc.md"),
             markdown,
             targets: vec![],
+            follows_artifact: false,
             images: vec![],
         }));
         for generation in [captured.1 + 1, captured.1 + 2] {

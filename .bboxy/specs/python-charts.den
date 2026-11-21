@@ -134,6 +134,10 @@ spec PythonCharts {
 
     No Dream change: EvidenceBundle already binds selected file bytes by digest and ArtifactBinding to a logical path (read_wire.rs:215–250; read.rs:2187–2203); native artifact-ID/revision selection is not currently demonstrated, so that adapter is deferred, with existing eligibility/grants unchanged.
 
+    ### Displayed PNG artifacts
+
+    Operator-authorized amendment, 2026-11-20. Native stores admit `image/png` alongside SVG for inline display. `![[artifact:ID]]` uses the shared bounded PNG decoder: at most 16777216 encoded bytes, sides 1..2047, and 4000000 decoded pixels per host. PNG is write-once at revision 1. The `artifact_update` CAS remains SVG-only. The same image preparation hook serves local Markdown PNGs and stored artifact images in transcripts.
+
     ## Invariants and verification
 
     Finite model: two stored artifact IDs, three revisions, two writers/operation IDs and two image views; bounded immutable source/input digests, durable blobs, custody, latest pointers and view labels. Start empty. Model capture/persist, publish/CAS, retry, read, update, delayed image result, close/reopen, crash/restart and A→B→A. No Vega compiler job state in the app model.

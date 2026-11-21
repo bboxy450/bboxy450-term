@@ -13,6 +13,8 @@ struct Parameters {
     alpha: vec4f,
     coverage:vec4f,
     extent:vec4f,
+    clip:vec4f,
+    radii:vec4f,
 }
 @group(0) @binding(1) var<uniform> parameters: Parameters;
 @group(0) @binding(2) var coverage:texture_2d<f32>;
@@ -22,7 +24,8 @@ struct Parameters {
     return vec4f(p[vertex], 0, 1);
 }
 @fragment fn fs(@builtin(position) position: vec4f) -> @location(0) vec4f {
-    let c = textureLoad(layer, vec2i(position.xy), 0);
+    if parameters.alpha.z > 0. && rounded_sdf(position.xy, parameters.clip, parameters.radii) > 0. {discard;}
+    let c = textureLoad(layer, vec2i(position.xy - parameters.extent.zw), 0);
     let rgb = c.rgb / max(c.a, 0.000001);
     let luma = dot(rgb, vec3f(0.213, 0.715, 0.072));
     let color = clamp(vec3f(luma) + (rgb - vec3f(luma)) * parameters.effects.y, vec3f(0), vec3f(1));

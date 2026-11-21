@@ -9,13 +9,14 @@
 
 pub(crate) mod projection;
 
-pub(crate) mod queries;
-pub(crate) mod author;
 pub(crate) mod artifacts;
+pub(crate) mod author;
 pub(crate) mod detector;
 pub(crate) mod engine;
-pub(crate) mod worker;
 pub(crate) mod git;
+pub(crate) mod queries;
+pub(crate) mod stored;
+pub(crate) mod worker;
 
 #[cfg(test)]
 mod tests {

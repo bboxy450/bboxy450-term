@@ -84,7 +84,9 @@ enum SpawnEffect {
 impl std::fmt::Display for SpawnEffect {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Unknown(error) | Self::Confirmed { error, .. } => std::fmt::Display::fmt(error, f),
+            Self::Unknown(error) | Self::Confirmed { error, .. } => {
+                std::fmt::Display::fmt(error, f)
+            }
         }
     }
 }
@@ -2513,11 +2515,11 @@ impl ViewState {
     }
 }
 
-#[path = "logic/harness_status.rs"]
-mod harness_status;
 #[path = "logic/dream_c1.rs"]
 pub(crate) mod dream_c1;
 mod dream_read;
+#[path = "logic/harness_status.rs"]
+mod harness_status;
 
 struct ViewState {
     dream_activity_latch: Arc<AtomicU64>,
@@ -3688,9 +3690,11 @@ impl Worker {
     fn supervisor_owns(&mut self, id: Ulid, generation: u64) -> Result<bool> {
         const FRESH: std::time::Duration = std::time::Duration::from_secs(1);
         let host = self.host_for_seat(id)?;
-        if self.owned_seats.get(&host).is_some_and(|(at, seats)| {
-            at.elapsed() < FRESH && seats.contains(&(id, generation))
-        }) {
+        if self
+            .owned_seats
+            .get(&host)
+            .is_some_and(|(at, seats)| at.elapsed() < FRESH && seats.contains(&(id, generation)))
+        {
             return Ok(true);
         }
         let Reply::Seats { seats } = self.connections.request(&host, Action::ListOwnedSeats)?
@@ -4411,6 +4415,7 @@ impl Worker {
         } else if call.tool != "orient"
             && !crate::mcp::skills::handles(&call.tool)
             && !crate::mcp::provenance::handles(&call.tool)
+            && !crate::mcp::artifacts::read_tool(&call.tool)
         {
             let root = port.binding.root_id.clone();
             self.queue_workspace_read(PendingWorkspaceRead {
@@ -4427,6 +4432,7 @@ impl Worker {
         let waiting_binding = port.binding.clone();
         let prepared_port = if crate::mcp::skills::handles(&call.tool)
             || crate::mcp::provenance::handles(&call.tool)
+            || crate::mcp::artifacts::read_tool(&call.tool)
         {
             Ok(port)
         } else {
@@ -4524,6 +4530,7 @@ impl Worker {
         };
         let attribution = self.attribution_of(actor.seat_id, actor.process_generation);
         let job = crate::knowledge::seat_reads::Job {
+            runtime: self.config.run_dir.clone(),
             host: port.host,
             index: port.index,
             registry: self.registry.clone(),
@@ -4850,6 +4857,19 @@ impl Worker {
                 .provenance
                 .normalize(seat_actor.seat_id, seat_actor.process_generation, original);
             let reference = normalized.as_deref().unwrap_or(original);
+            if let Ok((id, _)) = crate::provenance::stored::Address::target(reference) {
+                match port.index.activity().artifact_content(id, None) {
+                    Ok(Some(_)) => {
+                        return crate::mcp::error(
+                            call.op_id,
+                            "artifact_custody_conflict",
+                            "Stored IDs cannot acquire reference custody.",
+                        );
+                    }
+                    Ok(None) => {}
+                    Err(error) => return crate::mcp::error(call.op_id, "held", &error.to_string()),
+                }
+            }
             if !self
                 .workspaces
                 .cache
@@ -8142,8 +8162,13 @@ impl Worker {
                     Ok(info)
                 }
                 // The in-process connection uses Io for lost replies too.
-                Err(error) if error.downcast_ref::<crate::Failure>()
-                    .is_some_and(|failure| failure.code != crate::FailureCode::Io) => Err(error),
+                Err(error)
+                    if error
+                        .downcast_ref::<crate::Failure>()
+                        .is_some_and(|failure| failure.code != crate::FailureCode::Io) =>
+                {
+                    Err(error)
+                }
                 Err(error) => Err(SpawnEffect::Unknown(error).into()),
                 Ok(_) => Err(SpawnEffect::Unknown(invalid("spawn reply mismatch")).into()),
             }
@@ -10853,6 +10878,7 @@ impl Worker {
         let root = port.host.root_path().to_owned();
         let swarm = port.binding.swarm.to_string();
         let captures = self.client.captures.clone();
+        let runtime = self.config.run_dir.clone();
         self.canvas_jobs.spawn_blocking_on(
             move || {
                 // Reuse common admission to bind the ID before any file effect.
@@ -10883,6 +10909,19 @@ impl Worker {
                     &actor,
                     task.as_deref(),
                     &call,
+                    &crate::mcp::artifacts::CanvasReads {
+                        store: crate::provenance::stored::Store::new(
+                            &port.index,
+                            &port.binding.root_id,
+                            &runtime,
+                        ),
+                        caller: if actor.class() == crate::registry::Class::Oracle {
+                            None
+                        } else {
+                            actor.seat().map(|seat| seat.seat_id)
+                        },
+                        runtime: &runtime,
+                    },
                 ) {
                     Ok(mut value) => {
                         value["structuredContent"]["knowledge_root_id"] =
@@ -11072,7 +11111,7 @@ impl Worker {
                 )));
                 return;
             }
-        } else {
+        } else if method != "artifact_image" {
             let root = port.binding.root_id.clone();
             self.queue_workspace_read(PendingWorkspaceRead {
                 binding: port.binding,
@@ -11083,7 +11122,13 @@ impl Worker {
             }
             return;
         }
-        let port = match self.scan_port(&port.binding) {
+        let native_image = method == "artifact_image";
+        let binding = port.binding.clone();
+        let port = match if native_image {
+            Ok(port)
+        } else {
+            self.scan_port(&binding)
+        } {
             Ok(port) => port,
             Err(error) => {
                 if error
@@ -11093,7 +11138,7 @@ impl Worker {
                     })
                 {
                     self.queue_workspace_read(PendingWorkspaceRead {
-                        binding: port.binding,
+                        binding,
                         read: WorkspaceRead::Knowledge(method, args, scope, reply),
                     });
                 } else {
@@ -11122,6 +11167,7 @@ impl Worker {
             return;
         };
         let registry = self.registry.clone();
+        let runtime = self.config.run_dir.clone();
         #[cfg(test)]
         let fixture = self.knowledge_fixture.clone();
         self.gui_knowledge_jobs.spawn_blocking_on(
@@ -11132,12 +11178,34 @@ impl Worker {
                         crate::knowledge::read(source, &method, args.clone())
                     })
                 };
-                #[cfg(test)]
-                let result = fixture.map_or_else(read, |source| {
-                    crate::knowledge::read(source.as_ref(), &method, args.clone())
-                });
-                #[cfg(not(test))]
-                let result = read();
+                let result = if native_image {
+                    let store = crate::provenance::stored::Store::new(
+                        &port.index,
+                        &port.binding.root_id,
+                        &runtime,
+                    );
+                    let value = (|| -> Result<_> {
+                        let args: crate::mcp::artifacts::Read =
+                            serde_json::from_value(args.clone())?;
+                        let found = store.descriptor(args.id, args.revision, None)?;
+                        Ok(serde_json::to_value(found)?)
+                    })();
+                    value.map_err(|error| {
+                        crate::knowledge::data_source::CommandError::new(
+                            "artifact_unavailable",
+                            error.to_string(),
+                        )
+                    })
+                } else {
+                    #[cfg(test)]
+                    {
+                        fixture.map_or_else(read, |source| {
+                            crate::knowledge::read(source.as_ref(), &method, args.clone())
+                        })
+                    }
+                    #[cfg(not(test))]
+                    read()
+                };
                 let result = result.map(|mut value| {
                     if value.is_object() {
                         value["knowledge_root_id"] = serde_json::json!(port.binding.root_id);
@@ -11784,7 +11852,24 @@ impl Worker {
                             .unwrap_or(value);
                         let _ = reply.send(projected);
                     }
-                    Command::ControlCall(id, generation, call, attribution, expected, reply) => {
+                    Command::ControlCall(
+                        id,
+                        generation,
+                        call,
+                        attribution,
+                        mut expected,
+                        reply,
+                    ) => {
+                        let artifact_python = if crate::mcp::artifacts::mutation(&call.tool) {
+                            expected.as_mut().map(|context| {
+                                let offer = context
+                                    .as_object_mut()
+                                    .and_then(|obj| obj.remove("artifact_source"));
+                                (context.clone(), offer)
+                            })
+                        } else {
+                            None
+                        };
                         // A preflight is insufficient: the scoped guard also
                         // checks the actual provider port captured below.
                         if let Some(expected) = &expected
@@ -11855,6 +11940,14 @@ impl Worker {
                             self.start_seat_task_import(id, generation, call, reply);
                         } else if crate::knowledge::seat_reads::handles(&call) {
                             self.start_knowledge_read(id, generation, call, reply);
+                        } else if crate::mcp::artifacts::mutation(&call.tool) {
+                            self.start_artifact_effect(
+                                id,
+                                generation,
+                                call,
+                                artifact_python,
+                                reply,
+                            );
                         } else if matches!(
                             call.tool.as_str(),
                             "knowledge_write" | "knowledge_commit"
@@ -14302,7 +14395,6 @@ fn harness_profiles() -> std::result::Result<serde_json::Value, String> {
         });
     Ok(json!({ "profiles": out, "default": default, "directory": dir }))
 }
-
 
 // Copyright 2026 Boxy (bboxy450) and contributors.
 // SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft

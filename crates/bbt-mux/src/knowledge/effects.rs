@@ -17,6 +17,7 @@ use serde_json::Value;
 use ulid::Ulid;
 
 pub(crate) enum Prepared {
+    Artifact(Box<mcp::artifacts::Prepared>),
     Record {
         request: Box<d::WriteRequest>,
         report_task: Option<d::RecordRef>,
@@ -370,6 +371,9 @@ fn apply_inner(
     let mut statuses = Vec::new();
     let result = (|| -> d::Result<Value> {
         match prepared {
+            Prepared::Artifact(_) => {
+                unreachable!("native artifact apply uses captured root custody")
+            }
             Prepared::Record {
                 request,
                 report_task,

@@ -23,8 +23,27 @@ use std::{
 pub enum Read {
     Resolve(String),
     Fetch(d::RecordRef),
+    Artifact {
+        id: Ulid,
+        revision: Option<u64>,
+        preview: bool,
+    },
 }
 impl Read {
+    fn target(target: String, preview: bool) -> Self {
+        if let Some((id, revision)) = target
+            .strip_prefix("artifact:")
+            .and_then(bboxy450_canvas::artifact_address)
+        {
+            Self::Artifact {
+                id,
+                revision,
+                preview,
+            }
+        } else {
+            Self::Resolve(target)
+        }
+    }
     pub fn action(&self, id: Ulid) -> bbt_proto::GuiAction {
         self.action_scoped(id, None)
     }
@@ -36,6 +55,10 @@ impl Read {
         let (method, args) = match self {
             Self::Resolve(locator) => ("resolve", serde_json::json!({"locator":locator})),
             Self::Fetch(reference) => ("fetch", serde_json::json!({"ref":reference})),
+            Self::Artifact { id, revision, .. } => (
+                "artifact_image",
+                serde_json::json!({"id":id,"revision":revision}),
+            ),
         };
         bbt_proto::GuiAction::Knowledge {
             id,
@@ -52,6 +75,7 @@ pub struct Prepared {
     pub markdown: bbt_doc::Markdown,
     pub document: Document,
     pub targets: Vec<String>,
+    pub follows_artifact: bool,
     pub images: Vec<Arc<bbt_render::chrome::icons::Image>>,
 }
 /// Flat router evidence is retained before portable provider DTO parsing.
@@ -115,7 +139,7 @@ pub struct Reply {
     pub id: Ulid,
     pub response: Response,
 }
-fn decode(read: &Read, value: d::Result<Value>, root: Option<&std::path::Path>) -> Response {
+fn decode(read: &Read, value: d::Result<Value>, host: Option<&ImageHost>) -> Response {
     let result = (|| {
         let value = value?;
         if serde_json::to_vec(&d::Result::Ok(&value))
@@ -132,6 +156,11 @@ fn decode(read: &Read, value: d::Result<Value>, root: Option<&std::path::Path>) 
             Read::Resolve(_) => serde_json::from_value(value)
                 .map(Response::Resolved)
                 .map_err(|e| d::CommandError::new("invalid_provider_result", e.to_string())),
+            Read::Artifact {
+                id,
+                revision,
+                preview,
+            } => artifact_preview(value, *id, *revision, *preview, host),
             Read::Fetch(expected) => {
                 let etag = value.get("etag").and_then(Value::as_str).map(str::to_owned);
                 let record: d::Record = serde_json::from_value(value)
@@ -147,7 +176,8 @@ fn decode(read: &Read, value: d::Result<Value>, root: Option<&std::path::Path>) 
                     .set_metadata(&record.frontmatter)
                     .map_err(|e| d::CommandError::new("invalid_frontmatter", e.to_string()))?;
                 markdown.frontmatter.error = record.parse_error;
-                let images = root.map_or_else(Vec::new,|root| images::load(&mut markdown,root));
+                let (images, follows_artifact) =
+                    host.map_or_else(Default::default, |host| host.load(&mut markdown));
                 let mut document = markdown.document(&record.reference.path);
                 document.prov.digest = record.reference.digest.clone();
                 if let Some(label) = record.frontmatter["authorship"]["issued_by"]
@@ -169,6 +199,7 @@ fn decode(read: &Read, value: d::Result<Value>, root: Option<&std::path::Path>) 
                     markdown,
                     document,
                     targets,
+                    follows_artifact,
                     images,
                 })))
             }
@@ -185,18 +216,117 @@ fn decode(read: &Read, value: d::Result<Value>, root: Option<&std::path::Path>) 
     })
 }
 
+fn artifact_preview(
+    value: Value,
+    id: Ulid,
+    revision: Option<u64>,
+    preview: bool,
+    host: Option<&ImageHost>,
+) -> d::Result<Response> {
+    use bbt_mux::artifact_images::{Images, Resolved};
+    let invalid = |message: &str| d::CommandError::new("invalid_provider_result", message);
+    let found: Resolved =
+        serde_json::from_value(value).map_err(|error| invalid(&error.to_string()))?;
+    if found.id != id || revision.is_some_and(|expected| found.revision != expected) {
+        return Err(invalid(
+            "artifact address disagrees with the resolved revision",
+        ));
+    }
+    let path = found.reference();
+    let reference = d::RecordRef {
+        id: id.to_string(),
+        number: None,
+        slug: path.clone(),
+        path: path.clone(),
+        digest: found.digest.clone(),
+        external_id: None,
+        updated_at: None,
+    };
+    if !preview {
+        return Ok(Response::Resolved(reference));
+    }
+    let (port, _) = host
+        .and_then(|host| host.artifacts.as_ref())
+        .ok_or_else(|| invalid("artifact preview requires a bound workspace"))?;
+    let mut body = format!("# {path}\n\n{} · {} bytes\n", found.media_type, found.bytes);
+    let mut images = Images::default();
+    let image = matches!(found.media_type.as_str(), "image/png" | "image/svg+xml");
+    if image {
+        body.push_str(&format!("\n![[{path}]]\n"));
+    }
+    let mut markdown = bbt_doc::parse(&body);
+    if image {
+        images::load_targets(&mut markdown, |target| {
+            images.prepare(target, |remaining| port.prepare(&found, remaining))
+        });
+    } else if found.bytes <= d::MAX_PAGE_BYTES
+        && (found.media_type.starts_with("text/") || found.media_type == "application/json")
+    {
+        let bytes = port
+            .bytes(&found)
+            .map_err(|error| d::CommandError::new("artifact_unavailable", error.to_string()))?;
+        if let Ok(code) = String::from_utf8(bytes) {
+            let end = markdown.source.len();
+            markdown.blocks.push(bbt_doc::Block {
+                source: end..end,
+                kind: bbt_doc::BlockKind::Code {
+                    info: String::new(),
+                    text: code,
+                },
+            });
+        }
+    }
+    let mut document = markdown.document(&path);
+    document.prov.digest = found.digest;
+    Ok(Response::Fetched(Arc::new(Prepared {
+        reference,
+        etag: None,
+        markdown,
+        document,
+        targets: Vec::new(),
+        follows_artifact: revision.is_none(),
+        images: images.into_rasters(),
+    })))
+}
+
+#[derive(Clone)]
+struct ImageHost {
+    directory: std::path::PathBuf,
+    artifacts: Option<(Arc<images::Port>, bbt_proto::gui::SwarmScope)>,
+}
+
+impl ImageHost {
+    fn load(
+        &self,
+        markdown: &mut bbt_doc::Markdown,
+    ) -> (Vec<Arc<bbt_render::chrome::icons::Image>>, bool) {
+        images::load_for_host(
+            markdown,
+            &self.directory,
+            self.artifacts
+                .as_ref()
+                .map(|(port, scope)| (port.as_ref(), *scope)),
+        )
+    }
+}
+
 /// One result is retained until consumed, even if Latest replaces a frame.
 #[derive(Default)]
 pub struct Reader {
-    pending: Option<(Ulid, Read, Option<bbt_proto::gui::SwarmScope>, Option<std::path::PathBuf>)>,
+    pending: Option<(
+        Ulid,
+        Read,
+        Option<bbt_proto::gui::SwarmScope>,
+        Option<ImageHost>,
+    )>,
     outstanding: BTreeSet<Ulid>,
-    image_root: Option<std::path::PathBuf>,
+    image_host: Option<ImageHost>,
 }
 pub struct Work {
     id: Ulid,
     read: Read,
     value: d::Result<Value>,
-    image_root: Option<std::path::PathBuf>,
+    image_host: Option<ImageHost>,
     scope: Option<bbt_proto::gui::SwarmScope>,
 }
 impl Work {
@@ -211,10 +341,10 @@ impl Work {
         let response = match source {
             Some(Ok(source)) => Response::Bound {
                 source,
-                response: Box::new(decode(&self.read, self.value, self.image_root.as_deref())),
+                response: Box::new(decode(&self.read, self.value, self.image_host.as_ref())),
             },
             Some(Err(reason)) => Response::Failed(reason),
-            None => decode(&self.read, self.value, self.image_root.as_deref()),
+            None => decode(&self.read, self.value, self.image_host.as_ref()),
         };
         Arc::new(Reply {
             id: self.id,
@@ -223,7 +353,20 @@ impl Work {
     }
 }
 impl Reader {
-    pub fn image_root(&mut self, root: std::path::PathBuf) { self.image_root=Some(root); }
+    pub fn image_root(&mut self, directory: std::path::PathBuf) {
+        self.image_host(directory, None);
+    }
+
+    pub fn image_host(
+        &mut self,
+        directory: std::path::PathBuf,
+        artifacts: Option<(Arc<images::Port>, bbt_proto::gui::SwarmScope)>,
+    ) {
+        self.image_host = Some(ImageHost {
+            directory,
+            artifacts,
+        });
+    }
     pub fn admit(&mut self, id: Ulid, read: Read) -> Option<bbt_proto::GuiAction> {
         self.admit_scoped(id, read, None)
     }
@@ -254,7 +397,7 @@ impl Reader {
         }
         let action = read.action_scoped(id, scope);
         self.outstanding.insert(id);
-        self.pending = Some((id, read, scope, self.image_root.take()));
+        self.pending = Some((id, read, scope, self.image_host.take()));
         Ok(action)
     }
     pub fn response(&mut self, id: Ulid, value: d::Result<Value>) -> Option<Work> {
@@ -262,12 +405,12 @@ impl Reader {
         if self.pending.as_ref()?.0 != id {
             return None;
         }
-        let (_, read, scope, image_root) = self.pending.take()?;
+        let (_, read, scope, image_host) = self.pending.take()?;
         Some(Work {
             id,
             read,
             value,
-            image_root,
+            image_host,
             scope,
         })
     }
@@ -340,7 +483,23 @@ impl Host {
         self.scroll = Controller::default();
         self.queued.clear();
         self.queued
-            .push_back((Read::Resolve(target), Purpose::Open(self.epoch)));
+            .push_back((Read::target(target, true), Purpose::Open(self.epoch)));
+    }
+    pub fn artifact_changed(&mut self) -> bool {
+        if !self.open
+            || self.scope.is_none()
+            || self.error.is_some()
+            || self
+                .prepared
+                .as_ref()
+                .is_some_and(|prepared| !prepared.follows_artifact)
+        {
+            return false;
+        }
+        let scroll = std::mem::take(&mut self.scroll);
+        self.show_scoped(self.target.clone(), self.scope);
+        self.scroll = scroll;
+        true
     }
     pub fn follow(&mut self, target: String) {
         let source = self.source.clone();
@@ -471,14 +630,14 @@ impl Host {
             (Purpose::Open(e), Response::Resolved(reference)) => self
                 .queued
                 .push_front((Read::Fetch(reference.clone()), Purpose::Fetch(e))),
-            (Purpose::Fetch(e), Response::Fetched(prepared)) => {
+            (Purpose::Fetch(e) | Purpose::Open(e), Response::Fetched(prepared)) => {
                 let targets = &prepared.targets;
                 if targets.len() > 128 {
                     self.notice=Some("link_resolution_limit: first 128 links resolved; remaining links resolve when opened".into());
                 }
                 for target in targets.iter().take(128) {
                     self.queued.push_back((
-                        Read::Resolve(target.clone()),
+                        Read::target(target.clone(), false),
                         Purpose::Probe(e, target.clone()),
                     ));
                 }

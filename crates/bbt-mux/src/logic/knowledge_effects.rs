@@ -40,6 +40,7 @@ pub(super) fn release_claim(
     }
 }
 
+mod artifact;
 pub(super) mod queue;
 
 pub(super) struct PendingEffect {
@@ -118,6 +119,7 @@ impl EffectReply {
     }
 }
 pub(super) struct Context {
+    artifact: Option<artifact::Admission>,
     port: WorkspacePort,
     claim: std::sync::Weak<crate::provenance::projection::WriterLease>,
     revision: u64,
@@ -168,6 +170,37 @@ impl Worker {
         })();
         self.start_document_effect(prepared, call, EffectReply::Seat(reply));
     }
+    pub(super) fn start_artifact_effect(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        call: Call,
+        python: Option<(Value, Option<Value>)>,
+        reply: oneshot::Sender<Result<Value>>,
+    ) {
+        let prepared = (|| -> Result<_> {
+            let (actor, _) = self.control_actor(id, generation)?;
+            let port = self.seat_workspace(&actor)?;
+            let control = self.control_journal(id)?;
+            let journal = self.root_journal(&control, &port);
+            let guard = python.map(|(expected, offer)| artifact::Guard { expected, offer });
+            let artifact = self.artifact_admission(&actor, &port, guard)?;
+            Ok(((Actor::from(&actor), port, journal), artifact))
+        })();
+        match prepared {
+            Ok((prepared, artifact)) => self.dispatch_document_effect(
+                Ok(prepared),
+                call,
+                EffectReply::Seat(reply),
+                false,
+                Some(artifact),
+            ),
+            Err(reason) => {
+                let _ = reply.send(Ok(mcp::artifacts::failure(call.op_id, reason.as_ref())));
+            }
+        }
+    }
+
     pub(super) fn start_operator_effect(
         &mut self,
         scope: Option<bbt_proto::gui::SwarmScope>,
@@ -200,7 +233,7 @@ impl Worker {
         call: Call,
         reply: EffectReply,
     ) {
-        self.dispatch_document_effect(prepared, call, reply, false);
+        self.dispatch_document_effect(prepared, call, reply, false, None);
     }
     fn dispatch_document_effect(
         &mut self,
@@ -208,6 +241,7 @@ impl Worker {
         call: Call,
         reply: EffectReply,
         queued: bool,
+        mut artifact: Option<artifact::Admission>,
     ) {
         if reply.closed() {
             return;
@@ -222,7 +256,9 @@ impl Worker {
         let admitted = (|| -> Result<_> {
             call.validate()?;
             // A replay must not be redispatched or hidden behind a capacity refusal.
-            if let Some(value) = journal.retained(&actor, &call)? {
+            if let Some(value) = journal.retained(&actor, &call)?
+                && (artifact.is_none() || value["structuredContent"]["status"] != "unknown")
+            {
                 return Ok(Err(Some(value)));
             }
             self.effect_roots
@@ -242,7 +278,12 @@ impl Worker {
             port.index = Arc::new((*port.index).clone().owned_projection(writer)?);
             let revision = port.host.revision()?;
             let (value, fresh) = journal.admit(&actor, &call)?;
-            if !fresh {
+            if let Some(admission) = artifact.as_mut() {
+                if !fresh && value["structuredContent"]["status"] != "unknown" {
+                    return Ok(Err(Some(value)));
+                }
+                admission.fresh = fresh;
+            } else if !fresh {
                 return Ok(Err(Some(value)));
             }
             Ok(Ok((port, revision, claim)))
@@ -251,6 +292,17 @@ impl Worker {
             Ok(Ok(admitted)) => admitted,
             Ok(Err(Some(value))) => {
                 reply.send(&call, Ok(value));
+                return;
+            }
+            Ok(Err(None)) if artifact.is_some() => {
+                reply.send(
+                    &call,
+                    Ok(mcp::error(
+                        call.op_id,
+                        "provider_busy",
+                        "The canonical publication owner is busy; no artifact effect admitted.",
+                    )),
+                );
                 return;
             }
             Ok(Err(None)) => {
@@ -262,7 +314,8 @@ impl Worker {
                     .downcast_ref::<crate::knowledge::workspaces::Error>()
                     .is_some_and(|e| {
                         matches!(e, crate::knowledge::workspaces::Error::Pending(_))
-                    }) =>
+                    })
+                    && artifact.is_none() =>
             {
                 self.queue_document_effect((actor, port, journal), call, reply, queued);
                 return;
@@ -279,6 +332,7 @@ impl Worker {
             _ => None,
         };
         let context = Context {
+            artifact,
             port,
             claim,
             revision,
@@ -289,9 +343,13 @@ impl Worker {
             attribution,
         };
         let registry = self.registry.clone();
+        let runtime = self.handle.clone();
         self.effect_jobs.spawn_blocking_on(
             move || {
                 let result = io(context.attribution.clone(), || {
+                    if let Some(admission) = &context.artifact {
+                        return admission.prepare(&context, &runtime);
+                    }
                     let source = context.port.host.source_at(
                         &context.port.index,
                         &registry,
@@ -360,11 +418,16 @@ impl Worker {
                         .map_err(|e| invalid(e.to_string()))?;
                     Ok((actor, port, journal))
                 });
-                self.dispatch_document_effect(prepared, pending.call, pending.reply, true);
+                self.dispatch_document_effect(prepared, pending.call, pending.reply, true, None);
             }
         }
     }
     fn effect_current(&mut self, context: &Context) -> Result<()> {
+        if let Some(guard) = context.artifact.as_ref().and_then(|a| a.guard.as_ref())
+            && let Some(actor) = context.actor.seat()
+        {
+            self.validate_python_context(actor.seat_id, actor.process_generation, &guard.expected)?;
+        }
         if let EffectReply::SeatControl {
             seat, generation, ..
         } = &context.reply
@@ -408,6 +471,7 @@ impl Worker {
         let value = context
             .journal
             .complete(&context.actor, &context.call, value);
+        drop(context.port);
         context.reply.send(&context.call, value);
     }
     pub(super) fn poll_document_effects(&mut self) {
@@ -478,6 +542,28 @@ impl Worker {
                             continue;
                         }
                     };
+                    let observer = (|| -> Result<_> {
+                        if matches!(&prepared, Prepared::Artifact(plan) if plan.source.is_some()) {
+                            let key = self
+                                .identity
+                                .bus_signer()?
+                                .ok_or_else(|| invalid("host observer signing unavailable"))?;
+                            return Ok(Some((self.identity.status()?, key)));
+                        }
+                        Ok(None)
+                    })();
+                    let observer = match observer {
+                        Ok(observer) => observer,
+                        Err(error) => {
+                            let value = mcp::error(
+                                context.call.op_id,
+                                "execution_source_unavailable",
+                                &error.to_string(),
+                            );
+                            self.finish_document_effect(context, value);
+                            continue;
+                        }
+                    };
                     let registry = self.registry.clone();
                     self.effect_jobs.spawn_blocking_on(
                         move || {
@@ -512,6 +598,20 @@ impl Worker {
                                     }
                                     Actor::OperatorLocal { .. } => unreachable!(),
                                 };
+                                if let Prepared::Artifact(plan) = &prepared {
+                                    return Ok(context
+                                        .artifact
+                                        .as_ref()
+                                        .expect("artifact context")
+                                        .apply(
+                                            &context.port,
+                                            context.actor.seat().expect("seat author"),
+                                            &context.call,
+                                            plan,
+                                            &author,
+                                            observer,
+                                        ));
+                                }
                                 let source = context.port.host.source_at(
                                     &context.port.index,
                                     &registry,

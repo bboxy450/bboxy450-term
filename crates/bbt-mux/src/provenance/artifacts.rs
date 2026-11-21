@@ -121,8 +121,19 @@ pub(crate) fn materialize(index: &Index, envelope: &Envelope, change: &Change) -
     let old = index.current(&path)?;
     let mut metadata=old.as_ref().map(|d|d.metadata.clone()).unwrap_or_else(||json!({
         "id":change.artifact_id,"type":"artifact","kind":file_kind(&change.reference),"ref":change.reference,
-        "claimed":false,"produced_by":null,"grade":"inferred","for":[],"derived_from":[],"aliases":[],"history":[]
+        "custody":"reference","claimed":false,"produced_by":null,"grade":"inferred","for":[],"derived_from":[],"aliases":[],"history":[]
     }));
+    if metadata["custody"] == "stored"
+        || index
+            .activity()
+            .artifact_content(change.artifact_id, None)?
+            .is_some()
+    {
+        return Err(invalid(
+            "artifact_custody_conflict: watcher cannot observe a stored ID",
+        ));
+    }
+    metadata["custody"] = json!("reference");
     if metadata["id"] != json!(change.artifact_id) || metadata["type"] != "artifact" {
         return Err(invalid(
             "artifact record identity conflicts with observation",
@@ -213,11 +224,29 @@ pub(crate) fn reconcile_claim(
         return Err("artifact reference resolves to multiple records".into());
     }
     let old_op_id = first.metadata["id"].clone();
+    let requested_id: Ulid =
+        serde_json::from_value(old_op_id.clone()).map_err(|e| e.to_string())?;
+    if index
+        .activity()
+        .artifact_content(requested_id, None)
+        .map_err(|e| e.to_string())?
+        .is_some()
+    {
+        return Err(
+            "artifact_custody_conflict: stored IDs cannot acquire reference custody".into(),
+        );
+    }
+    first.metadata["custody"] = json!("reference");
     if let Some(existing) = matches.first() {
         let current = index
             .current(&existing.path)
             .map_err(|e| e.to_string())?
             .ok_or("artifact record disappeared")?;
+        if current.metadata["custody"] == "stored" {
+            return Err(
+                "artifact_custody_conflict: stored IDs cannot acquire reference custody".into(),
+            );
+        }
         if current.metadata["claimed"] == true
             && current.metadata["produced_by"] != format!("seat:{}", actor.seat_id)
         {
@@ -235,6 +264,7 @@ pub(crate) fn reconcile_claim(
         }
         let task_links = first.metadata["for"].clone();
         let mut metadata = current.metadata.clone();
+        metadata["custody"] = json!("reference");
         metadata["claimed"] = json!(true);
         metadata["produced_by"] = json!(format!("seat:{}", actor.seat_id));
         metadata["grade"] = json!("reported");

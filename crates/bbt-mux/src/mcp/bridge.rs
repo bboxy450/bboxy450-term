@@ -327,9 +327,14 @@ impl Bridge {
                         .as_str()
                         .filter(|uri| !uri.is_empty() && uri.len() <= super::skills::MAX_URI_BYTES)
                     else {
-                        return Some(rpc_error(id, -32602, "A bounded skill URI is required"));
+                        return Some(rpc_error(id, -32602, "A bounded resource URI is required"));
                     };
-                    ("skill_read", json!({"uri":uri}))
+                    let tool = if super::artifacts::resource_uri(uri) {
+                        "artifact_resource_read"
+                    } else {
+                        "skill_read"
+                    };
+                    (tool, json!({"uri":uri}))
                 } else {
                     ("skill_list", json!({}))
                 };
@@ -347,7 +352,7 @@ impl Bridge {
                         let mut error = rpc_error(
                             id,
                             -32002,
-                            "Skill resource is unavailable for the current seat and workspace",
+                            "Resource is unavailable for the current seat and workspace",
                         );
                         error["error"]["data"] = reply["structuredContent"].clone();
                         return Some(error);
@@ -360,6 +365,8 @@ impl Bridge {
                                 "_meta":{"bboxy450/skill":skill}
                             })).collect::<Vec<_>>();
                             Ok(json!({"resources":resources}))
+                        } else if tool == "artifact_resource_read" {
+                            Ok(json!({"contents":data["contents"]}))
                         } else {
                             let skill = &data["skill"];
                             Ok(
@@ -419,7 +426,9 @@ impl Bridge {
                 let intent = super::take_intent(&mut args);
                 // The operation ID is retry metadata, not a tool argument and
                 // must not make an otherwise bounded retry exceed MAX_ARGS.
-                if !serde_json::to_vec(&args).is_ok_and(|b| b.len() <= super::MAX_ARGS) {
+                if !serde_json::to_vec(&args)
+                    .is_ok_and(|b| b.len() <= super::artifacts::argument_limit(tool))
+                {
                     return Some(rpc_error(id, -32602, "Invalid or oversized arguments"));
                 }
                 let call = Call {

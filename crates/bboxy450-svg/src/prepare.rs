@@ -939,12 +939,38 @@ fn gradient(n: Node<'_, '_>) -> Result<Paint> {
 }
 
 pub fn prepare(svg: &[u8], fonts: Option<&FontSet>) -> std::result::Result<Scene, Vec<Diagnostic>> {
+    prepare_bounded(svg, fonts, MAX_PNG_PIXELS, false)
+}
+
+/// Stored images use the same grammar, a positive intrinsic viewport under
+/// 2048 logical pixels per side and the remainder of the host PNG budget.
+pub fn prepare_image(svg: &[u8], remaining_png_pixels: u64) -> Result<Scene> {
+    prepare_bounded(
+        svg,
+        Some(FontSet::bundled()?),
+        remaining_png_pixels.min(MAX_PNG_PIXELS),
+        true,
+    )
+    .map_err(|diagnostics| {
+        diagnostics
+            .into_iter()
+            .next()
+            .expect("refusal has a reason")
+    })
+}
+
+fn prepare_bounded(
+    svg: &[u8],
+    fonts: Option<&FontSet>,
+    png_pixels: u64,
+    image: bool,
+) -> std::result::Result<Scene, Vec<Diagnostic>> {
     let doc = read_svg(svg).map_err(|e| vec![e])?;
     let diagnostics = audit(&doc);
     if !diagnostics.is_empty() {
         return Err(diagnostics);
     }
-    prepare_inner(&doc, fonts).map_err(|e| vec![e])
+    prepare_inner(&doc, fonts, png_pixels, image).map_err(|e| vec![e])
 }
 fn read_svg(svg: &[u8]) -> Result<Document<'_>> {
     if svg.len() > MAX_SVG_BYTES {
@@ -979,7 +1005,12 @@ fn read_svg(svg: &[u8]) -> Result<Document<'_>> {
     }
     Ok(doc)
 }
-fn prepare_inner(doc: &Document<'_>, fonts: Option<&FontSet>) -> Result<Scene> {
+fn prepare_inner(
+    doc: &Document<'_>,
+    fonts: Option<&FontSet>,
+    png_pixels: u64,
+    image: bool,
+) -> Result<Scene> {
     let root = doc.root_element();
     let has_text = doc.descendants().any(|n| n.has_tag_name((SVG, "text")));
     if let Some(fonts) = fonts {
@@ -1006,6 +1037,12 @@ fn prepare_inner(doc: &Document<'_>, fonts: Option<&FontSet>) -> Result<Scene> {
     ];
     if viewport.iter().any(|v| *v <= 0.) {
         return Err(refused("viewport", "nonpositive root viewport"));
+    }
+    if image && viewport.iter().any(|side| *side >= 2048.) {
+        return Err(refused(
+            "viewport",
+            "stored image sides must be under 2048 logical pixels",
+        ));
     }
     let mut ids = HashMap::new();
     let mut global = Style::new();
@@ -1063,7 +1100,7 @@ fn prepare_inner(doc: &Document<'_>, fonts: Option<&FontSet>) -> Result<Scene> {
                 if decoded.len() == MAX_PNGS {
                     return Err(refused("png_distinct", "too many distinct PNGs"));
                 }
-                let image = bbt_render::image::decode_png(&bytes, MAX_PNG_PIXELS - decoded_pixels)
+                let image = bbt_render::image::decode_png(&bytes, png_pixels - decoded_pixels)
                     .map_err(|e| refused("png", e.to_string()))?;
                 decoded_pixels += u64::from(image.width) * u64::from(image.height);
                 let image = Arc::new(image);

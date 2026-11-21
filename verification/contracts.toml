@@ -2028,3 +2028,37 @@ implementation_tests = ["crates/bboxy450-harness/tests/acp_agent.rs", "crates/bb
 assumptions = "One item, one fixed operation per desktop, phone and decision model, one reconnect and at most one dropped response per operation. The harness actor owns the atomic first-settlement step. Reconnect, answer/retry admission and delivery are weakly fair when enabled. Generation fencing, scope admission, wire limits, retry timing and authentication remain API coverage. Push delivery is outside M1."
 property = "Exactly one answer eventually applies, and every contender eventually sees applied or already_answered. Dropping, duplicating or replaying a response never applies another answer. Removing the already-answered guard lets two distinct operations apply and must fail safety."
 checks = ["make test-formal", "make test"]
+
+
+[[contract]]
+name = "ArtifactPublication"
+title = "Canonical stored artifact revision and evidence custody"
+models = ["ArtifactPublication", "BrokenArtifactPublicationOwner", "BrokenArtifactPublicationCas", "BrokenArtifactPublicationDurability", "BrokenArtifactPublicationBinding", "BrokenArtifactPublicationCustody", "BrokenArtifactPublicationImmutable"]
+controls = [{ name = "BrokenArtifactPublicationOwner", expected = "safety" }, { name = "BrokenArtifactPublicationCas", expected = "safety" }, { name = "BrokenArtifactPublicationDurability", expected = "safety" }, { name = "BrokenArtifactPublicationBinding", expected = "safety" }, { name = "BrokenArtifactPublicationCustody", expected = "safety" }, { name = "BrokenArtifactPublicationImmutable", expected = "safety" }]
+sources = ["crates/bbt-mux/src/models/artifacts.rs", "crates/bbt-mux/src/provenance/stored.rs", "crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/mcp/artifact_source.rs"]
+implementation_tests = ["crates/bbt-mux/src/provenance/stored/tests.rs", "crates/bbt-mux/tests/mcp/artifacts.rs", "crates/bbt-mux/tests/mcp/python_execution.rs"]
+property = "A canonical writer accepts one current expected SVG revision at a time. The signed content event follows durable Blob bytes and checked source evidence. Revision numbers stay dense, source evidence stays at revision one, and a reference claim cannot later publish stored bytes under the same ID."
+assumptions = "One root, two writers, one displayed image up to revision three, one observed source, bounded bytes and one optional reference claim. The model abstracts durable evidence to bits and separates ownership, staging and signed publication. Kernel ownership, real signatures, typed Python dispatch, actual JSON and SVG and persistence are implementation witnesses."
+checks = ["make test-formal", "make test", "make test-chart-artifacts"]
+
+[[contract]]
+name = "ArtifactRecovery"
+title = "Durable original operation and byte recovery"
+models = ["ArtifactRecovery", "BrokenArtifactRecoveryDuplicate", "BrokenArtifactRecoveryRereadStaging", "BrokenArtifactRecoveryChangedArguments"]
+controls = [{ name = "BrokenArtifactRecoveryDuplicate", expected = "safety" }, { name = "BrokenArtifactRecoveryRereadStaging", expected = "safety" }, { name = "BrokenArtifactRecoveryChangedArguments", expected = "safety" }]
+sources = ["crates/bbt-mux/src/models/artifacts.rs", "crates/bbt-mux/src/provenance/stored.rs", "crates/bbt-mux/src/logic/knowledge_effects/artifact.rs", "crates/bbt-mux/src/store/events.rs"]
+implementation_tests = ["crates/bbt-mux/src/provenance/stored/tests.rs", "crates/bbt-mux/tests/mcp/artifacts.rs"]
+property = "The original attempt retains the captured bytes and exact request fingerprint across a lost response. Retry replays one publication, even after the stage path is replaced. A changed request does not reuse the original operation."
+assumptions = "One lost receipt, one operation, two staged byte identities. A posted retry eventually takes its owner action if storage remains available and that action is weakly fair. No recovery promise for storage failure. Rust and process checks exercise persisted bytes and exact retry responses."
+checks = ["make test-formal", "make test", "make test-chart-artifacts"]
+
+[[contract]]
+name = "ArtifactViewRevision"
+title = "Current retained image labels and exact pinned history"
+models = ["ArtifactViewRevision", "BrokenArtifactViewRevision"]
+controls = [{ name = "BrokenArtifactViewRevision", expected = "safety" }]
+sources = ["crates/bbt-mux/src/models/artifacts.rs", "crates/bbt-mux/src/artifact_images.rs", "crates/bboxy450-term/src/live.rs", "crates/bboxy450-term/src/documents.rs", "crates/bboxy450-term/src/rich_pane.rs", "crates/bboxy450-term/src/canvas_host.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp/artifacts.rs", "crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs"]
+property = "A live completion can present only its current view generation and resolved revision. Equal pixels across A to B to A preserve the new label. The other view stays at its exact first-revision pin. Current preparation terminates under fair presentation and stale-discard actions."
+assumptions = "Two views, three revisions and three monotonic view generations with at most one pending result in each. Pixel equality is represented by revision one and three using the same geometry. Actual GPU pixels, cache keys, root selection, Markdown parsing and streamed UI event delivery use native fixtures."
+checks = ["make test-formal", "make test", "make test-chart-artifacts"]

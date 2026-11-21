@@ -17,6 +17,8 @@ pub use path_masks::{PreparedPath, prepare_vector_path};
 pub use text_cache::MASK_BYTE_BUDGET;
 mod paths;
 pub mod pipeline;
+mod retained;
+pub use retained::{ImagePlacement, ImageRegion, retained_picture};
 pub mod text;
 mod text_cache;
 mod text_glyphs;
@@ -223,11 +225,10 @@ impl ChromeRenderer {
         probe(5, probe_start);
         #[cfg(test)]
         let _batch_loop = ProbeGuard(6, std::time::Instant::now());
-        if !list
-            .primitives
-            .iter()
-            .any(|p| matches!(p, Prim::Group { .. } | Prim::Path { .. }))
-        {
+        if !list.primitives.iter().any(|p| {
+            matches!(p, Prim::Group { .. } | Prim::Path { .. })
+                || matches!(p, Prim::Image { image, .. } if image.picture().is_some())
+        }) {
             return self.draw_flat_with_load(list, target, encoder, load);
         }
         let ChromeTarget {
@@ -300,7 +301,9 @@ impl ChromeRenderer {
                     primitives: clips.clone(),
                     ..Default::default()
                 };
-            } else if matches!(primitive, Prim::Path { .. }) {
+            } else if matches!(primitive, Prim::Path { .. })
+                || matches!(primitive, Prim::Image { image, .. } if image.picture().is_some())
+            {
                 for _ in &clips {
                     batch.unclip();
                 }
@@ -316,20 +319,27 @@ impl ChromeRenderer {
                     encoder,
                     wgpu::LoadOp::Load,
                 )?;
-                self.paths.draw(
-                    &self.context,
-                    &mut self.arenas,
-                    ChromeTarget {
-                        width,
-                        height,
-                        scale,
-                        view,
-                        format,
-                    },
-                    encoder,
-                    primitive,
-                    &clips,
-                )?;
+                let target = ChromeTarget {
+                    width,
+                    height,
+                    scale,
+                    view,
+                    format,
+                };
+                if let Prim::Image { rect, image, .. } = primitive
+                    && let Some((picture, opacity)) = image.picture()
+                {
+                    self.draw_retained(picture, *rect, opacity, &clips, target, encoder)?;
+                } else {
+                    self.paths.draw(
+                        &self.context,
+                        &mut self.arenas,
+                        target,
+                        encoder,
+                        primitive,
+                        &clips,
+                    )?;
+                }
                 batch = DrawList {
                     primitives: clips.clone(),
                     ..Default::default()
@@ -421,20 +431,10 @@ impl ChromeRenderer {
             let clip = *clips.last().unwrap();
             match prim {
                 Prim::Group { .. } | Prim::Path { .. } => {
-                    unreachable!("groups and paths split before the instance pass")
+                    unreachable!("specialized primitives split before the instance pass")
                 }
                 Prim::Clip { rect, radii } => {
-                    let x = rect.x.max(clip.0.x);
-                    let y = rect.y.max(clip.0.y);
-                    clips.push((
-                        Rect::new(
-                            x,
-                            y,
-                            (rect.right().min(clip.0.right()) - x).max(0.0),
-                            (rect.bottom().min(clip.0.bottom()) - y).max(0.0),
-                        ),
-                        *radii,
-                    ));
+                    clips.push((retained::intersect_clip(clip.0, *rect), *radii));
                 }
                 Prim::Unclip => {
                     clips.pop();

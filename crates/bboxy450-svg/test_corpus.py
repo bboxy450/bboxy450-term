@@ -76,6 +76,25 @@ class CorpusChecks(unittest.TestCase):
             server.server_close()
             self.assertFalse(thread.is_alive())
 
+    def test_matplotlib_live_export_keeps_font_identity_and_data(self):
+        from matplotlib.figure import Figure
+        from chart_export import FONT_DIR, prepare_plot
+        figure = Figure(figsize=(4, 2.5), dpi=72)
+        plot = figure.subplots()
+        plot.plot([1, 2, 3], [4, 2, 6])
+        plot.set_title("Measured")
+        plot.set_xlabel("Time")
+        old_canvas = figure.canvas
+        picture, definition, data = prepare_plot(figure, FONT_DIR)
+        marker = definition["export"]["font_set"].encode()
+        self.assertIn(b'data-bboxy-font-set="' + marker + b'"', picture)
+        self.assertTrue(definition["export"]["text"])
+        self.assertEqual(data, [{"x": [1., 2., 3.], "y": [4., 2., 6.]}])
+        self.assertIs(figure.canvas, old_canvas)
+        plot.set_title("Foreign", fontfamily="DejaVu Sans")
+        with self.assertRaisesRegex(ValueError, "font family"):
+            prepare_plot(figure, FONT_DIR)
+
     def test_metadata_restore_identity_and_single_owner(self):
         import copy
         import vl_convert as vlc

@@ -99,7 +99,7 @@ fn python_native_context_guard_rejects_foreign_generation_and_keeps_unmanaged_cw
 }
 
 struct HarnessFixture {
-    child: std::process::Child,
+    child: Option<std::process::Child>,
     run: PathBuf,
     socket: PathBuf,
 }
@@ -107,34 +107,53 @@ impl Drop for HarnessFixture {
     fn drop(&mut self) {
         let _ = std::fs::write(self.run.join("release-native-write"), b"release");
         let _ = std::fs::write(self.run.join("stop"), b"stop");
-        let status = self
-            .child
-            .wait()
-            .expect("owned private Host must retire its exact children");
-        if !std::thread::panicking() {
-            assert!(status.success(), "private Host failed: {status}");
+        if let Some(child) = &mut self.child {
+            let status = child
+                .wait()
+                .expect("private Host must retire its exact children");
+            if !std::thread::panicking() {
+                assert!(status.success(), "private Host failed: {status}");
+            }
         }
     }
 }
 impl HarnessFixture {
-    fn start(f: &Fixture, seat: Ulid, cwd: &std::path::Path) -> Self {
-        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
-        let binary = std::env::var_os("BBOXY_PYTHON_EXECUTE_FIXTURE")
-            .expect("run make test-python-execute-boundaries");
+    fn write_input(
+        f: &Fixture,
+        seat: Ulid,
+        cwd: &std::path::Path,
+        run: &std::path::Path,
+    ) -> PathBuf {
+        use std::os::unix::fs::OpenOptionsExt;
         let endpoint = f.runtime.block_on(f.client().endpoint(seat)).unwrap();
-        let run = f._temp.path().join(format!("python-host-{seat}"));
-        std::fs::create_dir(&run).unwrap();
-        std::fs::set_permissions(&run, std::fs::Permissions::from_mode(0o700)).unwrap();
         let config = run.join("input.json");
+        let pending = run.join("input.next");
         let mut file = std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
             .mode(0o600)
-            .open(&config)
+            .open(&pending)
             .unwrap();
         serde_json::to_writer(&mut file,&json!({"socket":endpoint.path,"seat":seat,"generation":endpoint.generation,"capability":endpoint.capability,"cwd":cwd,"run_dir":run})).unwrap();
         file.sync_all().unwrap();
         drop(file);
+        std::fs::rename(pending, &config).unwrap();
+        config
+    }
+
+    fn run_directory(f: &Fixture, seat: Ulid) -> PathBuf {
+        use std::os::unix::fs::PermissionsExt;
+        let run = f._temp.path().join(format!("python-host-{seat}"));
+        std::fs::create_dir(&run).unwrap();
+        std::fs::set_permissions(&run, std::fs::Permissions::from_mode(0o700)).unwrap();
+        run
+    }
+
+    fn start(f: &Fixture, seat: Ulid, cwd: &std::path::Path) -> Self {
+        let binary = std::env::var_os("BBOXY_PYTHON_EXECUTE_FIXTURE")
+            .expect("run make test-python-execute-boundaries");
+        let run = Self::run_directory(f, seat);
+        let config = Self::write_input(f, seat, cwd, &run);
         let mut command = std::process::Command::new(binary);
         command.arg("host").arg(config);
         for (key, _) in std::env::vars_os() {
@@ -149,8 +168,41 @@ impl HarnessFixture {
             .stderr(std::process::Stdio::inherit())
             .spawn()
             .unwrap();
+        Self::ready(Some(child), run)
+    }
+
+    fn supervised(f: &Fixture, cwd: &std::path::Path) -> (SeatRecord, Self) {
+        let seat = SeatRecord::new(Ulid::new(), f.own.swarm, "Chart Python", "bboxy450-harness");
+        let run = Self::run_directory(f, seat.id);
+        let binary = std::env::var("BBOXY_PYTHON_EXECUTE_FIXTURE").expect("private Python fixture");
+        let python =
+            std::env::var("BBOXY_CHART_PYTHON_BIN").expect("Make-managed chart Python environment");
+        let mut spec = LaunchSpec::new("/bin/sh", cwd);
+        spec.seat = seat.id;
+        spec.generation = seat.generation;
+        spec.env
+            .insert("PATH".into(), format!("{python}:/usr/bin:/bin"));
+        spec.env.insert(
+            "MPLCONFIGDIR".into(),
+            run.join("mpl-cache").to_string_lossy().into_owned(),
+        );
+        spec.args = vec![
+            "-c".into(),
+            "for i in $(seq 1 300); do if test -f \"$2\"; then exec \"$1\" host \"$2\" --bboxy-alias; fi; sleep 0.05; done; exit 72".into(),
+            "private-chart-python".into(),
+            binary,
+            run.join("input.json").to_string_lossy().into_owned(),
+        ];
+        f.runtime
+            .block_on(f.client().spawn(seat.clone(), spec))
+            .unwrap();
+        Self::write_input(f, seat.id, cwd, &run);
+        (seat, Self::ready(None, run))
+    }
+
+    fn ready(child: Option<std::process::Child>, run: PathBuf) -> Self {
         let marker = run.join("runtime-socket");
-        let deadline = Instant::now() + Duration::from_secs(15);
+        let deadline = Instant::now() + Duration::from_secs(20);
         let mut fixture = Self {
             child,
             run,
@@ -158,7 +210,10 @@ impl HarnessFixture {
         };
         while !marker.is_file() {
             assert!(
-                fixture.child.try_wait().unwrap().is_none(),
+                fixture
+                    .child
+                    .as_mut()
+                    .is_none_or(|child| child.try_wait().unwrap().is_none()),
                 "private Host exited before MCP readiness"
             );
             assert!(
@@ -417,4 +472,110 @@ fn python_managed_worktree_executes_python_and_mcp_against_canonical_kb() {
     );
     assert_eq!(denied["isError"], true, "{denied}");
     assert!(!source.join("must-not-start.txt").exists());
+}
+
+#[test]
+#[ignore = "make test-chart-artifacts supplies the supervised Host and pinned exporter"]
+fn python_chart_artifact_observed_bytes_survive_harness_cleanup_and_native_restart() {
+    let mut f = Fixture::real();
+    let cwd = f.config.repository.canonicalize().unwrap();
+    let (seat, host) = HarnessFixture::supervised(&f, &cwd);
+    let source = r#"import altair as alt
+from pathlib import Path
+async def after_nonadmission(call):
+    delays = iter((0.02, 0.04, 0.08, 0.16, 0.32, 0.64))
+    while True:
+        try:
+            return await call()
+        except ToolError as error:
+            delay = next(delays, None)
+            if delay is None or error.code != 'provider_busy' or error.unknown:
+                raise
+            await asyncio.sleep(delay)
+Path('fixture.csv').write_text('time,value\n1,4\n2,7\n')
+plain = await after_nonadmission(lambda: bboxy.artifact_store(media_type='text/plain', content='observed proxy bytes'))
+direct = await after_nonadmission(lambda: mcp.call('native', 'artifact_store', {'media_type':'application/json','content':{'snapshot':42}}))
+named = await after_nonadmission(lambda: tools.native.artifact_store(media_type='text/csv', source_path='fixture.csv'))
+rows = alt.Data(values=[{'time': 1, 'value': 4}, {'time': 2, 'value': 7}])
+plot = alt.Chart(rows).mark_bar(color='#11f183').encode(x='time:Q', y='value:Q').properties(title='Private chart', width=160, height=100)
+saved = display(plot, inputs=[named])
+emit({'plain':plain,'direct':direct.structured,'saved':saved,'csv':named})"#;
+    let first = data(host.execute(source, json!({})));
+    assert_eq!(first["status"], "completed", "{first}");
+    let result = &first["result"];
+    let mut observed = Vec::new();
+    for key in ["plain", "direct", "csv", "saved"] {
+        let capture = &result[key]["capture"];
+        let pin = &capture["observed"][0];
+        assert_eq!(capture["observed"].as_array().unwrap().len(), 1, "{result}");
+        assert_eq!(pin["revision"], 1);
+        assert!(capture["missing"].as_array().unwrap().is_empty());
+        observed.push(pin.clone());
+    }
+    assert!(observed.windows(2).all(|pair| pair[0] == pair[1]));
+    let saved = &result["saved"];
+    let read = |f: &Fixture, id: &Value, revision: u64| {
+        data(f.call(
+            seat.id,
+            Ulid::new(),
+            "artifact_read",
+            json!({"id":id,"revision":revision}),
+        ))
+    };
+    let initial = read(&f, &saved["id"], 1);
+    assert_eq!(first["displayed"], json!([saved["reference"]]));
+    let second = data(host.execute(r#"import altair as alt
+plot = alt.Chart(alt.Data(values=[{'time': 1, 'value': 9}])).mark_bar(color='#bb2484').encode(x='time:Q', y='value:Q').properties(title='Updated chart', width=160, height=100)
+saved = display(plot, update=inputs)
+emit(saved)"#, saved.clone()));
+    assert_eq!(second["status"], "completed", "{second}");
+    assert_eq!(second["result"]["id"], saved["id"]);
+    assert_eq!(second["result"]["revision"], 2);
+    assert_ne!(second["result"]["digest"], saved["digest"]);
+
+    let run = host.run.clone();
+    drop(host);
+    let until = Instant::now() + Duration::from_secs(20);
+    while !run.join("stopped").exists() {
+        assert!(
+            Instant::now() < until,
+            "private supervised harness did not close"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let sessions = run.join("sessions");
+    assert!(sessions.exists());
+    std::fs::remove_dir_all(&sessions).unwrap();
+    std::fs::write(cwd.join("fixture.csv"), b"live bytes changed").unwrap();
+    f.restart();
+    let old_source = read(&f, &observed[0]["id"], 1);
+    assert_eq!(old_source["media_type"], "text/x-python");
+    assert_eq!(old_source["content"], source);
+    assert_eq!(old_source["digest"], observed[0]["digest"]);
+    assert_eq!(
+        read(&f, &result["csv"]["id"], 1)["content"],
+        "time,value\n1,4\n2,7\n"
+    );
+    let history = read(&f, &saved["id"], 1);
+    assert_eq!(history["content"], initial["content"]);
+    assert_eq!(history["capture"], initial["capture"]);
+    assert!(
+        history["content"]
+            .as_str()
+            .unwrap()
+            .contains("data-bboxy-font-set")
+    );
+    let lineage = data(f.call(
+        seat.id,
+        Ulid::new(),
+        "provenance_lineage",
+        json!({"locator":format!("artifact:{}:1",saved["id"].as_str().unwrap())}),
+    ));
+    assert!(
+        lineage["edges"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|edge| edge["basis"] == "observed" && edge["digest"] == observed[0]["digest"])
+    );
 }

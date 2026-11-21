@@ -59,11 +59,24 @@ impl Worker {
                 json!({"kind":"cloud","provider":provider,"host":host})
             }
         };
+        let chart_export = if record.location == crate::registry::Location::Local {
+            (|| {
+                let fonts = bboxy450_svg::chart_font_directory().ok()?;
+                let module = fonts.parent()?.join("chart_export.py");
+                let staging = workspace
+                    .as_ref()
+                    .map(|source| source.cwd.as_path())
+                    .or_else(|| port.index.knowledge_root().parent())?;
+                Some(json!({"fonts":fonts,"module":module,"staging":staging}))
+            })()
+        } else {
+            None
+        };
         Ok(
             json!({"guard_version":1,"seat_id":actor.seat_id,"process_generation":actor.process_generation,
             "swarm_id":actor.swarm_id,"role":actor.role,"grant_epoch":actor.grant_epoch,"issuer_kind":actor.issuer_kind,"task_ids":record.tasks,"lifecycle_revision":record.lifecycle_revision,
             "knowledge_binding":port.binding,"provider_revision":revision,
-            "workspace":workspace.as_ref().map(|w|w.view()),"cwd":workspace.as_ref().map(|w|&w.cwd),"target":target}),
+            "workspace":workspace.as_ref().map(|w|w.view()),"cwd":workspace.as_ref().map(|w|&w.cwd),"target":target,"chart_export":chart_export}),
         )
     }
     pub(super) fn guard_python_port(

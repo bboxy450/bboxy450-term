@@ -71,6 +71,7 @@ fn scoped_success(op: crate::Ulid, mut data: Value, binding: &RootBinding, revis
 pub(crate) fn handles(call: &Call) -> bool {
     mcp::skills::handles(&call.tool)
         || mcp::provenance::handles(&call.tool)
+        || mcp::artifacts::read_tool(&call.tool)
         || matches!(
             call.tool.as_str(),
             "knowledge_fetch"
@@ -85,6 +86,7 @@ pub(crate) fn handles(call: &Call) -> bool {
             && matches!(call.args["graph"].as_str(), Some("task" | "markdown"))
 }
 pub(crate) struct Job {
+    pub runtime: std::path::PathBuf,
     pub host: Host,
     pub index: Arc<Index>,
     pub registry: Registry,
@@ -126,6 +128,7 @@ impl From<serde_json::Error> for ReadFailure {
 impl Job {
     pub(crate) fn run(self) -> Completion {
         let Self {
+            runtime,
             host,
             index,
             registry,
@@ -147,10 +150,19 @@ impl Job {
             Err(invalid(
                 "swarm_root_changed: knowledge read root does not match admission",
             ))
+        } else if mcp::artifacts::read_tool(&call.tool) {
+            let store = crate::provenance::stored::Store::new(&index, &binding.root_id, &runtime);
+            let caller =
+                (actor.role.class != crate::registry::Class::Oracle).then_some(actor.seat_id);
+            journal.checked(&actor, &call, mcp::artifacts::read(&store, caller, &call))
         } else if mcp::provenance::handles(&call.tool) {
+            let stored = crate::provenance::stored::Store::new(&index, &binding.root_id, &runtime);
             let result = crate::provenance::queries::read(
-                &index, &actor, &record, &binding, revision, &call,
+                &index, &actor, &record, &binding, revision, &call, &stored,
             );
+            let stored_authority = result
+                .as_ref()
+                .is_ok_and(|value| value["stored_revision_authority"] == true);
             let value = match result {
                 Ok(value) => scoped_success(call.op_id, value, &binding, revision),
                 Err(reason) => mcp::error(call.op_id, &reason.code, &reason.message),
@@ -161,6 +173,8 @@ impl Job {
                 mcp::knowledge::bounded(call.op_id, value, false),
                 |old| {
                     retained_context(old, &binding, revision)
+                        && (old["structuredContent"]["stored_revision_authority"] != true
+                            || stored_authority)
                         && crate::provenance::queries::retained(&index, &actor, &record, &call, old)
                 },
             )

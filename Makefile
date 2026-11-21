@@ -815,6 +815,7 @@ test-svg-fonts: bundle-svg-fonts svg-native
 bundle-svg-fonts:
 	@mkdir -p '$(BUNDLE)/Contents/Resources/chart-fonts'
 	@cp crates/bboxy450-svg/fonts/manifest.json crates/bboxy450-svg/fonts/SourceSans3-Regular.ttf crates/bboxy450-svg/fonts/SourceSans3-Bold.ttf crates/bboxy450-svg/fonts/LICENSE.md '$(BUNDLE)/Contents/Resources/chart-fonts/'
+	@cp crates/bboxy450-svg/chart_export.py '$(BUNDLE)/Contents/Resources/'
 
 # The Dream C1 gate admits only its pinned build inputs: ci-local's debug-assertion
 # overrides are for test builds, not for the packaged worker, so they are cleared for it.
@@ -2894,6 +2895,15 @@ test-python-execute-native: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo build --locked -p bboxy450-term --example python_execute_fixture --target-dir '$(TARGET_DIR)'; \
 	BBOXY_PYTHON_EXECUTE_FIXTURE='$(abspath $(TARGET_DIR))/debug/examples/python_execute_fixture' cargo nextest run --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' -E '(binary(it)&test(/^(mcp)::/))&(test(python_))' --run-ignored all
+
+.PHONY: test-chart-artifacts
+test-chart-artifacts: svg-exporters init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo build --locked -p bboxy450-term --example python_execute_fixture --target-dir '$(TARGET_DIR)'; \
+	cargo nextest run --locked -p bboxy450-term-mux --lib --features model --target-dir '$(TARGET_DIR)' -E 'test(artifact)'; \
+	BBOXY_CHART_PYTHON_BIN='$(abspath $(TARGET_DIR))/svg-loop/venv/bin' BBOXY_PYTHON_EXECUTE_FIXTURE='$(abspath $(TARGET_DIR))/debug/examples/python_execute_fixture' cargo nextest run --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' -E 'test(artifact_mcp) | test(python_chart_artifact)' --run-ignored all --no-capture; \
+	cargo build --locked -p bboxy450-harness --features standalone --bin bboxy450-harness --target-dir '$(TARGET_DIR)'; \
+	BBOXY_CHART_PYTHON_BIN='$(abspath $(TARGET_DIR))/svg-loop/venv/bin' BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo nextest run --locked -p bboxy450-term --test it --target-dir '$(TARGET_DIR)' -E 'test(chart_artifact_live_and_pinned_images_paint_in_private_app)' --run-ignored only --no-capture
 
 # C1 consumer join uses the pinned corpus named in .cargo/config.toml [env].
 # DREAM_C1_FIXTURES may name the approved producer worktree for development;

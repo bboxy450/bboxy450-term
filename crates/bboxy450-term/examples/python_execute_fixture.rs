@@ -77,10 +77,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let input: Input = serde_json::from_slice(&std::fs::read(&path)?)?;
     if mode == "bridge" {
         if let Some(socket) = std::env::var_os("BBOXY_PYTHON_SOCKET") {
-            std::fs::write(
-                input.run_dir.join("runtime-socket"),
-                socket.as_encoded_bytes(),
-            )?;
+            let marker = input.run_dir.join(format!("runtime-socket.{}", std::process::id()));
+            std::fs::write(&marker, socket.as_encoded_bytes())?;
+            std::fs::rename(marker, input.run_dir.join("runtime-socket"))?;
         }
         bbt_mux::mcp::bridge::Bridge::new(bbt_mux::mcp::bridge::Config {
             socket: input.socket,
@@ -96,6 +95,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
         )?;
     } else if mode == "host" {
+        let bboxy_alias = args.next().is_some_and(|value| value == "--bboxy-alias");
         tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
             .enable_all()
@@ -114,6 +114,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     harness: "private-python-fixture".into(),
                     created_ms: 0,
                 };
+                let server = ServerConfig {
+                    command: std::env::current_exe()?.to_string_lossy().into_owned(),
+                    args: vec!["bridge".into(), path.to_string_lossy().into_owned()],
+                    env: BTreeMap::new(),
+                    timeout_s: 5,
+                    trust_hints: false,
+                };
+                let mut mcp_servers = BTreeMap::from([("native".into(), server.clone())]);
+                if bboxy_alias {
+                    mcp_servers.insert("bboxy".into(), server);
+                }
                 let host = Host::new(Config {
                     meta: meta.clone(),
                     sessions: input.run_dir.join("sessions"),
@@ -126,17 +137,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     profile_error: None,
                 })
                 .with_launch(LaunchOptions {
-                    mcp_servers: [(
-                        "native".into(),
-                        ServerConfig {
-                            command: std::env::current_exe()?.to_string_lossy().into_owned(),
-                            args: vec!["bridge".into(), path.to_string_lossy().into_owned()],
-                            env: BTreeMap::new(),
-                            timeout_s: 5,
-                            trust_hints: false,
-                        },
-                    )]
-                    .into(),
+                    mcp_servers,
                     ..LaunchOptions::default()
                 });
                 let _gateway = host
@@ -158,6 +159,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     tokio::time::sleep(Duration::from_millis(10)).await;
                 }
                 host.close_all().await;
+                std::fs::write(input.run_dir.join("stopped"), b"closed")?;
                 Ok::<_, Box<dyn std::error::Error>>(())
             })?;
     } else {

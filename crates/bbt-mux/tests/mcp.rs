@@ -6,14 +6,16 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 #![allow(clippy::disallowed_methods)] // Controlled blocking IO/process fixtures.
 
-use bbt_mux::messaging::wire::EnvelopeExt;
 use crate::common;
+use bbt_mux::messaging::wire::EnvelopeExt;
+#[path = "mcp/artifacts.rs"]
+mod artifacts;
+#[path = "mcp/canvas.rs"]
+mod canvas;
 #[path = "mcp/den_records.rs"]
 mod den_records;
 #[path = "mcp/harness_status.rs"]
 mod harness_status;
-#[path = "mcp/canvas.rs"]
-mod canvas;
 #[path = "mcp/knowledge_types.rs"]
 mod knowledge_types_tests;
 #[path = "mcp/launch.rs"]
@@ -85,8 +87,16 @@ impl Fixture {
         lose: bool,
         seed: impl FnOnce(&std::path::Path, &SeatRecord),
     ) -> Self {
+        Self::open_repository(real, lose, None, seed)
+    }
+    fn open_repository(
+        real: bool,
+        lose: bool,
+        repository: Option<PathBuf>,
+        seed: impl FnOnce(&std::path::Path, &SeatRecord),
+    ) -> Self {
         let temp = tempfile::tempdir().unwrap();
-        let repository = temp.path().join("repository");
+        let repository = repository.unwrap_or_else(|| temp.path().join("repository"));
         std::fs::create_dir_all(repository.join(".bboxy/tasks")).unwrap();
         let swarm = Ulid::new();
         let task = Ulid::new();
@@ -3251,11 +3261,11 @@ fn orient_lists_tool_names_only_and_counts_closed_seats_destinations() {
     assert!(listed(&before) > 0, "{before}");
     assert_eq!(before["closed_seat_destinations_omitted"], 0);
     assert!(
-        before["tools"]
-            .as_array()
+        before["tools"].as_array().unwrap().iter().all(|tool| tool
+            .as_object()
             .unwrap()
-            .iter()
-            .all(|tool| tool.as_object().unwrap().keys().eq(["name"])),
+            .keys()
+            .eq(["name"])),
         "{}",
         before["tools"]
     );
@@ -3661,10 +3671,6 @@ fn task_migration_reconciliation_preserves_acceptance_and_refuses_workers() {
         true
     );
 }
-
-
-
-
 
 fn assert_item_signature(doc: &bbt_mux::index::Document, seat: Ulid) {
     use base64::Engine;
@@ -9232,7 +9238,6 @@ fn knowledge_orientation_loads_builtin_workflow_types_and_human_document_guidanc
     assert_eq!(refused["isError"], true);
 }
 
-
 // No Bridge instance: proves already-running older bridges get the guidance
 // from the refreshed server, independently of their own text-only attachment.
 #[test]
@@ -9330,10 +9335,20 @@ fn acceptance_requires_origin_main_commit_and_audit_finds_unmanaged_worktrees() 
         data(f.mutate(f.own.id, Ulid::new(), "task_report", json!({"task_path":f.task_path(),
             "summary":"Fixture report: verified","commit":commit,"verify_result":verification("true",0,json!([]))})));
     };
-    let accept = || f.mutate(f.oracle.id, Ulid::new(), "task_accept", json!({"task_path":f.task_path()}));
+    let accept = || {
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "task_accept",
+            json!({"task_path":f.task_path()}),
+        )
+    };
     write(f.task_metadata());
     report(&unlanded);
-    assert!(accept().to_string().contains("is not on origin/main"), "unlanded commit refused");
+    assert!(
+        accept().to_string().contains("is not on origin/main"),
+        "unlanded commit refused"
+    );
     assert_eq!(f.task_document().metadata["status"], "reported");
     report(&on_main);
     assert_eq!(data(accept())["task_status"], "accepted");

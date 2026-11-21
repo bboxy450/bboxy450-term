@@ -79,13 +79,23 @@ fn fit(canvas: &Canvas, frame: Option<Bounds>) -> d::Result<Camera> {
     )
     .map_err(|s| error("canvas_render", s))
 }
-pub(super) fn png(canvas: &Canvas, frame: Option<Bounds>) -> d::Result<(Vec<u8>, [u32; 2])> {
+pub(super) fn png(
+    canvas: &Canvas,
+    frame: Option<Bounds>,
+    assets: &std::collections::BTreeMap<String, bbt_ui_model::draw::ImageAsset>,
+    rasters: Vec<std::sync::Arc<bbt_render::chrome::icons::Image>>,
+) -> d::Result<(Vec<u8>, [u32; 2])> {
     let map = |e: &dyn std::fmt::Display| error("canvas_render", e.to_string());
     let [width, height] = image_size(canvas, frame);
     let viewport = Rect::new(0., 0., width as f32, height as f32);
-    let element =
-        ui::modules::canvas::render(canvas, &fit(canvas, frame)?, viewport, ui::Theme::Dark)
-            .map_err(|e| map(&e))?;
+    let element = ui::modules::canvas::render_with_images(
+        canvas,
+        &fit(canvas, frame)?,
+        viewport,
+        ui::Theme::Dark,
+        assets,
+    )
+    .map_err(|e| map(&e))?;
     let cx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
     let metrics = Metrics::default();
     let layout = element
@@ -107,6 +117,9 @@ pub(super) fn png(canvas: &Canvas, frame: Option<Bounds>) -> d::Result<(Vec<u8>,
     let mut renderer =
         bbt_render::chrome::ChromeRenderer::new(bbt_render::chrome::icons::Assets::default())
             .map_err(|e| map(&e))?;
+    for raster in rasters {
+        renderer.add_image(&raster).map_err(|e| map(&e))?;
+    }
     let pixels = renderer
         .render_to_rgba(&list, width, height, 1.)
         .map_err(|e| map(&e))?;

@@ -313,6 +313,100 @@ impl EventLog {
         bytes.map(|b| Ok(serde_json::from_slice(&b)?)).transpose()
     }
 
+    /// Find an immutable artifact revision or the indexed latest revision.
+    pub(crate) fn artifact_content(
+        &self,
+        id: Ulid,
+        revision: Option<u64>,
+    ) -> Result<Option<Envelope>> {
+        let db = sqlite::open(&self.path)?;
+        let prefix = format!("artifact/{id}/content/");
+        let sequence = if let Some(revision) = revision {
+            db.query_row(
+                "SELECT seq FROM events WHERE subject=?1 LIMIT 1",
+                [format!("{prefix}{revision:020}")],
+                |row| row.get::<_, i64>(0),
+            )
+            .optional()?
+        } else {
+            db.query_row(
+                "SELECT seq FROM events WHERE subject>=?1 AND subject<?2 ORDER BY subject DESC LIMIT 1",
+                params![prefix, format!("artifact/{id}/content0")],
+                |row| row.get::<_, i64>(0),
+            )
+            .optional()?
+        };
+        self.artifact_content_at(id, sequence)
+    }
+
+    /// Recover a published operation directly from the signed stream even
+    /// when its ordinary operation receipt was lost.
+    pub(crate) fn artifact_operation(&self, operation: Ulid) -> Result<Option<Envelope>> {
+        self.artifact_event(operation, "artifact/content")
+    }
+
+    pub(crate) fn artifact_attempt(&self, operation: Ulid) -> Result<Option<Envelope>> {
+        self.artifact_event(operation, "artifact/capture")
+    }
+
+    fn artifact_event(&self, operation: Ulid, source: &str) -> Result<Option<Envelope>> {
+        let db = sqlite::open(&self.path)?;
+        let found = db
+            .query_row(
+                "SELECT seq, subject FROM events WHERE id=?1",
+                [operation.to_string()],
+                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)),
+            )
+            .optional()?;
+        let Some((sequence, subject)) = found else {
+            return Ok(None);
+        };
+        let (id, suffix) = subject
+            .strip_prefix("artifact/")
+            .and_then(|s| s.split_once('/'))
+            .ok_or_else(|| invalid("artifact operation event ID collision"))?;
+        let sequence = u64::try_from(sequence)?;
+        let after = sequence
+            .checked_sub(1)
+            .ok_or_else(|| invalid("invalid artifact sequence"))?;
+        let event = self
+            .entity_page(id, after, sequence, 1)?
+            .events
+            .pop()
+            .filter(|e| {
+                e.event.id == operation && e.event.subject == subject && e.event.source == source
+            })
+            .ok_or_else(|| invalid("artifact operation disagrees with the signed event"))?;
+        if (source == "artifact/content" && !suffix.starts_with("content/"))
+            || (source == "artifact/capture"
+                && (suffix != "capture" || id != operation.to_string()))
+        {
+            return Err(invalid("artifact operation addresses another entity"));
+        }
+        Ok(Some(event))
+    }
+
+    fn artifact_content_at(&self, id: Ulid, sequence: Option<i64>) -> Result<Option<Envelope>> {
+        let Some(sequence) = sequence else {
+            return Ok(None);
+        };
+        let sequence = u64::try_from(sequence)?;
+        let after = sequence
+            .checked_sub(1)
+            .ok_or_else(|| invalid("invalid artifact sequence"))?;
+        let event = self
+            .entity_page(&id.to_string(), after, sequence, 1)?
+            .events
+            .pop()
+            .filter(|e| {
+                e.event
+                    .subject
+                    .starts_with(&format!("artifact/{id}/content/"))
+            })
+            .ok_or_else(|| invalid("artifact revision missing from canonical history"))?;
+        Ok(Some(event))
+    }
+
     /// Page one entity's doc/artifact/task subjects through the existing subject
     /// index. Querying never repairs or scans the entire historical chain.
     pub(crate) fn entity_page(

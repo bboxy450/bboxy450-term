@@ -523,8 +523,12 @@ pub enum Element {
         size: Length,
         radius: Length,
     },
-    /// Untinted bitmap at its own aspect ratio; the host owns decoding and custody.
-    ImageRect { asset: String, size: [f32; 2], radius: Length },
+    /// Image at its natural aspect ratio; the host owns decoding and custody.
+    ImageRect {
+        asset: bbt_ui_model::draw::ImageSource,
+        size: [f32; 2],
+        radius: Length,
+    },
     Path(Path),
     Rects(Rects),
 }
@@ -588,7 +592,7 @@ pub enum LayoutKind {
         color: [f32; 4],
     },
     Image {
-        asset: String,
+        asset: bbt_ui_model::draw::ImageSource,
         radius: f32,
     },
     Path {
@@ -1055,8 +1059,14 @@ impl Element {
                 radius.resolve(ctx.density)?;
                 Ok(([s, s], s))
             }
-            Self::ImageRect { asset, size, radius } => {
-                if asset.is_empty() || size.iter().any(|n| !n.is_finite() || *n <= 0.) { return Err("invalid rectangular image"); }
+            Self::ImageRect {
+                asset,
+                size,
+                radius,
+            } => {
+                if asset.as_ref().is_empty() || size.iter().any(|n| !n.is_finite() || *n <= 0.) {
+                    return Err("invalid rectangular image");
+                }
                 radius.resolve(ctx.density)?;
                 Ok((*size, size[1]))
             }
@@ -1308,7 +1318,14 @@ impl Element {
                 },
                 vec![],
             ),
-            Self::Image { asset, radius, .. } | Self::ImageRect { asset, radius, .. } => (
+            Self::Image { asset, radius, .. } => (
+                LayoutKind::Image {
+                    asset: asset.as_str().into(),
+                    radius: radius.resolve(ctx.density)?,
+                },
+                vec![],
+            ),
+            Self::ImageRect { asset, radius, .. } => (
                 LayoutKind::Image {
                     asset: asset.clone(),
                     radius: radius.resolve(ctx.density)?,
@@ -2672,7 +2689,7 @@ fn paint_contents(
             let mut list = list_with_clips(clips);
             list.push(Prim::Image {
                 rect: node.rect,
-                image: asset.as_str().into(),
+                image: asset.clone().with_opacity(opacity),
                 radius: *radius,
             });
             finish(list, clips, out);

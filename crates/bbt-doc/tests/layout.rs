@@ -685,6 +685,7 @@ fn resolved_images_keep_aspect_and_true_size_inside_horizontal_clips() {
     };
     *asset = Some(bbt_doc::markdown::ImageAsset {
         key: "test-bitmap".into(),
+        retained: None,
         width: 800,
         height: 300,
     });

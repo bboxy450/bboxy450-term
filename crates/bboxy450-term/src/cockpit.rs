@@ -55,6 +55,14 @@ const GUI_WRITE_CAPACITY: usize = 64;
 /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
 /// the UI for retry; no socket or process operation runs in the window handler.
 pub enum UiMsg {
+    ArtifactImage {
+        id: bbt_mux::Ulid,
+        revision: Option<u64>,
+        scope: bbt_proto::gui::SwarmScope,
+        reply: tokio::sync::oneshot::Sender<
+            std::result::Result<bbt_mux::artifact_images::Resolved, String>,
+        >,
+    },
     InboxPage(Option<bbt_proto::gui::QuestionCursor>),
     InboxAnswer {
         seat: bbt_mux::Ulid,
@@ -1019,6 +1027,10 @@ impl Drop for Session {
     }
 }
 impl Session {
+    pub fn run_dir(&self) -> &std::path::Path {
+        &self.config.run_dir
+    }
+
     /// Spawn both private processes and connect their admitted GUI endpoint.
     pub async fn start(config: Config) -> Result<Self> {
         Self::start_with_progress(config, std::sync::Arc::new(|_| {})).await
@@ -1687,7 +1699,12 @@ async fn start_logic(
     let mut endpoint: LogicReady = loop {
         let line = tokio::time::timeout_at(deadline, read_line(&mut output))
             .await
-            .map_err(|_| invalid(format!("Startup timed out: no progress for {} min", quiet_timeout.as_secs() / 60)))??
+            .map_err(|_| {
+                invalid(format!(
+                    "Startup timed out: no progress for {} min",
+                    quiet_timeout.as_secs() / 60
+                ))
+            })??
             .ok_or_else(|| invalid("logic exited during startup"))?;
         if let Ok(record) = serde_json::from_slice::<startup::ProgressLine>(&line) {
             let p = record.startup_progress;

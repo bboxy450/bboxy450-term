@@ -42,7 +42,35 @@ pub struct FontSet {
     family: Arc<str>,
     faces: Arc<[Face]>,
 }
+/// The packaged application and debug source builds use the same resource manifest.
+pub fn chart_font_directory() -> Result<PathBuf> {
+    let executable = std::env::current_exe()
+        .map_err(|e| Diagnostic::refused("font_unavailable", e.to_string()))?;
+    if let Some(bundle) = executable
+        .parent()
+        .filter(|directory| directory.ends_with("Contents/MacOS"))
+        .and_then(Path::parent)
+    {
+        return Ok(bundle.join("Resources/chart-fonts"));
+    }
+    #[cfg(debug_assertions)]
+    return Ok(Path::new(env!("CARGO_MANIFEST_DIR")).join("fonts"));
+    #[cfg(not(debug_assertions))]
+    Err(Diagnostic::refused(
+        "font_unavailable",
+        "the app has no chart font resource directory",
+    ))
+}
+
 impl FontSet {
+    /// Register the manifest once for the lifetime of this native renderer.
+    pub fn bundled() -> Result<&'static Self> {
+        static FONTS: std::sync::OnceLock<Result<FontSet>> = std::sync::OnceLock::new();
+        FONTS
+            .get_or_init(|| Self::load(&chart_font_directory()?))
+            .as_ref()
+            .map_err(Clone::clone)
+    }
     #[allow(
         clippy::disallowed_methods,
         reason = "immutable font initialization runs on the preparation worker"

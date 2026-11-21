@@ -17,6 +17,7 @@ use bbt_ui_model::{
     layout::Rect,
 };
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
 pub struct RenderRequest {
@@ -454,4 +455,90 @@ fn paint_elements(
         }
     }
     Ok(())
+}
+
+impl Scene {
+    /// A live placement shares admitted geometry with the capture path.
+    /// Coverage is disposable and keyed by exact device transform and clip.
+    pub fn retained_image(&self) -> bbt_ui_model::draw::RetainedImage {
+        let scene = self.clone();
+        let last = std::sync::Mutex::new(None::<([u32; 6], [u32; 2], Arc<[PreparedElement]>)>);
+        bbt_render::chrome::retained_picture(
+            self.viewport(),
+            move |renderer, target, encoder, place| {
+                let [x, y, width, height] = place.region.pixels;
+                let bounds = place.bounds;
+                let [left, top, w, h] = scene.view_box().map(|n| n as f32);
+                let scale = target.scale * (bounds.w / w).min(bounds.h / h);
+                let tx = (bounds.x + (bounds.w - w * scale / target.scale) * 0.5) * target.scale
+                    - x as f32
+                    - left * scale;
+                let ty = (bounds.y + (bounds.h - h * scale / target.scale) * 0.5) * target.scale
+                    - y as f32
+                    - top * scale;
+                let camera = Affine([scale, 0., 0., scale, tx, ty]);
+                let size = [width, height];
+                let key = camera.0.map(f32::to_bits);
+                let cached = last.try_lock().ok().and_then(|guard| {
+                    guard
+                        .as_ref()
+                        .filter(|(old, extent, _)| *old == key && *extent == size)
+                        .map(|(_, _, old)| old.clone())
+                });
+                let pixels = u64::from(width) * u64::from(height);
+                if pixels > 4_000_000 || width > 4096 || height > 4096 {
+                    return Err("visible SVG clip exceeds its native render budget".into());
+                }
+                let elements = match cached {
+                    Some(scene) => scene,
+                    None => {
+                        let mut bytes = 0;
+                        let prepared: Arc<[PreparedElement]> = prepare_elements(
+                            &scene.elements,
+                            camera,
+                            size,
+                            [0., 0., width as f32, height as f32],
+                            &mut bytes,
+                            Layer::Render,
+                        )?
+                        .into();
+                        if let Ok(mut cache) = last.try_lock() {
+                            *cache = Some((key, size, prepared.clone()));
+                        }
+                        prepared
+                    }
+                };
+                if pixels * (1 + isolated_depth(&elements)) > 4_000_000 {
+                    return Err(
+                        "visible SVG isolation layers exceed its native render budget".into(),
+                    );
+                }
+                install_images(&elements, renderer)?;
+                renderer.paint_image_region(
+                    place.region,
+                    place.opacity,
+                    target,
+                    encoder,
+                    |renderer, target, encoder| {
+                        paint_elements(&elements, renderer, target, encoder)
+                    },
+                )
+            },
+        )
+    }
+}
+
+fn isolated_depth(elements: &[PreparedElement]) -> u64 {
+    elements
+        .iter()
+        .map(|element| match element {
+            PreparedElement::Group {
+                children,
+                opacity,
+                clip,
+            } => u64::from(*opacity != 1. || clip.is_some()) + isolated_depth(children),
+            _ => 0,
+        })
+        .max()
+        .unwrap_or_default()
 }

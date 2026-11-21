@@ -6,9 +6,11 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! MCP is a client of the admitted seat socket; logic remains the authority.
 
+pub(crate) mod artifact_source;
+pub(crate) mod artifacts;
 pub(crate) mod attention;
-pub(crate) mod canvas;
 pub mod bridge;
+pub(crate) mod canvas;
 pub(crate) mod diagnostics;
 pub(crate) mod dream_c1;
 pub(crate) mod hints;
@@ -98,7 +100,7 @@ impl Call {
                 .bytes()
                 .all(|b| b.is_ascii_alphanumeric() || b"_.-".contains(&b))
             || !self.args.is_object()
-            || serde_json::to_vec(&self.args)?.len() > MAX_ARGS
+            || serde_json::to_vec(&self.args)?.len() > artifacts::argument_limit(&self.tool)
         {
             return Err(crate::store::invalid("malformed or oversized control call"));
         }

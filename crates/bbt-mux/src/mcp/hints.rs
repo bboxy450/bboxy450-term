@@ -110,6 +110,20 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
     if result["isError"] == true {
         let code = data["error"]["code"].as_str().unwrap_or_default();
         let message = data["error"]["message"].as_str().unwrap_or_default();
+        if code == "artifact_conflict" {
+            return vec![tool(
+                "artifact_read",
+                json!({"id":call.args["id"]}),
+                "Read the current image revision and reconcile the conflict before a new update.",
+            )];
+        }
+        if code == "not_stored" {
+            return vec![tool(
+                "provenance_get",
+                json!({"locator":call.args["id"]}),
+                "Inspect reference custody and recorded provenance.",
+            )];
+        }
         if matches!(code, "invalid_report" | "report_author_mismatch") {
             return vec![tool(
                 "knowledge_types",
@@ -144,6 +158,7 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
         )];
     }
     let hint = match call.tool.as_str() {
+        "artifact_store" | "artifact_update" => return Vec::new(),
         "workspace_get" if data["workspace"]["state"] == "unknown" => {
             let mut hints = vec![tool(
                 "workspace_orient",

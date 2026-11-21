@@ -86,6 +86,7 @@ pub(crate) fn catalogue(actor: &Actor, plugins: Vec<Value>) -> Value {
     tools.extend(super::workspaces::catalogue(actor));
     tools.extend(super::knowledge::catalogue(actor));
     tools.extend(super::provenance::catalogue());
+    tools.extend(super::artifacts::catalogue());
     tools.extend(super::skills::catalogue());
     tools.extend(super::canvas::catalogue());
     tools.push(super::recovery::catalogue());

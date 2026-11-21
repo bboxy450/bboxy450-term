@@ -127,12 +127,7 @@ pub enum Inline {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ImageAsset {
-    pub key: String,
-    pub width: u32,
-    pub height: u32,
-}
+pub use bbt_ui_model::draw::ImageAsset;
 
 impl Inline {
     pub fn plain_text(values: &[Self]) -> String {

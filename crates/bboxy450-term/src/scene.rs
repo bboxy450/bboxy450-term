@@ -8,7 +8,6 @@
 mod navigation;
 mod sidebar_motion;
 mod starting;
-pub use sidebar_motion::SidebarDrag;
 use bboxy450_term::model::FocusSwell;
 use bboxy450_term::starting::Slot;
 use bbt_ui::{
@@ -32,6 +31,7 @@ use bbt_ui_model::{
     draw::{Color, DrawList, TextStyle, TypeScale},
     layout::{Axis, Rect, TextMeasure, TextStyle as MeasureStyle, stage_split},
 };
+pub use sidebar_motion::SidebarDrag;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet, HashMap},
@@ -888,11 +888,13 @@ impl Scene {
     pub fn canvas_paint(
         &self,
         canvas: &bboxy450_canvas::Canvas,
+        images: &BTreeMap<String, bbt_ui_model::draw::ImageAsset>,
         camera: &bboxy450_canvas::Camera,
         rect: Rect,
     ) -> Result<Vec<c::Paint>, &'static str> {
         let ctx = self.ui_context();
-        let element = ui::modules::canvas::render(canvas, camera, rect, ctx.theme)?;
+        let element =
+            ui::modules::canvas::render_with_images(canvas, camera, rect, ctx.theme, images)?;
         let layout = element.layout(rect, ctx, &self.metrics)?;
         Ok(c::paint(&layout, ctx))
     }

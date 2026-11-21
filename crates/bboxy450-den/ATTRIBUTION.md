@@ -270,3 +270,13 @@ including Adobe's original notice and Reserved Font Name in
 `crates/bboxy450-svg/fonts/LICENSE.md`. The sole adjacent `manifest.json` records
 the exact face, weight, PostScript name, upstream revision and file/license
 hashes. App resources copy those same four files to `Resources/chart-fonts`.
+
+### Stored chart artifacts
+
+The live chart exporter adapts the project’s verified font and measurement
+code from `crates/bboxy450-svg/corpus.py`. The corpus and Python charts use the
+same converter, selected-font checks and native SVG admission. The typed
+display result was inspired by
+[Marimo’s Altair formatter](https://github.com/marimo-team/marimo/blob/91667bcb46e81d36893705a68e46202e273043a5/marimo/_output/formatters/altair_formatters.py#L71).
+The runtime source capture, artifact storage and GUI integration are original
+bboxy450-term and bboxy450-harness code. No Marimo source was copied.

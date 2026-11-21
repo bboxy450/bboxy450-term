@@ -400,6 +400,35 @@ impl Engine {
             let before_projection = self.projection_cursor;
             let rows = index.activity().after(self.projection_cursor, 128)?;
             for row in rows {
+                if row.event.source == "artifact/content" {
+                    let author = Author::observer(status, key);
+                    let projected = (|| -> Result<bool> {
+                        let Some(update) = super::stored::projection(index, &row)? else {
+                            return Ok(false);
+                        };
+                        let path = update.path.clone();
+                        index.apply_author(update, &author)?;
+                        self.refreshed.insert(path);
+                        Ok(true)
+                    })();
+                    match projected {
+                        Ok(wrote) => changed |= wrote,
+                        Err(error) => self.record_gap(
+                            index,
+                            bus,
+                            handle,
+                            &row,
+                            "projection-failed",
+                            &error.to_string(),
+                            json!({"subject":row.event.subject}),
+                        )?,
+                    }
+                    self.projection_cursor = row.seq;
+                    if started.elapsed() >= PROJECTION_BUDGET {
+                        break;
+                    }
+                    continue;
+                }
                 if let Some(change) = Self::change(&row) {
                     // Older ledgers retain work-in-progress observations. Keep
                     // their audit bytes, but only committed snapshots become

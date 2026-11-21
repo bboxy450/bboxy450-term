@@ -7,23 +7,22 @@
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """Pinned exporter corpus and source-bound native acceptance loop."""
 import argparse
-import base64
-from contextlib import contextmanager
-import hashlib
 import importlib.metadata
-import io
 import json
 import os
 from pathlib import Path
 import platform
 import re
 import sys
-import threading
 import xml.etree.ElementTree as ET
 
+from chart_export import (
+    digest, emitted_text, external_resources, final_vega_svg, load_fonts as _load_fonts,
+    require_vega_owner, selected_vega_fonts, svg_font_identity, vega_execution as _vega_execution,
+    exact_matplotlib_text, matplotlib_svg,
+)
+
 BASE = Path(__file__).resolve().parent
-_vega_owner = threading.Lock()
-_vega_thread = None
 KINDS = ("bar", "line", "scatter", "heatmap", "layered")
 DATA = [
     {"label": "Alpha", "x": 1, "y": 3, "other": 2, "group": "First long legend label"},
@@ -42,8 +41,13 @@ HEAT = [
 ]
 
 
-def digest(data):
-    return hashlib.sha256(data).hexdigest()
+
+def load_fonts():
+    return _load_fonts(BASE / "fonts")
+
+
+def vega_execution():
+    return _vega_execution(BASE / "fonts")
 
 
 def dump(path, value):
@@ -51,110 +55,10 @@ def dump(path, value):
     path.write_text(json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
 
 
-def load_fonts():
-    directory = BASE / "fonts"
-    raw = (directory / "manifest.json").read_bytes()
-    manifest = json.loads(raw)
-    from fontTools.ttLib import TTFont
-    for entry in [*manifest["faces"], manifest["license"]]:
-        path = directory / entry["file"]
-        if path.is_symlink() or digest(path.read_bytes()) != entry["sha256"]:
-            raise ValueError(f"font/resource digest mismatch: {path}")
-    for face in manifest["faces"]:
-        with TTFont(directory / face["file"]) as font:
-            names = font["name"]
-            assert names.getDebugName(1) == manifest["family"]
-            assert names.getDebugName(6) == face["postscript_name"]
-            assert font["OS/2"].usWeightClass == face["weight"]
-            assert "fvar" not in font
-    return manifest, "sha256:" + digest(raw)
-
-
-def external_resources(value):
-    """Fail before converter entry; allowed_base_urls=[] remains a separate guard."""
-    if isinstance(value, dict):
-        for key, child in value.items():
-            if key in ("url", "href"):
-                raise ValueError("external resource: " + key)
-            if key == "mark" and (child == "image" or isinstance(child, dict) and child.get("type") == "image"):
-                raise ValueError("external resource: image mark")
-            external_resources(child)
-    elif isinstance(value, list):
-        for child in value:
-            external_resources(child)
-
-
-@contextmanager
-def vega_execution():
-    """The synchronous corpus process owns configuration and conversion together."""
-    import vl_convert as vlc
-    global _vega_thread
-    if sys.platform != "darwin" or platform.machine() != "arm64":
-        raise ValueError("chart export unavailable: macOS arm64 required")
-    if not _vega_owner.acquire(blocking=False):
-        raise ValueError("concurrent Vega conversion refused")
-    try:
-        _vega_thread = threading.get_ident()
-        settings = dict(num_workers=1, base_url=False, allowed_base_urls=[], auto_google_fonts=False,
-                        allow_google_fonts=False, missing_fonts="error", embed_local_fonts=False,
-                        subset_fonts=False, google_fonts=[], max_v8_heap_size_mb=512,
-                        max_v8_execution_time_secs=15, vega_plugins=[], plugin_import_domains=[],
-                        allow_per_request_plugins=False, per_request_plugin_import_domains=[])
-        vlc.configure(**settings)
-        vlc.set_font_directories([str(BASE / "fonts")])
-        if any(vlc.get_config()[key] != value for key, value in settings.items()):
-            raise ValueError("effective Vega configuration differs")
-        yield vlc.get_config()
-    finally:
-        vlc.configure(embed_local_fonts=False)
-        _vega_thread = None
-        _vega_owner.release()
-
-
-def selected_vega_fonts(definition, fonts, weights):
-    """Verify full selected bytes; metadata mode never escapes this helper."""
-    import vl_convert as vlc
-    from fontTools.ttLib import TTFont
-    if _vega_thread != threading.get_ident():
-        raise ValueError("Vega conversion requires its synchronous owner")
-    vlc.configure(embed_local_fonts=True)
-    try:
-        payload = vlc.vegalite_fonts(definition, vl_version="5.20", include_font_face=True,
-                                     subset_fonts=False, auto_google_fonts=False)
-    finally:
-        vlc.configure(embed_local_fonts=False)
-    if not payload:
-        raise ValueError("empty selected-font metadata")
-    actual = []
-    for info in payload:
-        for variant in info["variants"]:
-            weight = int(variant["weight"])
-            expected = next((f for f in fonts["faces"] if f["weight"] == weight), None)
-            match = re.search(r"base64,([A-Za-z0-9+/=]+)", variant.get("font_face") or "")
-            if expected is None or weight not in weights or match is None:
-                raise ValueError("unexpected/missing selected-font metadata")
-            raw = base64.b64decode(match.group(1), validate=True)
-            with TTFont(io.BytesIO(raw)) as face:
-                name = face["name"].getDebugName(6)
-            if digest(raw) != expected["sha256"] or name != expected["postscript_name"]:
-                raise ValueError("selected-font bytes/face mismatch")
-            actual.append({"weight": weight, "sha256": digest(raw), "bytes": len(raw), "postscript_name": name})
-    if sorted(f["weight"] for f in actual) != sorted(weights):
-        raise ValueError("unexpected/missing selected-font metadata")
-    return actual
-
-
-def final_vega_svg(svg):
-    if re.search(r"@font-face|@import|data:(?:font|application/(?:font|x-font))", svg, re.I):
-        raise ValueError("final SVG contains embedded font CSS/import/data-font")
-    return svg
-
-
 def vega_exports(out, fonts, identity):
     import altair as alt
     import vl_convert as vlc
-    if _vega_thread != threading.get_ident():
-        raise ValueError("Vega conversion requires its synchronous owner")
+    require_vega_owner()
     # CSS strings, unlike logical font identities, require quoting numeric tokens.
     family = "'" + fonts["family"].replace("\\", "\\\\").replace("'", "\\'") + "'"
     data = alt.InlineData(values=DATA)
@@ -196,24 +100,6 @@ def vega_exports(out, fonts, identity):
     return cases
 
 
-def emitted_text(svg):
-    """Record exported XML facts; no SVG interpretation or native geometry."""
-    rows = []
-
-    def walk(node, location, transforms):
-        transforms = [*transforms, node.attrib.get("transform", "")]
-        if node.tag.split("}")[-1] == "text":
-            rows.append({"source": location, "text": "".join(node.itertext()), "attributes": dict(node.attrib), "transforms": transforms})
-        siblings = {}
-        for child in node:
-            tag = child.tag.split("}")[-1]
-            siblings[tag] = siblings.get(tag, 0) + 1
-            walk(child, location + f"/{tag}[{siblings[tag]}]", transforms)
-
-    walk(ET.fromstring(svg), "/svg[1]", [])
-    return rows
-
-
 def vega_text_measurements(graph, svg, fonts, identity, selected):
     """Read real Vega bounds through its existing reactive-geometry surface.
 
@@ -224,8 +110,7 @@ def vega_text_measurements(graph, svg, fonts, identity, selected):
     No Chrome metric or independently implemented font measurement is used.
     """
     import vl_convert as vlc
-    if _vega_thread != threading.get_ident():
-        raise ValueError("Vega conversion requires its synchronous owner")
+    require_vega_owner()
 
     def texts(node):
         if node.get("marktype") == "text":
@@ -310,11 +195,7 @@ def matplotlib_exports(out, fonts, identity):
             ax.set_ylabel("Value")
             # Exact file FontProperties are assigned before Agg layout and SVG export.
             from matplotlib.text import Text
-            for text in fig.findobj(Text):
-                weight = text.get_fontproperties().get_weight()
-                bold = weight in (700, "bold")
-                selected = paths[700 if bold else 400]
-                text.set_fontproperties(font_manager.FontProperties(fname=str(selected), size=text.get_fontsize(), weight="bold" if bold else "normal"))
+            exact_matplotlib_text(fig, paths)
             canvas.draw()
             rows = []
             for text in fig.findobj(Text):
@@ -332,45 +213,11 @@ def matplotlib_exports(out, fonts, identity):
             key = "matplotlib-" + kind
             config = {"font_family": family, "font_set": identity, "svg.fonttype": "none", "dpi": 72, "font_files": [p.name for p in paths.values()], "svg.hashsalt": mpl.rcParams["svg.hashsalt"]}
             dump(out / (key + ".json"), {"literal_data": HEAT if kind == "heatmap" else DATA, "export": config})
-            stream = io.StringIO()
-            from matplotlib.backends.backend_svg import RendererSVG
-            from unittest.mock import patch
-            original_draw_text = RendererSVG.draw_text
-            svg_rows = []
-
-            def measured_draw_text(renderer, gc, x, y, value, prop, angle, ismath=False, mtext=None):
-                if ismath or mtext is None:
-                    raise ValueError("unmeasured exporter text")
-                box = mtext.get_window_extent(renderer)
-                width, height, descent = renderer.get_text_width_height_descent(value, prop, False)
-                resolved = Path(font_manager.findfont(prop)).resolve()
-                assert resolved in [p.resolve() for p in paths.values()]
-                backend_font = renderer._text2path._get_font(prop)
-                if Path(backend_font.fname).resolve() != resolved:
-                    raise ValueError("exporter resolved foreign face")
-                face = next(f for f in fonts["faces"] if (BASE / "fonts" / f["file"]).resolve() == resolved)
-                if backend_font.postscript_name != face["postscript_name"]:
-                    raise ValueError("exporter resolved foreign face")
-                svg_rows.append({"text": value, "baseline_start": [x, y], "angle": angle,
-                                 "bounds": [box.x0, renderer.height - box.y1, box.width, box.height],
-                                 "advance": width, "ink_height": height, "descent": descent,
-                                 "face": resolved.name, "font_sha256": digest(resolved.read_bytes()), "backend_postscript_name": backend_font.postscript_name,
-                                 "weight": 700 if resolved == paths[700].resolve() else 400,
-                                 "font_size": prop.get_size_in_points()})
-                return original_draw_text(renderer, gc, x, y, value, prop, angle, ismath, mtext)
-
-            with patch.object(RendererSVG, "draw_text", measured_draw_text):
-                fig.savefig(stream, format="svg", metadata={"Date": "2026-11-19T00:00:00Z", "Creator": "bboxy450 SVG corpus; matplotlib " + mpl.__version__})
-            exported = emitted_text(stream.getvalue())
-            if len(exported) != len(svg_rows):
-                raise ValueError("missing Matplotlib text correspondence")
-            for row, actual in zip(svg_rows, exported):
-                if row["text"] != actual["text"]:
-                    raise ValueError("Matplotlib emitted text differs")
-                row["emitted"] = actual
+            svg, svg_rows = matplotlib_svg(fig, fonts, paths, BASE / "fonts",
+                {"Date": "2026-11-19T00:00:00Z", "Creator": "bboxy450 SVG corpus; matplotlib " + mpl.__version__})
             dump(out / (key + ".measurements.json"), {"coordinates": "SVG viewBox units; upper-left origin; SVG backend dpi=72",
                                                       "font_set": identity, "text": svg_rows, "agg_text": rows})
-            cases.append((key, stream.getvalue(), "matplotlib", config))
+            cases.append((key, svg, "matplotlib", config))
             fig.clear()
     return cases
 
@@ -383,8 +230,7 @@ def generate(out):
     with vega_execution():
         vega = vega_exports(out, fonts, identity)
     for key, svg, exporter, config in vega + matplotlib_exports(out, fonts, identity):
-        assert "data-bboxy-font-set" not in svg
-        svg = svg.replace("<svg ", '<svg data-bboxy-font-set="' + identity + '" ', 1)
+        svg = svg_font_identity(svg, identity)
         raw = svg.encode()
         (out / (key + ".svg")).write_bytes(raw)
         element = ET.fromstring(raw)

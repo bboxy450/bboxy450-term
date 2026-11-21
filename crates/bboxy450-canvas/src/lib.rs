@@ -19,6 +19,29 @@ use std::{
 };
 
 pub type ElementId = String;
+
+/// A canonical artifact ID with an optional exact retained revision. The
+/// caller supplies the root capability separately, never through this address.
+pub fn artifact_address(target: &str) -> Option<(ulid::Ulid, Option<u64>)> {
+    let (identity, revision) = target
+        .split_once(':')
+        .map_or((target, None), |(id, rev)| (id, Some(rev)));
+    let id: ulid::Ulid = identity.parse().ok()?;
+    if id.is_nil() || id.to_string() != identity {
+        return None;
+    }
+    let revision = match revision {
+        Some(text) => {
+            let parsed: u64 = text.parse().ok()?;
+            if parsed == 0 || parsed.to_string() != text {
+                return None;
+            }
+            Some(parsed)
+        }
+        None => None,
+    };
+    Some((id, revision))
+}
 pub const MAX_ELEMENTS: usize = 10_000;
 /// A free path or a connector's waypoints are bounded so one element cannot
 /// become the whole log.
@@ -242,6 +265,10 @@ pub enum Content {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         label_at: Option<f64>,
     },
+    Image {
+        bounds: Bounds,
+        artifact: String,
+    },
     Text {
         bounds: Bounds,
         text: String,
@@ -270,9 +297,10 @@ fn is_default<T: Default + PartialEq>(value: &T) -> bool {
 impl Content {
     pub fn bounds(&self) -> Option<Bounds> {
         match self {
-            Self::Shape { bounds, .. } | Self::Text { bounds, .. } | Self::Frame { bounds, .. } => {
-                Some(*bounds)
-            }
+            Self::Shape { bounds, .. }
+            | Self::Text { bounds, .. }
+            | Self::Frame { bounds, .. }
+            | Self::Image { bounds, .. } => Some(*bounds),
             Self::Path { points, .. } => Bounds::of_points(points),
             Self::Connector { .. } => None,
         }
@@ -285,6 +313,7 @@ impl Content {
             Self::Text { text, .. } => Some(text),
             Self::Frame { name, .. } => Some(name),
             Self::Connector { label, .. } => label.as_deref(),
+            Self::Image { artifact, .. } => Some(artifact),
             Self::Path { .. } => None,
         }
     }
@@ -309,13 +338,19 @@ impl Content {
                     && label_at.is_none_or(|t| t.is_finite() && (0. ..=1.).contains(&t))
             }
             Self::Path { points, .. } => points.len() >= 2 && finite(points),
+            Self::Image { bounds, artifact } => {
+                bounds.valid() && artifact_address(artifact).is_some()
+            }
             _ => self.bounds().is_some_and(Bounds::valid),
         }
     }
     /// Moves and resizes the element; a path's points scale with its box.
     fn set_bounds(&mut self, next: Bounds) -> bool {
         match self {
-            Self::Shape { bounds, .. } | Self::Text { bounds, .. } | Self::Frame { bounds, .. } => {
+            Self::Shape { bounds, .. }
+            | Self::Text { bounds, .. }
+            | Self::Frame { bounds, .. }
+            | Self::Image { bounds, .. } => {
                 *bounds = next;
                 true
             }
@@ -337,7 +372,7 @@ impl Content {
             Self::Text { text, .. } => *text = value,
             Self::Frame { name, .. } => *name = value,
             Self::Connector { label, .. } => *label = Some(value),
-            Self::Path { .. } => return false,
+            Self::Path { .. } | Self::Image { .. } => return false,
         }
         true
     }

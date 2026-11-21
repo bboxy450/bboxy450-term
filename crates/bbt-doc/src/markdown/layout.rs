@@ -1236,16 +1236,17 @@ impl Render<'_> {
                         lines.push(Self::flow(key, std::mem::take(&mut children)));
                     }
                     let name = format!("{key}/image{i}");
+                    let size = asset.size();
                     let image = c::Element::ImageRect {
-                        asset: asset.key,
-                        size: [asset.width as f32, asset.height as f32],
+                        asset: asset.source(),
+                        size,
                         radius: ui::Length::Px(0.),
                     };
-                    let width = self.width.min(asset.width as f32);
+                    let width = self.width.min(size[0]);
                     let viewport = named(
                         &name,
                         c::Element::ScrollView(c::ScrollView {
-                            viewport: [width, asset.height as f32],
+                            viewport: [width, size[1]],
                             offset: [
                                 self.scrolls
                                     .and_then(|s| s.get(&name))
@@ -1253,7 +1254,7 @@ impl Render<'_> {
                                     .unwrap_or(0.),
                                 0.,
                             ],
-                            content_width: Some(asset.width as f32),
+                            content_width: Some(size[0]),
                             content: Box::new(image),
                         }),
                     );
@@ -1273,6 +1274,13 @@ impl Render<'_> {
                             },
                         }],
                     ));
+                    if let Some(pin) = asset.revision {
+                        lines.push(text(
+                            format!("{name}/revision"),
+                            pin,
+                            font(ui::TypeStep::Caption, 400, true, ui::Color::Muted),
+                        ));
+                    }
                     i += 1;
                 }
                 Piece::Pill(pill) => {
