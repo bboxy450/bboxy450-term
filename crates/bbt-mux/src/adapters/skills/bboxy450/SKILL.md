@@ -112,3 +112,19 @@ stay on the problem, without apology or self-critique. Report:
 - the signed commit SHA and the state of the worktree.
 
 An Executor reports; the Oracle verifies.
+
+## Show it
+
+Replies, reports and records are Markdown, and the GUI draws Mermaid natively.
+A diagram beats a paragraph: draw one for any flow, dependency, plan, state
+machine or before/after. Use a fenced `mermaid` block with one of the three
+supported kinds: `flowchart` (or `graph`), `sequenceDiagram`, or
+`stateDiagram-v2`. Keep it small and true to the evidence: label edges, name
+real commits, tasks and seats, mark what is done or blocked. Other Mermaid kinds
+do not render; draw them as a flowchart.
+
+Charts and images are becoming artifacts: `display(plot)` in `python_execute`
+stores the chart, and `![[artifact:ID]]` embeds it (`[[artifact:ID]]` links it,
+`:N` pins a revision) in a reply, document or canvas
+([[specs/python-charts]]). Use them once the artifact tools appear in your
+catalogue; until then, keep a chart as a Mermaid block or a file path.
