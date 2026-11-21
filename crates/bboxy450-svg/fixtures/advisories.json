@@ -332,11 +332,11 @@
     },
     {
       "case": "matplotlib-layered",
-      "changed_fraction": 0.01515819571375127,
+      "changed_fraction": 0.015164876275987386,
       "pixel_sha256": [
-        "6f5b9231ff41808e28464fb3bf5e28d75f396eb5a69ca91716c0d2c09dbee3e8",
+        "ca9ecb2c85345df207e264b3fec6e6df4d156eaa7022fd0cde46344320e59f82",
         "a6404105e898097f8d3ab4504664e4a84f4c85adf648522b0e4912228dfe6c10",
-        "d58f4f5ec3f24231ad6900c9880b50f5ef4c99130a679fc07d69157302da4612"
+        "59e7ed7d688864ef4060f1384592aad89dc6c34ad1e75c10c0dfacc48eef8de8"
       ],
       "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
       "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
