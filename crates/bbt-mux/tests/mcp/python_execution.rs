@@ -480,6 +480,43 @@ fn python_chart_artifact_observed_bytes_survive_harness_cleanup_and_native_resta
     let mut f = Fixture::real();
     let cwd = f.config.repository.canonicalize().unwrap();
     let (seat, host) = HarnessFixture::supervised(&f, &cwd);
+    let completed = |run: &Value| {
+        if run["status"] == "completed" {
+            return;
+        }
+        assert_eq!(run["status"], "completed_with_errors", "{run}");
+        let id = &run["execution_id"];
+        let original = data(host.call(
+            "python_execution_get",
+            json!({"execution_id":id,"detail":true}),
+        ));
+        assert_eq!(original["exit_code"], 0, "{original}");
+        let failed: Vec<_> = original["children"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|child| child["status"] != "succeeded")
+            .collect();
+        assert!(!failed.is_empty());
+        assert_eq!(run["failed_calls"], failed.len());
+        for child in failed {
+            use base64::{Engine as _, engine::general_purpose::STANDARD};
+            assert_eq!(child["status"], "failed", "{child}");
+            let page = data(host.call(
+                "python_execution_get",
+                json!({"execution_id":id,"cursor":child["result_cursor"]}),
+            ));
+            assert!(page["next_cursor"].is_null());
+            let bytes = STANDARD
+                .decode(page["data_base64"].as_str().unwrap())
+                .unwrap();
+            let receipt: Value = serde_json::from_slice(&bytes).unwrap();
+            let result = &receipt["structuredContent"];
+            assert_eq!(result["status"], "rejected", "{receipt}");
+            assert_eq!(result["error"]["code"], "provider_busy", "{receipt}");
+            assert_ne!(result["error"]["unknown"], true, "{receipt}");
+        }
+    };
     let source = r#"import altair as alt
 from pathlib import Path
 async def after_nonadmission(call):
@@ -489,7 +526,8 @@ async def after_nonadmission(call):
             return await call()
         except ToolError as error:
             delay = next(delays, None)
-            if delay is None or error.code != 'provider_busy' or error.unknown:
+            if (delay is None or error.code != 'provider_busy' or error.unknown
+                    or error.result.get('structuredContent', {}).get('status') != 'rejected'):
                 raise
             await asyncio.sleep(delay)
 Path('fixture.csv').write_text('time,value\n1,4\n2,7\n')
@@ -501,7 +539,7 @@ plot = alt.Chart(rows).mark_bar(color='#11f183').encode(x='time:Q', y='value:Q')
 saved = display(plot, inputs=[named])
 emit({'plain':plain,'direct':direct.structured,'saved':saved,'csv':named})"#;
     let first = data(host.execute(source, json!({})));
-    assert_eq!(first["status"], "completed", "{first}");
+    completed(&first);
     let result = &first["result"];
     let mut observed = Vec::new();
     for key in ["plain", "direct", "csv", "saved"] {
@@ -528,7 +566,7 @@ emit({'plain':plain,'direct':direct.structured,'saved':saved,'csv':named})"#;
 plot = alt.Chart(alt.Data(values=[{'time': 1, 'value': 9}])).mark_bar(color='#bb2484').encode(x='time:Q', y='value:Q').properties(title='Updated chart', width=160, height=100)
 saved = display(plot, update=inputs)
 emit(saved)"#, saved.clone()));
-    assert_eq!(second["status"], "completed", "{second}");
+    completed(&second);
     assert_eq!(second["result"]["id"], saved["id"]);
     assert_eq!(second["result"]["revision"], 2);
     assert_ne!(second["result"]["digest"], saved["digest"]);

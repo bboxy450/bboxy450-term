@@ -2901,7 +2901,7 @@ test-chart-artifacts: svg-exporters init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo build --locked -p bboxy450-term --example python_execute_fixture --target-dir '$(TARGET_DIR)'; \
 	cargo nextest run --locked -p bboxy450-term-mux --lib --features model --target-dir '$(TARGET_DIR)' -E 'test(artifact)'; \
-	BBOXY_CHART_PYTHON_BIN='$(abspath $(TARGET_DIR))/svg-loop/venv/bin' BBOXY_PYTHON_EXECUTE_FIXTURE='$(abspath $(TARGET_DIR))/debug/examples/python_execute_fixture' cargo nextest run --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' -E 'test(artifact_mcp) | test(python_chart_artifact)' --run-ignored all --no-capture; \
+	BBOXY_CHART_PYTHON_BIN='$(abspath $(TARGET_DIR))/svg-loop/venv/bin' BBOXY_PYTHON_EXECUTE_FIXTURE='$(abspath $(TARGET_DIR))/debug/examples/python_execute_fixture' cargo nextest run --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' -E 'test(artifact_mcp) | test(python_chart_artifact)' --run-ignored all --retries 0 --no-capture; \
 	cargo build --locked -p bboxy450-harness --features standalone --bin bboxy450-harness --target-dir '$(TARGET_DIR)'; \
 	BBOXY_CHART_PYTHON_BIN='$(abspath $(TARGET_DIR))/svg-loop/venv/bin' BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo nextest run --locked -p bboxy450-term --test it --target-dir '$(TARGET_DIR)' -E 'test(chart_artifact_live_and_pinned_images_paint_in_private_app)' --run-ignored only --retries 0 --no-capture
 
