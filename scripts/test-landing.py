@@ -3579,7 +3579,7 @@ class BudgetPresubmitTests(unittest.TestCase):
         source=SOURCE.with_name("ci-local.sh").read_text()
         re=landing.re
         claims=re.findall(r"--covered-check '([^']+)'",source)
-        self.assertEqual(len(claims),3)
+        self.assertEqual(len(claims),4)
         kb_record=landing.kb_record()
         folder=SOURCE.parent.parent/".bboxy/invariants"
         records={kb_record.fields(path).get("check","") for path in [*folder.glob("*.md"),*folder.glob("*.den")]}
@@ -3587,6 +3587,17 @@ class BudgetPresubmitTests(unittest.TestCase):
         always=re.findall(r"--covered-check '([^']+)'",next(l for l in source.splitlines() if l.startswith("run_check sh scripts/invariants.sh")))
         for claim in claims:
             self.assertIn(claim,records,"no invariant has this check")
+            if claim == "sh scripts/parity.sh":
+                self.assertIn(
+                    'for ci_option in "$@"; do\n'
+                    '    if [ "$ci_option" = --parity ]; then\n'
+                    '        ledger integration make parity-gallery TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"\n'
+                    '        set -- "$@" --covered-check \'sh scripts/parity.sh\'\n',
+                    source,
+                )
+                makefile=SOURCE.parent.parent.joinpath("Makefile").read_text()
+                self.assertRegex(makefile,r'(?m)^parity-gallery:\n(?:\t[^\n]*\n)*\t[^\n]* sh scripts/parity\.sh$')
+                continue
             # The --after-tests continuation skips `full` stages, so it may claim only `ledger` ones.
             wrapper="ledger" if claim in always else "(?:full|ledger)"
             self.assertRegex(stages,r"(?m)^"+wrapper+r" \S+ (?:sh scripts/qos\.sh utility )?"+re.escape(claim)+"$")
@@ -4090,12 +4101,13 @@ mod ordinary {
             if parents <= timed:
                 break
             timed.update(parents)
-        for target in timed:
-            command = shlex.join([sys.executable, "-I", "-c", self.SNAPSHOT])
-            result = subprocess.run(["sh", str(root / "scripts/qos.sh"), "make-" + target,
-                                     "-c", command], capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assert_role(json.loads(result.stdout), "default")
+        command = shlex.join([sys.executable, "-I", "-c", self.SNAPSHOT])
+        for target in sorted(timed):
+            with self.subTest(target=target):
+                result = subprocess.run(["sh", str(root / "scripts/qos.sh"), "make-" + target,
+                                         "-c", command], capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assert_role(json.loads(result.stdout), "default")
 
     def test_cache_env_routes_cargo_and_compiler_independently(self):
         root = SOURCE.parents[1]

@@ -688,6 +688,36 @@ def check_build_closure_controls(canonical_receipt=None):
             for index in range(31):
                 put(candidate(format(index, "016x")), canonical(fingerprint))
             denied_after("more_than_32_fingerprints")
+
+            build_target = root / "cargo-build-dir-target"
+            build_runner = build_target / "release/bboxy450-harness"
+            build_before = build_closure_before(
+                **{**parameters, "target": build_target, "cargo_argv": [*command[:-1], str(build_target)],
+                   "compiler_version": "rustc 1.100.0", "cargo_version": "cargo 1.100.0"},
+                environment=environment,
+            )
+            assert build_before["admissible"], build_before["refusals"]
+            put(build_runner, current)
+            build_dir = build_target / "release/build/bboxy450-harness"
+            for suffix in (old_suffix, current_suffix):
+                put(build_dir / suffix / "fingerprint/bin-bboxy450-harness.json", canonical(fingerprint))
+            for label, old_bytes, new_bytes, matches in (
+                ("build_dir_unique_sha", original, current, 1),
+                ("build_dir_no_matching_sha", original, original, 0),
+                ("build_dir_ambiguous_matching_sha", current, current, 2),
+            ):
+                put(build_dir / old_suffix / "out/bboxy450_harness", old_bytes)
+                put(build_dir / current_suffix / "out/bboxy450_harness", new_bytes)
+                result = build_closure_after(build_before, runner=build_runner)
+                assert len(result["candidates"]) == 2, label
+                assert sum(c["matches_runner_sha256"] for c in result["candidates"]) == matches, label
+                if matches == 1:
+                    assert result["admissible"] and result["selected"]["matches_runner_sha256"], label
+                    accepted.append(label)
+                else:
+                    assert not result["admissible"] and result["selected"] is None, label
+                    assert result["refusals"] == ["runner_has_no_unique_matching_Cargo_fingerprint"], label
+                    refused.append(label)
             assert query_calls and all(len(call) <= 3 for call in query_calls)
 
     audit = None

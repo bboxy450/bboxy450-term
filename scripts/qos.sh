@@ -32,7 +32,7 @@ case "$role" in
         # or recurse into bench-budgets. Their ordinary Cargo leaves still use
         # utility; a utility ancestor would irreversibly clamp timed siblings.
         case "$target" in
-            test-harmony-host|test-harness-startup|test-harness-native|test-terminal-replies|test-task-pages|test-task-panel-formal|test-jsonl-recovery|test-capture-storage-model|test-watcher-models|test-toolkit-models|test-knowledge-orientation-formal|test-provenance-background-formal|test-provenance-mcp-formal)
+            test-harmony-host|test-harness-startup|test-harness-native|test-question-answer-formal|test-terminal-replies|test-task-pages|test-task-panel-formal|test-jsonl-recovery|test-capture-storage-model|test-watcher-models|test-toolkit-models|test-knowledge-orientation-formal|test-provenance-background-formal|test-provenance-mcp-formal)
                 role=default ;;
         esac
         set -- /bin/sh "$@" ;;
