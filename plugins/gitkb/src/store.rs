@@ -754,7 +754,7 @@ pub fn read_source_state(
     if record["gitkb"]["source"]["kind"] == "workspace" {
         // GitKB 0.2.19 parses a workspace source's created_at and modified_at
         // as read time. Use the workspace file's own timestamp instead: stable
-        // between reads. `GitKb::stable_created` swaps in the committed
+        // between reads. `GitKb::derive_timestamps` swaps in the committed
         // created_at where the document has one.
         let file_time = result["availableDocumentSources"]
             .as_array()

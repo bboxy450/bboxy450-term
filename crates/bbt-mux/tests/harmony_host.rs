@@ -1261,27 +1261,6 @@ async fn real_gitkb_host_lifecycle() {
         "native init: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    for (key, value) in [
-        ("user.name", "Private GitKB fixture"),
-        ("user.email", "fixture@invalid.example"),
-    ] {
-        let output = Command::new(&backend)
-            .current_dir(&repo)
-            .env_clear()
-            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
-            .env("HOME", &home)
-            .env("TMPDIR", &native_temp)
-            .env("GITKB_ROOT", &repo)
-            .env("GITKB_WORKSPACE", "main")
-            .args(["config", "set", key, value])
-            .output()
-            .unwrap();
-        assert!(
-            output.status.success(),
-            "native config: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
     fs::create_dir_all(repo.join(".bboxy/plugins")).unwrap();
     let source = repo.join(".bboxy/plugins/bboxy450-term-data_source-gitkb");
     fs::copy(&artifact, &source).unwrap();
@@ -1612,7 +1591,42 @@ async fn real_gitkb_host_lifecycle() {
         .await,
     );
     native_status("claimed");
-    success(call(&logic.client,worker,"task_report",json!({"task_path":slug,"summary":"Native persisted","verify_result":{"command":"private check","exit_code":0,"evidence":[{"criterion":"persisted","reference":"canonical native workspace"}]}})).await);
+    let report_path = "reports/2026-11-21-private-lifecycle.den";
+    let report_slug = report_path.strip_suffix(".den").unwrap();
+    let supplied_timestamp = "2000-01-01T00:00:00Z";
+    success(
+        call(
+            &logic.client,
+            worker,
+            "knowledge_write",
+            json!({
+                "path": report_path,
+                "frontmatter": {
+                    "type": "report", "title": "Private lifecycle evidence",
+                    "task": format!("[[{slug}]]"), "author": format!("seat:{worker}"),
+                    "created": supplied_timestamp, "updated": supplied_timestamp, "commits": [],
+                    "verify": {"command": "private check", "exit_code": 0}
+                },
+                "body": "Recorded the completed private check."
+            }),
+        )
+        .await,
+    );
+    success(
+        call(
+            &logic.client,
+            worker,
+            "task_report",
+            json!({
+                "task_path": slug, "summary": "Native persisted", "report": report_slug,
+                "verify_result": {
+                    "command": "private check", "exit_code": 0,
+                    "evidence": [{"criterion": "persisted", "reference": "canonical native workspace"}]
+                }
+            }),
+        )
+        .await,
+    );
     native_status("reported");
     success(
         call(
@@ -1624,6 +1638,32 @@ async fn real_gitkb_host_lifecycle() {
         .await,
     );
     native_status("accepted");
+    let report = success(
+        call(
+            &logic.client,
+            oracle,
+            "knowledge_fetch",
+            json!({"locator": report_slug}),
+        )
+        .await,
+    );
+    let frontmatter = &report["frontmatter"];
+    let report_created = frontmatter["created"]
+        .as_str()
+        .expect("provider creation time");
+    assert_ne!(report_created, supplied_timestamp);
+    assert_eq!(frontmatter["updated"], report_created);
+    let raw_report = native(&[
+        "show",
+        "--source",
+        "workspace",
+        "--raw-content",
+        "--json",
+        "--",
+        report_slug,
+    ]);
+    let raw_report = raw_report["rawContent"].as_str().unwrap();
+    assert!(!raw_report.contains(supplied_timestamp), "{raw_report}");
     let accepted = success(
         call(
             &logic.client,
@@ -1677,6 +1717,28 @@ async fn real_gitkb_host_lifecycle() {
     assert_eq!(materialized["external_id"], created["external_id"]);
     assert_eq!(materialized["frontmatter"]["type"], "project-brief");
     assert_eq!(materialized["body"], "Signed edit after native commit");
+    let native_committed = native(&[
+        "show",
+        "--source",
+        "committed",
+        "--raw-content",
+        "--json",
+        "--",
+        &reference.slug,
+    ]);
+    let native_created = &native_committed["document"]["created_at"];
+    assert!(native_created.is_string(), "{native_committed}");
+    assert_eq!(&committed_doc["frontmatter"]["created"], native_created);
+    assert_eq!(&materialized["frontmatter"]["created"], native_created);
+    for record in [&committed_doc, &materialized] {
+        let updated = record["frontmatter"]["updated"]
+            .as_str()
+            .expect("provider modification time");
+        assert_eq!(
+            bbt_plugin::data_source::timestamp_millis(updated),
+            record["updated_at"].as_u64()
+        );
+    }
     assert!(!repo.join(".bboxy/notes/private-custom.md").exists());
     assert!(!repo.join(".bboxy/tasks/private-lifecycle.md").exists());
     assert!(

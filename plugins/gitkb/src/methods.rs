@@ -720,10 +720,14 @@ impl GitKb {
                 "write requires a host-admitted signed_record; use the host knowledge writer",
             ));
         };
-        let requested = required(args, "frontmatter")?
+        let mut requested = required(args, "frontmatter")?
             .as_object()
             .ok_or_else(|| invalid("frontmatter must be an object"))?
             .clone();
+        // Source timestamps are derived on read, including when frontmatter
+        // from a prior fetch is submitted to write a new version.
+        requested.remove("created");
+        requested.remove("updated");
         let body = required(args, "body")?;
         let mut fm = requested.clone();
         if !body.is_string()
@@ -871,7 +875,7 @@ impl GitKb {
         store_signed(&self.backend.cwd, id, version, &signed)?;
         record["signed_record"] = signed.clone().into();
         record["relationships"] = self.relationships(&slug)?;
-        self.stable_created(&mut record)?;
+        self.derive_timestamps(&mut record)?;
         let lossy = record["body"] != body
             || requested
                 .iter()
@@ -885,34 +889,41 @@ impl GitKb {
         let slug = record["slug"].as_str().unwrap_or("").to_owned();
         let mut record = self.resources(record)?;
         record["relationships"] = self.relationships(&slug)?;
-        self.stable_created(&mut record)?;
+        self.derive_timestamps(&mut record)?;
         Ok(record)
     }
 
-    /// A workspace record of a committed document carries the committed
-    /// `created_at`, never GitKB's read time; a workspace-only document keeps
-    /// its workspace file timestamp (`read_source_state`).
-    fn stable_created(&mut self, record: &mut Value) -> Result<(), Refusal> {
-        if record["gitkb"]["source"]["kind"] != "workspace"
-            || record["gitkb"]["committed_revision"].is_null()
+    /// Expose GitKB's source timestamps as portable frontmatter. A checkout
+    /// of a committed document keeps its original creation time and uses the
+    /// workspace file's modification time for the latest version.
+    fn derive_timestamps(&mut self, record: &mut Value) -> Result<(), Refusal> {
+        if record["gitkb"]["source"]["kind"] == "workspace"
+            && !record["gitkb"]["committed_revision"].is_null()
         {
-            return Ok(());
+            let slug = record["slug"].as_str().unwrap_or_default().to_owned();
+            let committed = self.cli(&[
+                "show",
+                "--source",
+                "committed",
+                "--raw-content",
+                "--json",
+                "--",
+                &slug,
+            ])?;
+            if committed["exists"] == true
+                && committed["document"]["id"] == record["external_id"]
+                && committed["document"]["created_at"].is_string()
+            {
+                record["gitkb"]["created_at"] = committed["document"]["created_at"].clone();
+            }
         }
-        let slug = record["slug"].as_str().unwrap_or("").to_owned();
-        let committed = self.cli(&[
-            "show",
-            "--source",
-            "committed",
-            "--raw-content",
-            "--json",
-            "--",
-            &slug,
-        ])?;
-        if committed["exists"] == true
-            && committed["document"]["id"] == record["external_id"]
-            && committed["document"]["created_at"].is_string()
-        {
-            record["gitkb"]["created_at"] = committed["document"]["created_at"].clone();
+        for (field, native) in [("created", "created_at"), ("updated", "modified_at")] {
+            let timestamp = record["gitkb"][native].clone();
+            if timestamp.as_str().is_some_and(|value| !value.is_empty()) {
+                record["frontmatter"][field] = timestamp;
+            } else if let Some(frontmatter) = record["frontmatter"].as_object_mut() {
+                frontmatter.remove(field);
+            }
         }
         Ok(())
     }
