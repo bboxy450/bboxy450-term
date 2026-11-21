@@ -781,6 +781,36 @@ Path('chart-{revision}.json').write_text(json.dumps(saved))
     f.ctl(&["ui", "swarm-workdir", &swarm, root.to_str().unwrap()]);
     let seat = f.spawn("bboxy450-harness", &swarm, None);
     rich(&f, &seat, 1);
+    let seat_identity = identity(&row(&f, &seat));
+    let session = seat_identity["session"].as_str().unwrap();
+    let transcript = f
+        .root
+        .join(format!("home/.bboxy450-harness/sessions/{session}.jsonl"));
+    let submit_chart = |previous_turns, prompt: &str| {
+        f.ctl(&["ui", "focus", &seat]);
+        wait(|| {
+            let pane = rich(&f, &seat, 1);
+            let ended = events(&transcript)
+                .iter()
+                .filter(|row| row["event"]["type"] == "turn_ended")
+                .count();
+            (pane["focused"] == true && pane["ime_caret"].is_array() && ended == previous_turns)
+                .then_some(())
+        });
+        submit(&f, prompt);
+        wait(|| {
+            events(&transcript)
+                .iter()
+                .any(|row| {
+                    let body = &row["event"]["body"];
+                    body["kind"] == "user_message"
+                        && body["blocks"].as_array().is_some_and(|blocks| {
+                            blocks.iter().any(|block| block["text"] == prompt)
+                        })
+                })
+                .then_some(())
+        });
+    };
     let saved = |revision| {
         let path = root.join(format!("chart-{revision}.json"));
         let deadline = Instant::now() + Duration::from_secs(35);
@@ -842,7 +872,7 @@ Path('chart-{revision}.json').write_text(json.dumps(saved))
     };
     let a = [17, 241, 131];
     let b = [187, 36, 132];
-    submit(&f, "Save the first chart.");
+    submit_chart(0, "Save the first chart.");
     let one = saved(1);
     let id = one["id"].as_str().unwrap();
     let pinned = format!("{id}:1");
@@ -880,8 +910,7 @@ Path('chart-{revision}.json').write_text(json.dumps(saved))
     );
     capture("canvas-one", &[a]);
 
-    f.ctl(&["ui", "focus", &seat]);
-    submit(&f, "Update the chart to B.");
+    submit_chart(1, "Update the chart to B.");
     f.ctl(&["ui", "open", "docs", "notes/live-chart.md"]);
     capture("document-before-update", &[a]);
     fs::write(root.join("publish-2"), b"publish").unwrap();
@@ -930,8 +959,7 @@ Path('chart-{revision}.json').write_text(json.dumps(saved))
     );
     assert!(exported["image"]["renderer"].is_string());
 
-    f.ctl(&["ui", "focus", &seat]);
-    submit(&f, "Return to the first chart pixels.");
+    submit_chart(2, "Return to the first chart pixels.");
     fs::write(root.join("publish-3"), b"publish").unwrap();
     let three = saved(3);
     assert_eq!(three["revision"], 3);
