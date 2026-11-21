@@ -243,6 +243,7 @@ fn native_bundle_fixture_child() {
         "crates/bboxy450-svg/fonts/SourceSans3-Regular.ttf",
         "crates/bboxy450-svg/fonts/SourceSans3-Bold.ttf",
         "crates/bboxy450-svg/fonts/LICENSE.md",
+        "crates/bboxy450-svg/chart_export.py",
     ] {
         fs::write(p.join(name), format!("fixture {name}")).unwrap();
     }
@@ -382,6 +383,11 @@ with (pathlib.Path(os.environ['FIXTURE_ROOT'])/'calls').open('a') as f:f.write(j
         p.join("target/debug/bboxy450-term.app/Contents/MacOS/bboxy450-harness")
             .is_file(),
         "bundle ships the harness beside the app binary"
+    );
+    assert_eq!(
+        fs::read(p.join("target/debug/bboxy450-term.app/Contents/Resources/chart_export.py"))
+            .unwrap(),
+        fs::read(p.join("crates/bboxy450-svg/chart_export.py")).unwrap()
     );
     assert_eq!(
         fs::read(&release_worker).unwrap(),
