@@ -4871,10 +4871,11 @@ fn mcp_seat_isolated_process() {
         "spawn" => seat_spawn_fixture(),
         "orchestrate" => seat_orchestration_fixture(),
         "native" => seat_native_fixture(),
-        "harness" => seat_harness_fixture(false, None),
-        "harness-owner" => seat_harness_fixture(true, None),
-        "harness-status" => seat_harness_fixture(false, Some(false)),
-        "harness-status-log" => seat_harness_fixture(false, Some(true)),
+        "harness" => seat_harness_fixture(false, None, false),
+        "harness-owner" => seat_harness_fixture(true, None, false),
+        "harness-status" => seat_harness_fixture(false, Some(false), false),
+        "harness-status-log" => seat_harness_fixture(false, Some(true), false),
+        "harness-crash" => seat_harness_fixture(false, Some(false), true),
         "harness-status-phase" => harness_status::run(),
         _ => panic!("unknown fixture mode"),
     }
@@ -4916,7 +4917,13 @@ fn mcp_harness_seat_owner_close_retires_hup_ignoring_tool_and_recovers() {
     isolated_seat_fixture("harness-owner");
 }
 
-fn seat_harness_fixture(owner_close: bool, quiet: Option<bool>) {
+#[test]
+#[ignore = "real private PTY and planned harness crash; make test-harness-native"]
+fn mcp_harness_seat_crash_resumes_and_continues_once() {
+    isolated_seat_fixture("harness-crash");
+}
+
+fn seat_harness_fixture(owner_close: bool, quiet: Option<bool>, crash: bool) {
     use std::os::unix::fs::PermissionsExt;
     let home = PathBuf::from(std::env::var_os("HOME").unwrap());
     let binary = PathBuf::from(std::env::var_os("BBOXY_HARNESS_TEST_BIN").unwrap());
@@ -4962,9 +4969,10 @@ fn seat_harness_fixture(owner_close: bool, quiet: Option<bool>) {
         if owner_close { "True" } else { "False" }
     );
     script.push_str(&format!(
-        "QUIET={}\nJSON={}\n",
+        "QUIET={}\nJSON={}\nCRASH={}\n",
         if quiet.is_some() { "True" } else { "False" },
-        if quiet == Some(true) { "True" } else { "False" }
+        if quiet == Some(true) { "True" } else { "False" },
+        if crash { "True" } else { "False" }
     ));
     script.push_str(r#"import json, os, sys
 from pathlib import Path
@@ -4995,6 +5003,8 @@ if QUIET and not JSON:
     args.extend(['--sessions', str(Path(HOME, 'osc-only-sessions'))])
 if JSON:
     args.append('--json')
+if CRASH:
+    os.environ['BBOXY450_INTERRUPT_MINUTE_MS'] = '300'
 os.execv(BINARY, [BINARY, *args])
 "#);
     std::fs::write(&shim, script).unwrap();
@@ -5291,6 +5301,68 @@ os.execv(BINARY, [BINARY, *args])
                     .exists(),
                 "OSC-only fixture must leave the observer's log path absent"
             );
+        }
+        if crash {
+            let tool_pid: i32 = std::fs::read_to_string(&tool_pid_path)
+                .unwrap()
+                .trim()
+                .parse()
+                .unwrap();
+            // The fixture recorded this owned tool; retire its separate group on exit.
+            let tool_pgid = unsafe { libc::getpgid(tool_pid) };
+            assert!(tool_pgid > 0 && tool_pgid != pgid && tool_pgid != mcp_pgid);
+            groups.0.push(tool_pgid);
+            assert_eq!(unsafe { libc::kill(pid, libc::SIGKILL) }, 0);
+            let until = Instant::now() + Duration::from_secs(12);
+            loop {
+                let record = f.registry().get(seat).unwrap();
+                let events: Vec<Value> = std::fs::read_to_string(&log_path)
+                    .unwrap()
+                    .lines()
+                    .filter_map(|line| serde_json::from_str(line).ok())
+                    .collect();
+                let starts: Vec<_> = events
+                    .iter()
+                    .filter(|e| {
+                        e["event"]["type"] == "turn_started"
+                            && e["event"]["origin"]["kind"] == "automatic"
+                    })
+                    .collect();
+                if record.generation == 2
+                    && starts.first().is_some_and(|start| {
+                        events.iter().any(|end| {
+                            end["event"]["type"] == "turn_ended"
+                                && end["event"]["reason"]["reason"] == "end_turn"
+                                && end["event"]["turn"] == start["event"]["turn"]
+                        })
+                    })
+                {
+                    assert_eq!(
+                        record.harness_session_id.as_deref(),
+                        Some(session.to_string().as_str())
+                    );
+                    let interruptions: Vec<_> = events
+                        .iter()
+                        .filter(|e| e["event"]["reason"]["interrupt"]["cause"] == "harness.exited")
+                        .collect();
+                    assert_eq!(interruptions.len(), 1);
+                    assert_eq!(starts.len(), 1);
+                    assert!(
+                        starts[0]["ts_ms"].as_u64().unwrap()
+                            >= interruptions[0]["event"]["reason"]["interrupt"]["deadline_ms"]
+                                .as_u64()
+                                .unwrap()
+                    );
+                    break;
+                }
+                assert!(
+                    Instant::now() < until,
+                    "harness did not resume and continue: {}",
+                    f.screen(seat)
+                );
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            return;
         }
         let native_head = std::fs::read_to_string(&log_path)
             .unwrap()

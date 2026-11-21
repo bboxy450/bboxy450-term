@@ -9204,13 +9204,27 @@ impl Worker {
             self.views.get_mut(&id).unwrap().native_reader = None;
             self.views.get_mut(&id).unwrap().replies.clear();
             self.cleanup_overlay(id)?;
-            if self.restarts.get(&id) == Some(&generation) {
+            let explicit_restart = self.restarts.get(&id) == Some(&generation);
+            // Reuse the seat resume path after a crash. The reopened harness
+            // writes the missing turn ending and owns the continuation deadline.
+            let crash_during_turn = (before.turn_open
+                || (before.source == "7501" && before.state == crate::adapters::State::Errored))
+                && (status.code != 0 || status.signal.is_some());
+            if explicit_restart || crash_during_turn {
                 self.restarts.remove(&id);
-                if let Err(error) = self
-                    .registry
-                    .get(id)
-                    .and_then(|record| self.relaunch(record))
-                {
+                if let Err(error) = self.registry.get(id).and_then(|record| {
+                    if explicit_restart
+                        || (record.generation == generation
+                            && record.location == crate::registry::Location::Local
+                            && record.lifecycle == Lifecycle::Open
+                            && record.harness_kind == "bboxy450-harness"
+                            && record.harness_session_id.is_some())
+                    {
+                        self.relaunch(record)
+                    } else {
+                        Ok(())
+                    }
+                }) {
                     eprintln!("seat {id} restart failed after its exit: {error}");
                 }
             }
