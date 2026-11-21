@@ -7255,6 +7255,22 @@ fn mcp_orphan_close_checks_supervisor_absence_generation_and_swarm_without_a_win
         bbt_mux::registry::Lifecycle::ClosedRetained
     );
     assert_eq!(f.mutate(f.oracle.id, id, "seat_close", args), closed);
+    // A seat whose process exited before its window close stays ClosedGrace
+    // with no exit receipt to come; the orphan close finalizes it.
+    let mut dead = SeatRecord::new(Ulid::new(), f.oracle.swarm, "Exited before close", "zsh");
+    dead.lifecycle = bbt_mux::registry::Lifecycle::ClosedGrace;
+    f.registry().insert(&dead).unwrap();
+    let finalized = f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "seat_close",
+        json!({"seat_id":dead.id,"expected_process_generation":"1"}),
+    );
+    assert_eq!(data(finalized)["closure"], "orphan_retained");
+    assert_eq!(
+        f.registry().get(dead.id).unwrap().lifecycle,
+        bbt_mux::registry::Lifecycle::ClosedRetained
+    );
     let owned = SeatRecord::new(Ulid::new(), f.oracle.swarm, "Owned without a view", "zsh");
     f.registry().insert(&owned).unwrap();
     let mut link = f.record_link.as_ref().unwrap().clone();

@@ -5717,9 +5717,12 @@ impl Worker {
                 return Err(invalid("caller authority changed before orphan close"));
             }
             self.registry.update(target.seat, |record| {
+                // A window close of a seat whose process had already exited
+                // leaves it ClosedGrace with no exit receipt still to come;
+                // supervisor-confirmed absence finalizes it here too.
                 if record.generation != target.generation
                     || record.swarm != actor.swarm_id
-                    || record.lifecycle != Lifecycle::Open
+                    || !matches!(record.lifecycle, Lifecycle::Open | Lifecycle::ClosedGrace)
                 {
                     return Err(invalid("target binding changed before orphan close"));
                 }
