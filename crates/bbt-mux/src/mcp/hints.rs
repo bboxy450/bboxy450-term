@@ -246,7 +246,9 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
                     .iter()
                     .any(|tool| tool["name"] == "python_execute_orient")
             }) {
-                hints.push(tool("python_execute_orient",json!({}),"Read runtime readiness, active workspace and KB binding, all configured MCP discovery, exact-argv/jq examples and recovery before running Python."));
+                // Python first: seats that script their work in one
+                // python_execute run beat call-by-call chains (operator, 2026-11-20).
+                hints.insert(0, tool("python_execute_orient",json!({}),"Start here: python_execute is your superpower. One Python program calls every MCP tool as a function, loops, filters, runs shell and edits files, and returns only the answer: faster, cheaper and quieter than a chain of tool calls. This call shows the runtime, your workspace and tools, and ready-to-run examples."));
             }
             return hints;
         }
