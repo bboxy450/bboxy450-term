@@ -81,8 +81,8 @@ fn broken_copies_are_reported_per_file_with_names_in_the_trace() {
                 broken.canonicalize().unwrap().display(),
                 root.display()
             ),
-            "X601-any-word-answers.den:28:13 X601 invariant SPEAK_001 is false at {said = Element.Fire, turns = 1}; shortest trace: Speak(Element.Fire). Repair: repair the transition or the invariant".to_string(),
-            "X601-any-word-answers.den:29:13 X601 invariant SPEAK_002 is false at {said = Element.Water, turns = 2}; shortest trace: Speak(Element.Fire) -> Speak(Element.Water). Repair: repair the transition or the invariant".to_string(),
+            "X601-any-word-answers.den:28:13 X601 invariant SPEAK_001 \"the first answer to fire is water\" is false at {said = Element.Fire, turns = 1}; shortest trace: Speak(Element.Fire) takes answer (turns = 1). Repair: repair the transition to uphold the invariant".to_string(),
+            "X601-any-word-answers.den:29:13 X601 invariant SPEAK_002 \"the last word returns to the first\" is false at {said = Element.Water, turns = 2}; shortest trace: Speak(Element.Fire) takes answer (turns = 1) -> Speak(Element.Water) takes answer (said = Element.Water, turns = 2). Repair: repair the transition to uphold the invariant".to_string(),
             "4 sound, 4 unsound".to_string(),
         ]
     );

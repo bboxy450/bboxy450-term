@@ -36,6 +36,16 @@ fn broken_controls_are_exact_diagnostics() {
             path.display(),
             r.to_text()
         );
+        if expected == "X651" {
+            let d = &r.diagnostics[0];
+            assert!(
+                d.message
+                    .contains("OUTBOX_L1(A) \"a submitted message is eventually acknowledged\""),
+                "{d:?}"
+            );
+            assert!(d.message.contains("the fair loop Drop takes drop (up = false) -> Reconnect takes restore (up = true)"), "{d:?}");
+            assert!(!d.repair.contains("weaken"), "{d:?}");
+        }
         codes.insert(expected.to_string());
         assert!(r.diagnostics[0].line > 0 && r.diagnostics[0].column > 0);
         assert!(!r.diagnostics[0].repair.is_empty());
@@ -449,7 +459,7 @@ fn diagnostics_print_names_not_indices() {
         message(spec("water is never said\" = said != Element.Water", steps)),
         (
             "X601",
-            "invariant CIRCLE_001 is false at {held = {Water}, said = Element.Water, coins = 1, open = true}; shortest trace: Gain(Element.Water) -> Speak(Element.Water)".into()
+            "invariant CIRCLE_001 \"water is never said\" is false at {held = {Water}, said = Element.Water, coins = 1, open = true}; shortest trace: Gain(Element.Water) takes gain (held = {Water}, coins = 1) -> Speak(Element.Water) takes speak (said = Element.Water, open = true)".into()
         )
     );
     let sound = "an open circle was paid for\" = open ==> coins >= 1";

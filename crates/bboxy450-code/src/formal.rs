@@ -5,8 +5,8 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Code and what specifies, models or proves it: [`den_check`] runs Den's own
-//! checker over files, [`contracts`] reads the inventory under `verification/`
-//! and the Den specs of the tree. Both only read.
+//! checker over files, [`den_statechart`] draws a machine, and [`contracts`]
+//! reads the inventory under `verification/` and the Den specs of the tree.
 use super::{Budget, Root, parse, text, with_cut};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -74,6 +74,63 @@ pub fn den_check(root: &Root, args: &Value) -> Result<Value, String> {
         cut,
         "files did not fit; ask for fewer files or one directory at a time",
     ))
+}
+
+// ---------- den_statechart ----------
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DenStatechart {
+    path: String,
+    max_states: Option<usize>,
+}
+
+/// The most states a statechart draws; past it the tool returns the counts.
+const STATECHART_STATES: usize = 64;
+
+/// A Den machine spec's reachable states and steps as a Mermaid statechart, in
+/// the spec's own event and case names, with violating states marked.
+pub fn den_statechart(root: &Root, args: &Value) -> Result<Value, String> {
+    let args: DenStatechart = parse(args)?;
+    let max = args.max_states.unwrap_or(32).min(STATECHART_STATES);
+    let full = root.resolve(&args.path)?;
+    let path = root.show(&full);
+    let body = text(&full).ok_or_else(|| format!("{path}: not a readable text file"))?;
+    Ok(match bboxy450_den::statechart(&body, max) {
+        Ok(chart) => {
+            let mut value = json!({"path": path, "states": chart.states,
+                "transitions": chart.transitions, "violated": chart.violated, "mermaid": null});
+            match chart.mermaid.map(Value::String) {
+                Some(picture) if Budget::new().spend(&picture) => value["mermaid"] = picture,
+                Some(_) => {
+                    value["note"] =
+                        json!("the statechart does not fit one answer; narrow the domains");
+                }
+                None => {
+                    value["note"] = json!(format!(
+                        "{} reachable states, more than max_states {max}; narrow the domains or raise max_states (at most {STATECHART_STATES})",
+                        chart.states
+                    ));
+                }
+            }
+            value
+        }
+        Err(report) if report.diagnostics.is_empty() => {
+            json!({"path": path, "note": "a header record has no state machine to draw"})
+        }
+        Err(report) => {
+            let diagnostics: Vec<Value> = report
+                .diagnostics
+                .iter()
+                .map(|d| {
+                    json!({"code": d.code, "line": d.line, "column": d.column,
+                    "message": d.message, "repair": d.repair})
+                })
+                .collect();
+            json!({"path": path, "diagnostics": diagnostics,
+                "note": "the spec has no single meaning yet; repair these first"})
+        }
+    })
 }
 
 // ---------- contracts ----------

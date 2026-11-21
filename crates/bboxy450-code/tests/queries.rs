@@ -476,6 +476,90 @@ fn den_check_reports_sound_and_unsound_files_with_totals_and_missing_paths() {
 }
 
 #[test]
+fn den_statechart_draws_reachable_states_marks_violations_and_refuses_what_has_no_meaning() {
+    let (dir, root) = verified(0);
+    let chart = call(
+        &root,
+        "den_statechart",
+        &json!({"path": "specs/turnstile.den"}),
+    )
+    .unwrap();
+    assert_eq!(chart["violated"], json!([]));
+    let mermaid = chart["mermaid"].as_str().unwrap();
+    assert!(
+        mermaid.starts_with("flowchart TD\n    q0([\"latch = Gate.Locked, coins = 0\"])"),
+        "{mermaid}"
+    );
+    assert!(
+        mermaid.contains("q0 -->|\"Coin takes pay\"| q1"),
+        "{mermaid}"
+    );
+    assert!(!mermaid.contains("bad"), "{mermaid}");
+    assert_eq!(
+        chart["states"].as_u64().unwrap() as usize,
+        mermaid.matches("    q").count() - chart["transitions"].as_u64().unwrap() as usize
+    );
+    // A spec whose invariant fails is still drawn, with the bad state marked.
+    std::fs::write(
+        dir.path().join("specs/toggle.den"),
+        include_str!("../../bboxy450-den/tests/unsound/X601-reachable-violation.den"),
+    )
+    .unwrap();
+    let bad = call(
+        &root,
+        "den_statechart",
+        &json!({"path": "specs/toggle.den"}),
+    )
+    .unwrap();
+    assert_eq!(bad["violated"], json!(["TOGGLE_001"]));
+    assert_eq!(
+        bad["mermaid"]
+            .as_str()
+            .unwrap()
+            .lines()
+            .filter(|line| line.ends_with(":::bad"))
+            .count(),
+        1,
+        "{bad}"
+    );
+    // The checker returns a shortest witness, while the chart marks both false states.
+    let multiple = include_str!("../../bboxy450-den/tests/unsound/X601-reachable-violation.den")
+        .replace("y: Bool = false", "y: Int[0..2] = 0")
+        .replace("y = y", "y = if y == 2 then 0 else y + 1")
+        .replace("x == y", "y == 0")
+        .replace("expect x && y", "expect x && y == 1");
+    std::fs::write(dir.path().join("specs/multiple.den"), multiple).unwrap();
+    let multiple = call(
+        &root,
+        "den_statechart",
+        &json!({"path": "specs/multiple.den"}),
+    )
+    .unwrap();
+    let mermaid = multiple["mermaid"]
+        .as_str()
+        .unwrap_or_else(|| panic!("{multiple}"));
+    assert_eq!(mermaid.matches(":::bad").count(), 4, "{multiple}");
+    // Too many states gives the count; no meaning gives the diagnostics.
+    let small = call(
+        &root,
+        "den_statechart",
+        &json!({"path": "specs/turnstile.den", "max_states": 1}),
+    )
+    .unwrap();
+    assert!(
+        small["mermaid"].is_null() && small["note"].is_string(),
+        "{small}"
+    );
+    let broken = call(
+        &root,
+        "den_statechart",
+        &json!({"path": "specs/broken.den"}),
+    )
+    .unwrap();
+    assert_eq!(broken["diagnostics"][0]["code"], "X201");
+}
+
+#[test]
 fn contracts_link_paths_and_names_to_what_specifies_them() {
     let (_dir, root) = verified(0);
     let got = call(
@@ -634,6 +718,7 @@ fn the_server_answers_initialize_list_and_call_on_stdio() {
             "files",
             "outline",
             "den_check",
+            "den_statechart",
             "contracts"
         ]
     );

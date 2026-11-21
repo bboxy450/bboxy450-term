@@ -6,10 +6,10 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Bounded, deterministic code reading and search.
 //!
-//! Seven queries over one workspace root, each a plain function from JSON-shaped
+//! Eight queries over one workspace root, each a plain function from JSON-shaped
 //! input to JSON output: [`read`], [`search`], [`symbol`], [`files`], [`outline`],
-//! [`den_check`], [`contracts`].
-//! Every query takes a batch, bounds its own output and reports a bad element
+//! [`den_check`], [`den_statechart`], [`contracts`].
+//! Each query bounds its output. Batch queries report a bad element
 //! beside the good ones. Nothing here keeps state or writes.
 //!
 //! The shapes come from measured use: specs/code-query.md.
@@ -24,7 +24,7 @@ use std::path::{Component, Path, PathBuf};
 
 mod formal;
 mod syntax;
-pub use formal::{contracts, den_check};
+pub use formal::{contracts, den_check, den_statechart};
 pub use syntax::{Item, enclosing, items, items_of, supported};
 
 /// A whole result stays under this many bytes.
@@ -679,6 +679,10 @@ fn definitions() -> Value {
         {"name": "den_check", "description": "Check Den specs: for each *.den file (directories are walked) whether it is sound, its records with reachable states, transitions and theorems, and every diagnostic with its repair. Read-only. Use after editing a .den file, or to see what the specs under a directory establish.",
          "inputSchema": {"type": "object", "additionalProperties": false, "required": ["paths"], "properties": {
             "paths": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "*.den files or directories relative to the workspace root. Missing ones are reported, not fatal"}}}},
+        {"name": "den_statechart", "description": "Draw a Den machine spec as a Mermaid statechart: every reachable state, every step that changes one labelled with its event and case, and the states where an invariant is false marked bad. Works on a spec whose invariants fail, so a counterexample can be seen. Read-only. Use to review a spec's behavior, or to show it to the operator.",
+         "inputSchema": {"type": "object", "additionalProperties": false, "required": ["path"], "properties": {
+            "path": {"type": "string", "description": "One *.den machine spec relative to the workspace root"},
+            "max_states": {"type": "integer", "minimum": 1, "maximum": 64, "description": "Draw only when the spec has at most this many reachable states (default 32)"}}}},
         {"name": "contracts", "description": "What specifies, models or proves Rust code, from verification/*.toml and the tree's Den specs. For a path: the contracts whose sources touch it (property, models with expected verdicts, broken controls, tests), its crate's coverage row, or uncovered: true when nothing specifies it. For a name (contract, model or Den spec): the sources and tests it speaks for. Use before changing stateful Rust code, and to find the code behind a model.",
          "inputSchema": {"type": "object", "additionalProperties": false, "anyOf": [{"required": ["paths"]}, {"required": ["names"]}], "properties": {
             "paths": {"type": "array", "items": {"type": "string"}, "description": "Rust source files or directories relative to the workspace root"},
@@ -702,6 +706,7 @@ pub fn call(root: &Root, tool: &str, args: &Value) -> Result<Value, String> {
         "files" => files(root, args),
         "outline" => outline(root, args),
         "den_check" => den_check(root, args),
+        "den_statechart" => den_statechart(root, args),
         "contracts" => contracts(root, args),
         other => Err(format!("unknown tool {other:?}")),
     }
@@ -710,8 +715,8 @@ pub fn call(root: &Root, tool: &str, args: &Value) -> Result<Value, String> {
 const INSTRUCTIONS: &str = "Bounded, deterministic code reading and search for this workspace. \
 search finds lines (several patterns at once, each hit names its containing item); read returns \
 numbered lines or the whole item around a line; symbol finds Rust definitions and uses; files lists \
-files with line counts; outline lists a file's items; den_check gives Den's verdict on .den files; \
-contracts names what specifies, models or proves a Rust path. Every tool takes a batch and bounds its own \
+files with line counts; outline lists a file's items; den_check gives Den's verdict on .den files; den_statechart draws one spec's reachable states; \
+contracts names what specifies, models or proves a Rust path. Every tool bounds its own \
 output, so no head, cut or sed is needed. Paths are relative to the workspace root.";
 
 /// Serve the queries as an MCP server: one JSON-RPC message per line, until the

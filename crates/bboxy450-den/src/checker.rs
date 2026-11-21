@@ -380,61 +380,41 @@ fn steps(s: &Spec) -> Vec<Diagnostic> {
     }
     ds
 }
+fn explore(s: &Spec) -> Result<(bboxy450_tlc::Model, bboxy450_tlc::Report), Diagnostic> {
+    let model = lower::model(s).map_err(|message| {
+        diagnostic(
+            s,
+            s.name.pos,
+            "X602",
+            message,
+            "keep updates within the declared variable ranges",
+        )
+    })?;
+    let graph = model.check(STATES).map_err(|message| {
+        diagnostic(
+            s,
+            s.name.pos,
+            if message.contains("limit") {
+                "X603"
+            } else {
+                "X602"
+            },
+            message,
+            "reduce the bounds or keep updates within their declared ranges",
+        )
+    })?;
+    Ok((model, graph))
+}
+
 fn model(s: &Spec, summary: &mut Summary) -> Vec<Diagnostic> {
-    let m = match lower::model(s) {
-        Ok(m) => m,
-        Err(e) => {
-            return vec![diagnostic(
-                s,
-                s.name.pos,
-                "X602",
-                e,
-                "keep updates within the declared variable ranges",
-            )];
-        }
+    let (m, graph) = match explore(s) {
+        Ok(result) => result,
+        Err(diagnostic) => return vec![diagnostic],
     };
-    let graph = match m.check(STATES) {
-        Ok(g) => g,
-        Err(e) => {
-            return vec![diagnostic(
-                s,
-                s.name.pos,
-                if e.contains("limit") { "X603" } else { "X602" },
-                e,
-                "reduce the bounds or keep updates within their declared ranges",
-            )];
-        }
-    };
-    // The model's actions in order: one per event instance and case.
-    let calls: Vec<String> = instances(s)
-        .expect("the model was built")
-        .iter()
-        .flat_map(|(hi, args)| {
-            let handler = &s.handlers[*hi];
-            let event = s
-                .events
-                .iter()
-                .find(|e| e.name.text == handler.event.text)
-                .expect("checked event");
-            vec![show_call(s, event, args); handler.cases.len()]
-        })
-        .collect();
+    let steps = Steps::of(s);
     summary.states = graph.states.len();
     summary.transitions = graph.edges.iter().map(Vec::len).sum();
-    // Event calls along a path of states; a repeated state is an implicit stutter.
-    let trace = |path: &[usize]| {
-        path.windows(2)
-            .map(|w| {
-                graph.edges[w[0]]
-                    .iter()
-                    .find(|e| e.to == w[1] && w[0] != w[1])
-                    .map_or("(nothing happens)".to_string(), |edge| {
-                        calls[edge.action].clone()
-                    })
-            })
-            .collect::<Vec<_>>()
-            .join(" -> ")
-    };
+    let trace = |path: &[usize]| steps.trace(s, &graph, path);
     let ds: Vec<_> = graph
         .violations
         .iter()
@@ -449,8 +429,9 @@ fn model(s: &Spec, summary: &mut Summary) -> Vec<Diagnostic> {
                         inv.name.pos,
                         "X601",
                         format!(
-                            "invariant {} is false at {{{}}}; shortest trace: {}",
+                            "invariant {} \"{}\" is false at {{{}}}; shortest trace: {}",
                             inv.name.text,
+                            inv.text,
                             show_state(
                                 s,
                                 &lower::unflatten(
@@ -464,7 +445,7 @@ fn model(s: &Spec, summary: &mut Summary) -> Vec<Diagnostic> {
                                 &trace
                             }
                         ),
-                        "repair the transition or the invariant",
+                        "repair the transition to uphold the invariant",
                     )
                 })
         })
@@ -486,8 +467,9 @@ fn model(s: &Spec, summary: &mut Summary) -> Vec<Diagnostic> {
                 p.name.pos,
                 "X651",
                 format!(
-                    "property {} is false: after {} the fair loop {} never reaches the response",
+                    "property {} \"{}\" is false: after {} the fair loop {} never reaches the response",
                     v.property,
+                    p.text,
                     if prefix.is_empty() {
                         "the initial state"
                     } else {
@@ -495,7 +477,7 @@ fn model(s: &Spec, summary: &mut Summary) -> Vec<Diagnostic> {
                     },
                     trace(&v.cycle)
                 ),
-                "mark the case that makes progress `fair weak` or `fair strong`, or weaken the property",
+                "mark the case that makes progress `fair weak` or `fair strong` when the scheduler guarantees it. Change the property only when the requirement changes",
             ))
         })
         .collect();
@@ -704,4 +686,123 @@ fn completeness(s: &Spec) -> Vec<Diagnostic> {
         ))
     }
     ds
+}
+
+/// The model's actions in order, one per event instance and case: the event
+/// call and the case it takes, so a trace reads in the spec's own words.
+struct Steps(Vec<String>);
+impl Steps {
+    fn of(s: &Spec) -> Self {
+        let mut labels = vec![];
+        for (hi, args) in instances(s).expect("the model was built") {
+            let handler = &s.handlers[hi];
+            let event = s
+                .events
+                .iter()
+                .find(|e| e.name.text == handler.event.text)
+                .expect("checked event");
+            let call = show_call(s, event, &args);
+            for case in &handler.cases {
+                labels.push(format!("{call} takes {}", case.name.text));
+            }
+        }
+        Self(labels)
+    }
+    /// An edge's event and case: `Coin takes pay`.
+    fn label(&self, edge: &bboxy450_tlc::Edge) -> &str {
+        &self.0[edge.action]
+    }
+    /// One step: `Coin takes pay (latch = Gate.Open, coins = 1)`. Only the
+    /// fields the step changes are named.
+    fn step(
+        &self,
+        s: &Spec,
+        graph: &bboxy450_tlc::Report,
+        from: usize,
+        edge: &bboxy450_tlc::Edge,
+    ) -> String {
+        let before = lower::unflatten(s, &graph.states[from]);
+        let after = lower::unflatten(s, &graph.states[edge.to]);
+        let changed = s
+            .fields
+            .iter()
+            .zip(before.iter().zip(&after))
+            .filter(|(_, (b, a))| b != a)
+            .map(|(f, (_, a))| format!("{} = {}", f.name.text, show(s, a, &f.ty.kind)))
+            .collect::<Vec<_>>();
+        format!("{} ({})", self.label(edge), changed.join(", "))
+    }
+    /// The steps along a path of states; a repeated state is an implicit stutter.
+    fn trace(&self, s: &Spec, graph: &bboxy450_tlc::Report, path: &[usize]) -> String {
+        path.windows(2)
+            .map(|w| {
+                graph.edges[w[0]]
+                    .iter()
+                    .find(|e| e.to == w[1] && w[0] != w[1])
+                    .map_or_else(
+                        || "(nothing happens)".to_owned(),
+                        |edge| self.step(s, graph, w[0], edge),
+                    )
+            })
+            .collect::<Vec<_>>()
+            .join(" -> ")
+    }
+}
+
+/// A machine's reachable graph drawn as a Mermaid statechart: every state, and
+/// every step that changes one labelled with its event and case. States where
+/// an invariant is false are marked `bad`. Past `max` states only the counts
+/// are given.
+// Inspired by Lauren Tan's talk "All Code Is Slop (Except Mine)".
+pub(crate) fn chart(s: &Spec, max: usize) -> Result<crate::Statechart, Diagnostic> {
+    use crate::render::mermaid_label;
+
+    let (_, graph) = explore(s)?;
+    let violated: Vec<String> = graph
+        .violations
+        .iter()
+        .filter(|v| v.cycle.is_empty())
+        .map(|v| v.property.clone())
+        .collect();
+    let changing = |from: usize| graph.edges[from].iter().filter(move |e| e.to != from);
+    let transitions = (0..graph.states.len()).map(|i| changing(i).count()).sum();
+    let mermaid = (graph.states.len() <= max).then(|| {
+        let steps = Steps::of(s);
+        let invariants = s
+            .invariants
+            .iter()
+            .filter(|inv| violated.contains(&inv.name.text))
+            .collect::<Vec<_>>();
+        let mut out = String::from("flowchart TD\n");
+        for (i, state) in graph.states.iter().enumerate() {
+            let state = lower::unflatten(s, state);
+            // The checker reports the first violation of each invariant. The
+            // diagram marks every reachable state where one is false.
+            let bad = invariants.iter().any(|inv| {
+                !eval(s, &inv.expr, &state, &vec![], Some(&Ty::Bool))
+                    .expect("checked invariant")
+                    .truth()
+            });
+            let text = mermaid_label(&show_state(s, &state));
+            let (open, close) = if i == 0 { ("([", "])") } else { ("[", "]") };
+            let class = if bad { ":::bad" } else { "" };
+            out.push_str(&format!("    q{i}{open}\"{text}\"{close}{class}\n"));
+        }
+        for from in 0..graph.states.len() {
+            for edge in changing(from) {
+                let text = mermaid_label(steps.label(edge));
+                out.push_str(&format!("    q{from} -->|\"{text}\"| q{}\n", edge.to));
+            }
+        }
+        if !violated.is_empty() {
+            out.push_str("    classDef bad stroke:#c62828,stroke-width:3px\n");
+        }
+        out
+    });
+    Ok(crate::Statechart {
+        mermaid,
+        states: graph.states.len(),
+        transitions,
+        violated,
+    })
 }

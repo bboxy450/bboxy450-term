@@ -353,8 +353,16 @@ fn markdown(
         }
     }
 
-    if mermaid && !spec.scenarios.is_empty() {
+    let chart = summary
+        .filter(|_| mermaid)
+        .map(|summary| statechart(spec, summary.states));
+    if chart.is_some() || (mermaid && !spec.scenarios.is_empty()) {
         let _ = writeln!(out, "## Views\n");
+    }
+    if let Some(chart) = chart {
+        out.push_str(&chart);
+    }
+    if mermaid && !spec.scenarios.is_empty() {
         for (n, s) in spec.scenarios.iter().enumerate() {
             let _ = writeln!(out, "Scenario {}: {}\n", n + 1, s.name.trim());
             let _ = writeln!(out, "```mermaid");
@@ -403,7 +411,11 @@ fn record_markdown(record: &crate::Record, module: &str, sha: &str, source: &str
     let mut header: Vec<(String, String)> = metadata
         .iter()
         .map(|(key, value)| {
-            let value = if key == "type" { value.clone() } else { yaml(value) };
+            let value = if key == "type" {
+                value.clone()
+            } else {
+                yaml(value)
+            };
             (key.clone(), value)
         })
         .collect();
@@ -412,7 +424,9 @@ fn record_markdown(record: &crate::Record, module: &str, sha: &str, source: &str
     // `other` (keys with no Den name) and `body_tail` have no flat header form.
     for field in &record.managed {
         let (name, value) = match &field.value {
-            crate::Value::Tagged { tag, value } if tag == "json" => (field.name.as_str(), value.clone()),
+            crate::Value::Tagged { tag, value } if tag == "json" => {
+                (field.name.as_str(), value.clone())
+            }
             crate::Value::Integer(number) => (field.name.as_str(), number.to_string()),
             value if field.name == "status" => ("status", yaml(&value.text().to_ascii_lowercase())),
             value if field.name == "delegator" => ("delegated_by", yaml(&value.text())),
@@ -457,8 +471,25 @@ fn record_markdown(record: &crate::Record, module: &str, sha: &str, source: &str
     out
 }
 
+/// The most reachable states a statechart draws; past it the record says
+/// how many there are instead of an unreadable picture.
+const STATECHART_STATES: usize = 16;
+
+/// The statechart section of a lowered spec: the picture, or the count when it
+/// is too large to read.
+fn statechart(spec: &Spec, states: usize) -> String {
+    if states > STATECHART_STATES {
+        return format!(
+            "State machine: {states} reachable states, more than the {STATECHART_STATES} a statechart draws.\n\n"
+        );
+    }
+    let chart = crate::checker::chart(spec, STATECHART_STATES).expect("sound spec");
+    let mermaid = chart.mermaid.expect("within the drawing limit");
+    format!("State machine: every reachable state.\n\n```mermaid\n{mermaid}```\n\n")
+}
+
 /// A Mermaid node label: quotes and newlines cannot appear inside one.
-fn mermaid_label(text: &str) -> String {
+pub(crate) fn mermaid_label(text: &str) -> String {
     text.replace('"', "#quot;").replace('\n', " ")
 }
 
@@ -561,7 +592,7 @@ mod tests {
         assert_eq!(first.source_sha256.len(), 64);
         let md = &first.markdown;
         assert!(md.starts_with("---\ntype: spec\ntitle: 'Two flags toggle together.'\ngenerated_from:\n  module: specs.Toggle\n  source_sha256: "), "{md}");
-        assert!(md.contains("## Views\n\nScenario 1: toggle both flags\n\n```mermaid\nflowchart TD\n    s0([\"start\"])\n    s0 --> s1[\"Toggle ~> accepted\"]\n    s1 --> s2[\"expect x && y\"]\n```"), "{md}");
+        assert!(md.contains("## Views\n\nState machine: every reachable state.\n\n```mermaid\nflowchart TD\n    q0([\"x = false, y = false\"])\n    q1[\"x = true, y = true\"]\n    q0 -->|\"Toggle takes toggle\"| q1\n    q1 -->|\"Toggle takes toggle\"| q0\n```\n\nScenario 1: toggle both flags\n\n```mermaid\nflowchart TD\n    s0([\"start\"])\n    s0 --> s1[\"Toggle ~> accepted\"]\n    s1 --> s2[\"expect x && y\"]\n```"), "{md}");
         assert!(
             !render_with(TOGGLE, false)
                 .unwrap()

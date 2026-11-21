@@ -323,6 +323,12 @@ normal exact-commit `make test` before handoff. New crates must be inventoried;
 existing implementation-only entries are visible coverage gaps, not an exemption
 from the mandatory verification stack.
 
+`bboxy450-den check` prints the failed claim's sentence and the counterexample
+steps with their event, case and changed fields. The `den_statechart` MCP tool
+draws reachable states and state-changing steps as a Mermaid chart and marks
+each state where an invariant is false. Lowered spec records include the
+chart in Views for machines with up to 16 reachable states.
+
 `evidence.json` records the source revision/dirty state, input/model hashes,
 reference artifact identities, actual reference exits, states/edges and per-crate
 scope. Detailed logs, DOT graphs, native states/edges and counterexamples remain

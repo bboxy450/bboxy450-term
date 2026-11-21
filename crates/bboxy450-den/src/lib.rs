@@ -19,6 +19,34 @@ pub use record::{
     Field, Layout, Record, Value, body, layout, load, metadata, set_managed, unmanaged,
 };
 
+/// A machine spec's reachable behavior as a picture: see [`statechart`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Statechart {
+    /// A Mermaid `flowchart`, or `None` when there are more states than asked.
+    pub mermaid: Option<String>,
+    /// Reachable states.
+    pub states: usize,
+    /// Steps that change the state; ignored and rejected events are left out.
+    pub transitions: usize,
+    /// Invariants false in a reachable state; those states are marked `bad`.
+    pub violated: Vec<String>,
+}
+
+/// Draw a well-formed machine spec, sound or not, when it has at most
+/// `max_states` reachable states. A spec with no single meaning returns its
+/// report; a header record has no machine and returns an empty report.
+pub fn statechart(source: &str, max_states: usize) -> Result<Statechart, Report> {
+    let refuse = |diagnostics| Report {
+        records: Vec::new(),
+        diagnostics,
+    };
+    if record::is_record(source) {
+        return Err(refuse(Vec::new()));
+    }
+    let spec = checker::load(source, None).map_err(refuse)?;
+    checker::chart(&spec, max_states).map_err(|diagnostic| refuse(vec![diagnostic]))
+}
+
 /// Result of checking one source file. Any diagnostic makes it unsound.
 #[derive(Debug)]
 pub struct Report {
