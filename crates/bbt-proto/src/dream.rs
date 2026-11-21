@@ -330,7 +330,10 @@ impl From<False> for bool {
 
 /// Canonical UTF-8 bytes used by the one harness-owned protocol.
 pub fn canonical<T: Serialize>(value: &T) -> Result<Vec<u8>, serde_json::Error> {
-    serde_json::to_vec(&serde_json::to_value(value)?)
+    let mut value = serde_json::to_value(value)?;
+    // Keep producer order if another workspace crate enables preserve_order.
+    value.sort_all_objects();
+    serde_json::to_vec(&value)
 }
 
 /// Decode one bounded public message without accepting unknown fields.
