@@ -52,7 +52,7 @@ bboxy_cache_env() {
         Darwin) KACHE_CACHE_DIR=${KACHE_CACHE_DIR:-$HOME/Library/Caches/bboxy450-kache} ;;
         *) KACHE_CACHE_DIR=${KACHE_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/bboxy450-kache} ;;
     esac
-    KACHE_MAX_SIZE=${KACHE_MAX_SIZE:-40GiB}
+    KACHE_MAX_SIZE=${KACHE_MAX_SIZE:-20GiB}
     KACHE_LOCAL_ONLY=1
     # Cargo's job count (CARGO_BUILD_JOBS above) is the one concurrency limit.
     # kache's own scheduler sizes permits from the CPU count and halves them
