@@ -165,8 +165,9 @@ impl Port {
             .upgrade()
             .ok_or_else(|| invalid("artifact reader detached"))?;
         use std::time::Duration;
-        bbt_rt::handle().block_on(async {
-            tokio::time::timeout(Duration::from_secs(3), async {
+        let (finish, done) = tokio::sync::oneshot::channel();
+        bbt_rt::handle().spawn(async move {
+            let read = async {
                 loop {
                     let (reply, receive) = tokio::sync::oneshot::channel();
                     sender
@@ -187,10 +188,14 @@ impl Port {
                         Err(error) => return Err(invalid(error.to_string())),
                     }
                 }
-            })
-            .await
-            .map_err(|_| invalid("artifact read expired"))?
-        })
+            };
+            let result = tokio::time::timeout(Duration::from_secs(3), read)
+                .await
+                .unwrap_or_else(|_| Err(invalid("artifact read expired")));
+            let _ = finish.send(result);
+        });
+        done.blocking_recv()
+            .map_err(|_| invalid("artifact reader detached"))?
     }
     pub fn prepare(
         &self,
@@ -320,7 +325,7 @@ mod tests {
             media_type: "image/svg+xml".into(),
             bytes: 0,
         };
-        let worker = bbt_rt::handle().spawn(async move {
+        let worker = std::thread::spawn(move || {
             for result in [
                 Err(CommandError::new("provider_busy", "occupied")),
                 Ok(image),
@@ -331,7 +336,10 @@ mod tests {
                     revision,
                     scope: binding,
                     reply,
-                }) = inbox.recv().await else { panic!("expected an artifact read") };
+                }) = inbox.blocking_recv()
+                else {
+                    panic!("expected an artifact read")
+                };
                 assert_eq!((requested, revision, binding), (id, Some(1), scope));
                 reply.send(result).unwrap();
             }
@@ -339,7 +347,7 @@ mod tests {
         let target = format!("artifact:{id}:1");
         assert_eq!(port.resolve(&target, scope).unwrap().reference(), target);
         assert!(port.resolve(&target, scope).unwrap_err().to_string().contains("swarm_root_changed"));
-        bbt_rt::handle().block_on(worker).unwrap();
+        worker.join().unwrap();
     }
 
     #[test]

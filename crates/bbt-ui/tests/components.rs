@@ -648,7 +648,7 @@ fn image_has_square_intrinsics_a_baseline_and_validated_asset_geometry() {
         .unwrap();
     assert_eq!(layout.rect, Rect::new(3., 7., 18., 18.));
     assert_eq!(layout.baseline, 18.);
-    assert!(matches!(&layout.kind,c::LayoutKind::Image {asset,radius:9.} if asset=="bboxy"));
+    assert!(matches!(&layout.kind,c::LayoutKind::Image {asset,radius:9.} if asset.as_ref()=="bboxy"));
     let mut parent = c::Box::new(Style::new(Preset::Row), vec![image.into()]);
     parent.scale = 0.5;
     let scaled = c::Element::Box(parent)
