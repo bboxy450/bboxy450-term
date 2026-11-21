@@ -13,13 +13,33 @@ from pathlib import Path
 
 path, session, item, opened = sys.argv[1:]
 version = {"major": 1, "minor": 1}
+hello = json.dumps(dict(v=version, meta={"session": session}, epoch=1, head=1)).encode() + b"\n"
+
+
+def accept_approver(listener):
+    # The native status follower also connects here, but only reads Hello.
+    while True:
+        connection, _ = listener.accept()
+        connection.settimeout(30)
+        try:
+            with connection.makefile("rb", buffering=0) as wire:
+                line = wire.readline()
+            if line:
+                subscribe = json.loads(line)
+                assert subscribe["subscribe"]["ephemeral"] is False
+                if subscribe.get("approver") is True:
+                    return connection
+                connection.sendall(hello)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        connection.close()
+
+
 with socket.socket(socket.AF_UNIX) as listener:
     listener.bind(path)
     listener.listen(1)
     listener.settimeout(30)
-    connection, _ = listener.accept()
-    with connection:
-        connection.settimeout(30)
+    with accept_approver(listener) as connection:
         with connection.makefile("rwb", buffering=0) as wire:
             def send(value):
                 connection.sendall(json.dumps(value).encode() + b"\n")
@@ -28,10 +48,7 @@ with socket.socket(socket.AF_UNIX) as listener:
                 send(dict(v=version, session=session, epoch=1, seq=seq, at=seq,
                           cause=cause, ts_ms=55 + seq, event=event))
 
-            subscribe = json.loads(wire.readline())
-            assert subscribe["subscribe"]["ephemeral"] is False
-            assert subscribe["approver"]
-            send(dict(v=version, meta={"session": session}, epoch=1, head=1))
+            connection.sendall(hello)
             event(1, {"type": "session_started", "meta": {}})
             until = time.monotonic() + 15
             while not Path(opened).exists():
