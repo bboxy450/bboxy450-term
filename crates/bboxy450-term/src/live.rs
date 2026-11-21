@@ -1291,7 +1291,7 @@ async fn run_with_control(
     let mut document_reader = documents::Reader::default();
     let mut artifact_reads = BTreeMap::<
         Ulid,
-        oneshot::Sender<std::result::Result<bbt_mux::artifact_images::Resolved, String>>,
+        oneshot::Sender<bbt_mux::knowledge::data_source::Result<bbt_mux::artifact_images::Resolved>>,
     >::new();
     let mut document_preparation: Option<(Ulid, tokio::task::JoinHandle<Arc<documents::Reply>>)> =
         None;
@@ -1516,7 +1516,10 @@ async fn run_with_control(
                     Some(UiMsg::ArtifactImage {id,revision,scope,reply})=> {
                         artifact_reads.retain(|_, pending| !pending.is_closed());
                         if lost || artifact_reads.len() >= 16 {
-                            let _ = reply.send(Err("artifact reader unavailable".into()));
+                            let code = if lost { "artifact_unavailable" } else { "provider_busy" };
+                            let _ = reply.send(Err(bbt_mux::knowledge::data_source::CommandError::new(
+                                code, "artifact reader unavailable",
+                            )));
                         } else if !reply.is_closed() {
                             let op=Ulid::new();
                             let mut args=serde_json::json!({"id":id});
@@ -2027,11 +2030,12 @@ async fn run_with_control(
                             Arc::make_mut(&mut model).closes.refused(op);
                             if terminal_reply == Some(ActionReply::Identity(op)) { publish_identity_control(&mut model,&updates,op,Err(reason.clone())); }
                             if terminal_reply == Some(ActionReply::Knowledge(op)) {
-                                let result=Err(bbt_mux::knowledge::data_source::CommandError::new("transport",reason.clone()));
-                                if result.as_ref().err().is_some_and(|error|error.code=="swarm_root_changed") {queue_action(&mut outgoing,GuiAction::SwarmList{id:Ulid::new()});}
-                                if let Some(work)=document_reader.response(op,result.clone()) {
+                                let error=bbt_mux::knowledge::data_source::CommandError::new("transport",reason.clone());
+                                if let Some(reply)=artifact_reads.remove(&op) {
+                                    let _=reply.send(Err(error));
+                                } else if let Some(work)=document_reader.response(op,Err(error.clone())) {
                                     document_preparation=Some((op,tokio::task::spawn_blocking(move ||work.prepare())));
-                                } else { knowledge_watch.response(op,result); }
+                                } else { knowledge_watch.response(op,Err(error)); }
                             }
                             let result = if matches!(terminal_reply,Some(ActionReply::SeatControl(_)|ActionReply::Plugin(..)|ActionReply::Root(..))) && (reason.starts_with("unknown:") || reason.contains("outcome unknown")) {
                                 bboxy450_term::messaging::Reply::Unknown(reason.clone())
@@ -2071,8 +2075,12 @@ async fn run_with_control(
                                 let result:bbt_mux::knowledge::data_source::Result<serde_json::Value>=serde_json::from_value(response).unwrap_or_else(|error| Err(bbt_mux::knowledge::data_source::CommandError::new("invalid_provider_result",format!("invalid knowledge reply: {error}"))));
                                 if result.as_ref().err().is_some_and(|error|error.code=="swarm_root_changed") {queue_action(&mut outgoing,GuiAction::SwarmList{id:Ulid::new()});}
                                 if let Some(reply)=artifact_reads.remove(&op) {
-                                    let resolved=result.map_err(|e|e.to_string()).and_then(|value|{
-                                        serde_json::from_value::<bbt_mux::artifact_images::Resolved>(value).map_err(|e|e.to_string())
+                                    let resolved=result.and_then(|value|{
+                                        serde_json::from_value(value).map_err(|error| {
+                                            bbt_mux::knowledge::data_source::CommandError::new(
+                                                "invalid_provider_result", error.to_string(),
+                                            )
+                                        })
                                     });
                                     let _=reply.send(resolved);
                                 } else if let Some(work)=document_reader.response(op,result.clone()) {

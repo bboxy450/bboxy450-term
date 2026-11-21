@@ -248,7 +248,7 @@ def generate(out):
             cases[-1].update({"scenegraph_sha256": digest((out / (key + ".scenegraph.json")).read_bytes()),
                               "measurements_sha256": digest((out / (key + ".measurements.json")).read_bytes())})
     dump(out / "manifest.json", {"phase": "exporter corpus", "font_set": identity,
-                                 "exporters": versions, "generator_sha256": {p: digest((BASE / p).read_bytes()) for p in ("corpus.py", "census.py", "references.py", "measurements.py", "guard_controls.py", "capture.mjs", "reference.rs", "reference_setup.py", "test_corpus.py", "fixtures.py", "review.py", "native.py", "src/viewport.rs", "../bboxybook/capture-cdp.mjs", "../bboxybook/capture-startup.mjs")},
+                                 "exporters": versions, "generator_sha256": {p: digest((BASE / p).read_bytes()) for p in ("corpus.py", "chart_export.py", "census.py", "references.py", "measurements.py", "guard_controls.py", "capture.mjs", "reference.rs", "reference_setup.py", "test_corpus.py", "fixtures.py", "review.py", "native.py", "src/viewport.rs", "../bboxybook/capture-cdp.mjs", "../bboxybook/capture-startup.mjs")},
                                  "requirements_sha256": digest((BASE / "requirements.lock").read_bytes()), "cases": cases})
     return cases
 

@@ -164,21 +164,32 @@ impl Port {
             .sender
             .upgrade()
             .ok_or_else(|| invalid("artifact reader detached"))?;
-        let (reply, receive) = tokio::sync::oneshot::channel();
-        sender
-            .try_send(crate::cockpit::UiMsg::ArtifactImage {
-                id,
-                revision,
-                scope,
-                reply,
-            })
-            .map_err(|_| invalid("artifact reader busy"))?;
+        use std::time::Duration;
         bbt_rt::handle().block_on(async {
-            tokio::time::timeout(std::time::Duration::from_secs(3), receive)
-                .await
-                .map_err(|_| invalid("artifact read expired"))?
-                .map_err(|_| invalid("artifact reader detached"))?
-                .map_err(invalid)
+            tokio::time::timeout(Duration::from_secs(3), async {
+                loop {
+                    let (reply, receive) = tokio::sync::oneshot::channel();
+                    sender
+                        .send(crate::cockpit::UiMsg::ArtifactImage {
+                            id,
+                            revision,
+                            scope,
+                            reply,
+                        })
+                        .await
+                        .map_err(|_| invalid("artifact reader detached"))?;
+                    match receive.await.map_err(|_| invalid("artifact reader detached"))? {
+                        Ok(image) => return Ok(image),
+                        Err(error) if matches!(error.code.as_str(), "provider_busy" | "workspace_pending") => {
+                            let delay = error.retry_after_ms.unwrap_or(25).clamp(25, 100);
+                            tokio::time::sleep(Duration::from_millis(delay)).await;
+                        }
+                        Err(error) => return Err(invalid(error.to_string())),
+                    }
+                }
+            })
+            .await
+            .map_err(|_| invalid("artifact read expired"))?
         })
     }
     pub fn prepare(
@@ -288,6 +299,47 @@ mod tests {
             }
         }
         count
+    }
+
+    #[test]
+    fn artifact_image_port_retries_capacity_without_rebinding() {
+        use bbt_mux::{Ulid, artifact_images::Resolved, knowledge::data_source::CommandError};
+        let (sender, mut inbox) = tokio::sync::mpsc::channel(1);
+        let fixture = tempfile::tempdir().unwrap();
+        let port = Port::new(fixture.path().to_owned(), sender.downgrade());
+        let id = Ulid::new();
+        let scope = bbt_proto::gui::SwarmScope {
+            swarm: Ulid::new(),
+            revision: 7,
+        };
+        let image = Resolved {
+            root: "private test root".into(),
+            id,
+            revision: 1,
+            digest: "private test digest".into(),
+            media_type: "image/svg+xml".into(),
+            bytes: 0,
+        };
+        let worker = bbt_rt::handle().spawn(async move {
+            for result in [
+                Err(CommandError::new("provider_busy", "occupied")),
+                Ok(image),
+                Err(CommandError::new("swarm_root_changed", "retargeted")),
+            ] {
+                let Some(crate::cockpit::UiMsg::ArtifactImage {
+                    id: requested,
+                    revision,
+                    scope: binding,
+                    reply,
+                }) = inbox.recv().await else { panic!("expected an artifact read") };
+                assert_eq!((requested, revision, binding), (id, Some(1), scope));
+                reply.send(result).unwrap();
+            }
+        });
+        let target = format!("artifact:{id}:1");
+        assert_eq!(port.resolve(&target, scope).unwrap().reference(), target);
+        assert!(port.resolve(&target, scope).unwrap_err().to_string().contains("swarm_root_changed"));
+        bbt_rt::handle().block_on(worker).unwrap();
     }
 
     #[test]

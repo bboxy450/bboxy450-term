@@ -2235,3 +2235,73 @@ frontend = "project"
 name = "BrokenQuestionAnswer"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "ArtifactPublication"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenArtifactPublicationOwner"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenArtifactPublicationCas"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenArtifactPublicationDurability"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenArtifactPublicationBinding"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenArtifactPublicationCustody"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenArtifactPublicationImmutable"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "ArtifactRecovery"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenArtifactRecoveryDuplicate"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenArtifactRecoveryRereadStaging"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenArtifactRecoveryChangedArguments"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "ArtifactViewRevision"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenArtifactViewRevision"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenArtifactViewDropsContention"
+expected = "safety"
+frontend = "project"

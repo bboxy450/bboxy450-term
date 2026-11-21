@@ -245,10 +245,20 @@ pub(super) fn artifact_recovery(fault: RetryFault) -> Model {
     m
 }
 
-pub(super) fn artifact_view_revision(broken: bool) -> Model {
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ViewFault {
+    None,
+    Stale,
+    DropsContention,
+}
+fn artifact_view_revision(fault: ViewFault) -> Model {
     let mut m = model(
-        "ArtifactViewRevision",
-        broken,
+        if fault == ViewFault::DropsContention {
+            "ArtifactViewDropsContention"
+        } else {
+            "ArtifactViewRevision"
+        },
+        fault != ViewFault::None,
         &[
             ("latest", 3, 1),
             ("livePending", 3, 0),
@@ -261,6 +271,8 @@ pub(super) fn artifact_view_revision(broken: bool) -> Model {
             ("pendingGeneration", 3, 0),
             ("presentedGeneration", 3, 0),
             ("currentGenerationAtApply", 3, 0),
+            ("awaitingRead", 1, 0),
+            ("capacityDeferred", 1, 0),
         ],
     );
     action(
@@ -269,7 +281,12 @@ pub(super) fn artifact_view_revision(broken: bool) -> Model {
         Var(0).lt(Int(3)),
         &[(0, Var(0).plus(Int(1)))],
     );
-    action(&mut m, "ResolveLive", eq(1, 0), &[(1, Var(0)), (8, Var(7))]);
+    action(
+        &mut m,
+        "ResolveLive",
+        eq(11, 1),
+        &[(1, Var(0)), (8, Var(7)), (11, Int(0)), (12, Int(0))],
+    );
     action(&mut m, "ResolvePinnedOne", eq(2, 0), &[(2, Int(1))]);
     let current = all([Var(1).eq(Var(0)), Var(8).eq(Var(7))]);
     let aba = all([eq(1, 1), eq(0, 3)]);
@@ -278,7 +295,7 @@ pub(super) fn artifact_view_revision(broken: bool) -> Model {
         "PresentLive",
         all([
             ne(1, 0),
-            if broken {
+            if fault == ViewFault::Stale {
                 current.clone().or(aba)
             } else {
                 current.clone()
@@ -310,6 +327,22 @@ pub(super) fn artifact_view_revision(broken: bool) -> Model {
         Var(7).lt(Int(3)),
         &[(7, Var(7).plus(Int(1)))],
     );
+    action(
+        &mut m,
+        "BeginLiveRead",
+        all([eq(1, 0), eq(11, 0)]),
+        &[(11, Int(1))],
+    );
+    action(
+        &mut m,
+        "CapacityDefersRead",
+        all([eq(11, 1), eq(12, 0)]),
+        &[
+            (11, Int(if fault == ViewFault::DropsContention { 0 } else { 1 })),
+            (12, Int(1)),
+        ],
+    );
+    safe(&mut m, "CapacityKeepsCurrentReadPending", eq(12, 0).or(eq(11, 1)));
     safe(&mut m, "CompletionBelongsToCurrentView", Var(9).eq(Var(10)));
     safe(
         &mut m,
@@ -317,8 +350,14 @@ pub(super) fn artifact_view_revision(broken: bool) -> Model {
         Var(3).eq(Var(5)),
     );
     safe(&mut m, "ExactHistoricalPin", Var(4).eq(Var(6)));
+    m.weak_fair.push(vec![1]);
     m.weak_fair.push(vec![3, 4]);
     m.weak_fair.push(vec![5]);
+    m.responses.push(Response {
+        name: "DeferredReadFinishesWhenCapacityReturns".into(),
+        request: eq(12, 1),
+        response: eq(11, 0),
+    });
     m.responses.push(Response {
         name: "ResolvedLiveFinishesOrIsSuperseded".into(),
         request: ne(1, 0),
@@ -358,8 +397,9 @@ pub(super) fn cases() -> Vec<(Model, &'static str)> {
                 }),
         )
         .chain([
-            (artifact_view_revision(false), "pass"),
-            (artifact_view_revision(true), "safety"),
+            (artifact_view_revision(ViewFault::None), "pass"),
+            (artifact_view_revision(ViewFault::Stale), "safety"),
+            (artifact_view_revision(ViewFault::DropsContention), "safety"),
         ])
         .collect()
 }
@@ -386,12 +426,13 @@ mod tests {
                         .iter()
                         .any(|state| state[2] == 2 && state[5] == 1)
                 ),
-                "ArtifactViewRevision" => assert!(
-                    report
-                        .states
-                        .iter()
-                        .any(|state| state[3] == 3 && state[4] == 1)
-                ),
+                "ArtifactViewRevision" => {
+                    assert!(report.states.iter().any(|state| state[3] == 3 && state[4] == 1));
+                    assert!(report.states.iter().any(|state| state[12] == 1));
+                }
+                "BrokenArtifactViewDropsContention" => assert!(report.violations.iter().any(
+                    |violation| violation.property == "CapacityKeepsCurrentReadPending"
+                )),
                 _ => assert!(
                     report
                         .violations

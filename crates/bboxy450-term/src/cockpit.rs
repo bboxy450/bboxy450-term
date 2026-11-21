@@ -60,7 +60,7 @@ pub enum UiMsg {
         revision: Option<u64>,
         scope: bbt_proto::gui::SwarmScope,
         reply: tokio::sync::oneshot::Sender<
-            std::result::Result<bbt_mux::artifact_images::Resolved, String>,
+            bbt_mux::knowledge::data_source::Result<bbt_mux::artifact_images::Resolved>,
         >,
     },
     InboxPage(Option<bbt_proto::gui::QuestionCursor>),

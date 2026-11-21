@@ -796,7 +796,7 @@ Path('chart-{revision}.json').write_text(json.dumps(saved))
         }
     };
     let evidence = std::env::var_os("BBOXY_CHART_EVIDENCE").map(PathBuf::from);
-    let capture = |name: &str, colours: &[[u8; 3]]| {
+    let capture_regions = |name: &str, regions: &[([u8; 3], std::ops::Range<usize>)]| {
         let image = f.root.join(format!("view-{name}.png"));
         wait(|| {
             f.ctl(&["seat", "capture", "window", image.to_str().unwrap()]);
@@ -811,13 +811,20 @@ Path('chart-{revision}.json').write_text(json.dumps(saved))
                 png::ColorType::Rgba => 4,
                 _ => return None,
             };
-            let matching = |colour: &[u8; 3]| {
-                rgb[..info.buffer_size()]
-                    .chunks_exact(channels)
-                    .filter(|px| px[..3].iter().zip(colour).all(|(a, b)| a.abs_diff(*b) <= 3))
-                    .count()
-            };
-            let counts: Vec<_> = colours.iter().map(matching).collect();
+            let width = info.width as usize;
+            let counts: Vec<_> = regions
+                .iter()
+                .map(|(colour, columns)| {
+                    rgb[..info.buffer_size()]
+                        .chunks_exact(channels)
+                        .enumerate()
+                        .filter(|(index, pixel)| {
+                            columns.contains(&(index % width * 100 / width))
+                                && pixel[..3].iter().zip(colour).all(|(a, b)| a.abs_diff(*b) <= 3)
+                        })
+                        .count()
+                })
+                .collect();
             if !counts.iter().all(|count| *count > 250) {
                 return None;
             }
@@ -828,6 +835,10 @@ Path('chart-{revision}.json').write_text(json.dumps(saved))
             println!("chart {name}: {counts:?} paint pixels");
             Some(counts)
         })
+    };
+    let capture = |name: &str, colours: &[[u8; 3]]| {
+        let regions: Vec<_> = colours.iter().map(|colour| (*colour, 0..100)).collect();
+        capture_regions(name, &regions)
     };
     let a = [17, 241, 131];
     let b = [187, 36, 132];
@@ -926,7 +937,9 @@ Path('chart-{revision}.json').write_text(json.dumps(saved))
     assert_eq!(three["revision"], 3);
     assert_eq!(three["digest"], one["digest"]);
     canvas("open", &json!({"id":drawing_id}));
-    capture("canvas-three", &[a]);
+    // The pinned green chart is visible even while the live chart still shows B.
+    // Require green on both sides of the fixed private window before capturing A again.
+    capture_regions("canvas-three", &[(a, 25..50), (a, 75..100)]);
     let finished = canvas("read", &json!({"id":drawing_id,"image":true}));
     assert_eq!(
         finished["image"]["artifacts"][id]["pin"],
