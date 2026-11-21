@@ -9,6 +9,7 @@
 //! Transcript/cache allocation: 32MiB per view, not a measured heap bound.
 use bboxy450_harness::frontends::gui::{
     bridge::Bridge,
+    rich::ImagePreparation,
     view::{Action, Frame, HarnessView},
 };
 use bbt_ui::{self as ui, components as c};
@@ -128,6 +129,8 @@ impl bbt_rt::Waker for Signal {
 pub struct Parked {
     view: HarnessView,
     retained: bboxy450_harness::frontends::gui::bridge::Retained,
+    image_root: Option<PathBuf>,
+    image_preparation: Option<Arc<ImagePreparation>>,
     started: Instant,
 }
 /// The UI exclusively reserves each seat's next draft position before workers
@@ -160,6 +163,7 @@ pub struct Pane {
     appearance_wake: Arc<Notify>,
     pub generation: u64,
     pub path: PathBuf,
+    pub image_root: Option<PathBuf>,
     pub rect: Rect,
     pub snapshot: Snapshot,
     pub dirty: bbt_rt::DirtySet,
@@ -200,8 +204,22 @@ impl Pane {
         waker: Arc<dyn bbt_rt::Waker>,
         draft: &mut Draft,
     ) -> Self {
-        // This exclusive borrow ends before scheduling. The worker owns the
-        // predecessor receiver and new sender, never the mutable UI slot.
+        Self::connect_scoped(path, generation, rect, after, waker, draft, None)
+    }
+
+    pub fn connect_scoped(
+        path: PathBuf,
+        generation: u64,
+        rect: Rect,
+        after: Option<(
+            bboxy450_harness::protocol::Epoch,
+            bboxy450_harness::protocol::Seq,
+        )>,
+        waker: Arc<dyn bbt_rt::Waker>,
+        draft: &mut Draft,
+        image_root: Option<PathBuf>,
+    ) -> Self {
+        // The worker owns the predecessor receiver and new sender.
         let reservation = reserve_draft(draft);
         Self::connect_handoff(
             path,
@@ -210,6 +228,7 @@ impl Pane {
             after,
             waker,
             std::future::ready(Some(reservation)),
+            image_root,
         )
     }
     fn connect_handoff(
@@ -222,6 +241,7 @@ impl Pane {
         )>,
         waker: Arc<dyn bbt_rt::Waker>,
         handoff: impl std::future::Future<Output = Option<DraftReservation>> + Send + 'static,
+        image_root: Option<PathBuf>,
     ) -> Self {
         let dirty = bbt_rt::DirtySet::new(1, waker);
         let latest = Arc::new(bbt_rt::Latest::new(dirty.paint_source(0)));
@@ -232,6 +252,7 @@ impl Pane {
         let worker_appearance_wake = appearance_wake.clone();
         let mut out = latest.clone();
         let socket = path.clone();
+        let worker_image_root = image_root.clone();
         let retired = Arc::new(AtomicBool::new(false));
         let worker_retired = retired.clone();
         let published_inputs = Arc::new(AtomicU64::new(0));
@@ -244,9 +265,14 @@ impl Pane {
             let saved = match previous_draft { Some(previous) => previous.await.ok(), None => None };
             let notify=Arc::new(Notify::new());
             let mut bridge=Bridge::new(Arc::new(Signal(notify.clone())));
+            let image_preparation = saved.as_ref()
+                .filter(|parked| parked.image_root == worker_image_root)
+                .and_then(|parked| parked.image_preparation.clone())
+                .or_else(|| worker_image_root.clone().map(crate::documents::images::transcript));
+            bridge.set_image_preparation(image_preparation.clone());
             let (mut view, started) = match saved {
                 // Same view, same clock: what was on screen, then only newer events.
-                Some(Parked{view,retained,started}) => {
+                Some(Parked{view,retained,started,..}) => {
                     let zoom=view.zoom();
                     bridge.set_zoom(zoom.percent());
                     bridge.reattach(socket,retained);
@@ -329,7 +355,9 @@ impl Pane {
                     let approval_choices=view.frame.actions.iter().filter_map(|(r,a)|matches!(a,Action::Approval(..)).then_some([r.x,r.y,r.w,r.h])).take(16).collect();
                     view.anim.frame_cost(at.elapsed().as_secs_f32()*1000.);
                     let ime_caret=view.frame.layout.as_ref().and_then(|l|ui::modules::composer::Regions::new(l).ok()).and_then(|r|r.caret);
-                    let snapshot=Snapshot{theme,appearance_revision,text_runs,controls,links:view.frame.links.clone(),image_intake:bridge.image_intake_available(),images:view.attachment_images(),attachment_count:view.attachment_count(),pending_attachment_count:view.pending_attachment_count(),generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,ime_caret,focused:view.focused,composer_len:view.composer.view.text.len(),scroll:[view.frame.scroll,view.frame.max_scroll],approval_choices,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
+                    let mut images = view.attachment_images();
+                    images.extend(view.transcript_images());
+                    let snapshot=Snapshot{theme,appearance_revision,text_runs,controls,links:view.frame.links.clone(),image_intake:bridge.image_intake_available(),images,attachment_count:view.attachment_count(),pending_attachment_count:view.pending_attachment_count(),generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,ime_caret,focused:view.focused,composer_len:view.composer.view.text.len(),scroll:[view.frame.scroll,view.frame.max_scroll],approval_choices,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
                     out.publish(snapshot);
                     published.store(completed_inputs, Ordering::Release);
                     (bridge,view,rect,out,completed_inputs)
@@ -337,13 +365,14 @@ impl Pane {
                 let (b,v,r,o,c)=prepared;bridge=b;view=v;rect=r;out=o;completed_inputs=c;
             }
             let retained=bridge.retained();
-            let _ = save_draft.send(Parked{view,retained,started});
+            let _ = save_draft.send(Parked{view,retained,image_root:worker_image_root,image_preparation,started});
         });
         Self {
             appearance,
             appearance_wake,
             generation,
             path,
+            image_root,
             rect,
             snapshot: Snapshot::default(),
             dirty,
@@ -612,6 +641,8 @@ mod tests {
         Parked {
             view,
             retained: bridge.retained(),
+            image_root: None,
+            image_preparation: None,
             started: Instant::now(),
         }
     }
@@ -731,16 +762,24 @@ mod tests {
     ) {
         let (schedule, scheduled) = tokio::sync::oneshot::channel::<Draft>();
         let (returned_slot, slot) = tokio::sync::oneshot::channel();
-        let pane = Pane::connect_handoff(path, 1, draft_rect(), None, draft_wake(), async move {
-            let mut draft = scheduled.await.ok()?;
-            // Deliberately faulty: reserve only when this worker is scheduled,
-            // after callers have already ordered their accepted local inputs.
-            let reservation = reserve_draft(&mut draft);
-            if returned_slot.send(draft).is_err() {
-                return None;
-            }
-            Some(reservation)
-        });
+        let pane = Pane::connect_handoff(
+            path,
+            1,
+            draft_rect(),
+            None,
+            draft_wake(),
+            async move {
+                let mut draft = scheduled.await.ok()?;
+                // Deliberately faulty: reserve only when this worker is scheduled,
+                // after callers have already ordered their accepted local inputs.
+                let reservation = reserve_draft(&mut draft);
+                if returned_slot.send(draft).is_err() {
+                    return None;
+                }
+                Some(reservation)
+            },
+            None,
+        );
         (pane, schedule, slot)
     }
     async fn faulty_draft_guard(path: PathBuf, control: DraftControl) -> (String, u64, bool) {
@@ -755,6 +794,7 @@ mod tests {
             None,
             draft_wake(),
             std::future::ready(Some(reservation)),
+            None,
         );
         let published = pane.published_inputs.clone();
         assert!(pane.send(Input::Edit(ui::text_edit::Command::Insert(

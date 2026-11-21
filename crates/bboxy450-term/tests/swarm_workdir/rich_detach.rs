@@ -57,6 +57,156 @@ fn submit(f: &Fixture, text: &str) {
 }
 
 #[test]
+#[ignore = "private App --capture witness needs BBOXY_HARNESS_TEST_BIN"]
+fn rich_app_images_use_the_swarm_root_and_paint_the_png() {
+    let binary = PathBuf::from(std::env::var_os("BBOXY_HARNESS_TEST_BIN").unwrap());
+    assert!(binary.is_absolute() && binary.is_file());
+    let mut f = Fixture::with_directory(
+        tempfile::Builder::new()
+            .prefix("rich-images-")
+            .tempdir_in("/tmp")
+            .unwrap(),
+    );
+    fs::copy(BIN, f.root.join("bin/bboxy450-term")).unwrap();
+    let repository = f.root.join("repository").canonicalize().unwrap();
+    let images = repository.join(".bboxy/images");
+    fs::create_dir_all(&images).unwrap();
+    let signature = [17_u8, 241, 131, 255];
+    let mut encoder =
+        png::Encoder::new(fs::File::create(images.join("probe.png")).unwrap(), 96, 64);
+    encoder.set_color(png::ColorType::Rgba);
+    encoder.set_depth(png::BitDepth::Eight);
+    encoder
+        .write_header()
+        .unwrap()
+        .write_image_data(&signature.repeat(96 * 64))
+        .unwrap();
+
+    let response = f.root.join("image.sse");
+    let delta = json!({"choices":[{"index":0,"delta":{"content":"Before image.
+
+![PNG witness](images/probe.png)
+
+After image."},"finish_reason":"stop"}]});
+    fs::write(&response, format!("data: {delta}\n\ndata: [DONE]\n\n")).unwrap();
+    let shim = f.root.join("bin/bboxy450-harness");
+    let quote = |path: &Path| format!("'{}'", path.to_str().unwrap().replace('\'', "'\\''"));
+    fs::write(
+        &shim,
+        format!(
+            "#!/bin/sh\nexec {} \"$@\" --scripted {} --yolo\n",
+            quote(&binary),
+            quote(&response)
+        ),
+    )
+    .unwrap();
+    fs::set_permissions(&shim, fs::Permissions::from_mode(0o700)).unwrap();
+
+    let capture = f.root.join("transcript-images.png");
+    let log = fs::File::create(f.root.join("app.log")).unwrap();
+    f.app = Some(
+        f.command()
+            .args(["--headless", "--ctl", "--unattended", "--test-account"])
+            .arg(f.root.join("account"))
+            .arg("--run-dir")
+            .arg(f.root.join("run"))
+            .arg("--repository")
+            .arg(&repository)
+            .arg("--capture")
+            .arg(&capture)
+            .args(["--capture-after", "15"])
+            .stdout(log.try_clone().unwrap())
+            .stderr(log)
+            .spawn()
+            .unwrap(),
+    );
+    wait(|| {
+        assert!(
+            f.app.as_mut().unwrap().try_wait().unwrap().is_none(),
+            "{}",
+            f.log()
+        );
+        if !f.root.join("run/gui.endpoint").exists() {
+            return None;
+        }
+        let output = f
+            .command()
+            .args(["ctl", "app", "status", "--run-dir"])
+            .arg(f.root.join("run"))
+            .output()
+            .ok()?;
+        let status: Value = serde_json::from_slice(&output.stdout).ok()?;
+        (status["data"]["gui_ready"] == true && status["data"]["backend_ready"] == true)
+            .then_some(())
+    });
+    let swarm = f.ctl(&["ui", "layout"])["swarm"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    f.ctl(&["ui", "swarm-workdir", &swarm, repository.to_str().unwrap()]);
+    let seat = f.spawn("bboxy450-harness", &swarm, None);
+    let initial = rich(&f, &seat, 1);
+    submit(&f, "Show the PNG from this workspace.");
+    let final_frame = rich(&f, &seat, initial["cursor"]["seq"].as_u64().unwrap() + 3);
+    assert!(final_frame["error"].is_null(), "{final_frame}");
+
+    let pixels = wait(|| {
+        let file = fs::File::open(&capture).ok()?;
+        let mut reader = png::Decoder::new(std::io::BufReader::new(file))
+            .read_info()
+            .ok()?;
+        let mut rgba = vec![0; reader.output_buffer_size()?];
+        let image = reader.next_frame(&mut rgba).ok()?;
+        if image.color_type != png::ColorType::Rgba {
+            return None;
+        }
+        let (mut left, mut top, mut right, mut bottom) = (u32::MAX, u32::MAX, 0, 0);
+        let mut pixels = 0;
+        for (index, pixel) in rgba[..image.buffer_size()]
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .enumerate()
+        {
+            if pixel
+                .iter()
+                .zip(signature)
+                .all(|(actual, expected)| actual.abs_diff(expected) <= 3)
+            {
+                let index = index as u32;
+                let (x, y) = (index % image.width, index / image.width);
+                left = left.min(x);
+                top = top.min(y);
+                right = right.max(x);
+                bottom = bottom.max(y);
+                pixels += 1;
+            }
+        }
+        if pixels >= 1024 {
+            let (width, height) = (right - left + 1, bottom - top + 1);
+            assert!(
+                width.abs_diff(96) <= 2 && height.abs_diff(64) <= 2,
+                "inline image stretched to {width}x{height}"
+            );
+            Some(pixels)
+        } else {
+            None
+        }
+    });
+    println!("captured {pixels} probe-colour pixels from the actual transcript");
+    if let Some(directory) = std::env::var_os("BBOXY_TRANSCRIPT_IMAGE_EVIDENCE") {
+        let directory = PathBuf::from(directory);
+        fs::create_dir_all(&directory).unwrap();
+        fs::copy(&capture, directory.join("transcript-images.png")).unwrap();
+        fs::write(
+            directory.join("transcript-images.json"),
+            serde_json::to_vec_pretty(&final_frame).unwrap(),
+        )
+        .unwrap();
+    }
+}
+
+#[test]
 #[ignore = "real App native composer, approval, wheel and focus; make test-rich-app-input"]
 fn rich_app_routes_composer_approval_scroll_and_focus() {
     let binary = PathBuf::from(std::env::var_os("BBOXY_HARNESS_TEST_BIN").unwrap());

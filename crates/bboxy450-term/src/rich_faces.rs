@@ -8,6 +8,7 @@ use crate::*;
 use bboxy450_term::rich_pane::{Input, Pane};
 use bbt_proto::gui::PaneFace;
 use bbt_ui_model::draw::{Color, DrawList, TextStyle};
+use std::path::{Path, PathBuf};
 impl App {
     pub(super) fn rich_observation(
         &self,
@@ -110,30 +111,54 @@ impl App {
                 if !self.rich_face(*id) {
                     return None;
                 }
-                let row = self
-                    .live_state
-                    .as_ref()?
-                    .gui_seats
+                let model = self.live_state.as_ref()?;
+                let row = model.gui_seats.iter().find(|s| s.record.id.0 == id.0.0)?;
+                let image_root = model
+                    .ui
+                    .window
+                    .sidebar
+                    .swarms
                     .iter()
-                    .find(|s| s.record.id.0 == id.0.0)?;
-                Some((*id, *r, row.state.generation, row.rich_socket.clone()?))
+                    .find(|swarm| swarm.id.0.0 == row.record.swarm.0)
+                    .and_then(|swarm| swarm.workdir.as_ref())
+                    .map(PathBuf::from)
+                    .or_else(|| {
+                        let scope = model.knowledge_scope?;
+                        if scope.swarm != row.record.swarm {
+                            return None;
+                        }
+                        let root = model.knowledge_roots.as_ref()?.roots.first()?;
+                        (root.refusal.is_none()).then(|| PathBuf::from(&root.path))
+                    })
+                    .map(|root| {
+                        if root.file_name().is_some_and(|name| name == ".bboxy") {
+                            root.parent().map_or(root.clone(), Path::to_path_buf)
+                        } else {
+                            root
+                        }
+                    });
+                Some((
+                    *id,
+                    *r,
+                    row.state.generation,
+                    row.rich_socket.clone()?,
+                    image_root,
+                ))
             })
             .collect();
         self.rich_panes
-            .retain(|id, _| visible.iter().any(|(s, _, _, _)| s == id));
+            .retain(|id, _| visible.iter().any(|(s, _, _, _, _)| s == id));
         let theme = self.scene.ui_context().theme;
         let focused = self.rich_target();
         let mut focus_changed = false;
-        for (id, rect, generation, path) in visible {
-            if self
-                .rich_panes
-                .get(&id)
-                .is_some_and(|p| p.generation != generation || p.path != path)
-            {
+        for (id, rect, generation, path, image_root) in visible {
+            if self.rich_panes.get(&id).is_some_and(|p| {
+                p.generation != generation || p.path != path || p.image_root != image_root
+            }) {
                 self.rich_panes.remove(&id);
             }
             if !self.rich_panes.contains_key(&id) {
-                let pane = Pane::connect_retained(
+                let pane = Pane::connect_scoped(
                     path,
                     generation,
                     rect,
@@ -157,6 +182,7 @@ impl App {
                         }),
                     Arc::new(Wake::new(self.proxy.clone(), bbt_rt::handle().clone())),
                     self.rich_drafts.entry(id).or_default(),
+                    image_root,
                 );
                 self.rich_panes.insert(id, pane);
             }

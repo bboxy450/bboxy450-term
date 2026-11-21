@@ -1241,10 +1241,11 @@ impl Render<'_> {
                         size: [asset.width as f32, asset.height as f32],
                         radius: ui::Length::Px(0.),
                     };
-                    lines.push(named(
+                    let width = self.width.min(asset.width as f32);
+                    let viewport = named(
                         &name,
                         c::Element::ScrollView(c::ScrollView {
-                            viewport: [self.width.min(asset.width as f32), asset.height as f32],
+                            viewport: [width, asset.height as f32],
                             offset: [
                                 self.scrolls
                                     .and_then(|s| s.get(&name))
@@ -1255,6 +1256,22 @@ impl Render<'_> {
                             content_width: Some(asset.width as f32),
                             content: Box::new(image),
                         }),
+                    );
+                    // The containing column stretches a row, not its image.
+                    lines.push(row(
+                        format!("{name}/row"),
+                        plain([0.; 4]),
+                        0.,
+                        vec![c::Item {
+                            element: viewport,
+                            extent: c::Extent::Content {
+                                grow: 0.,
+                                shrink: 1.,
+                                min: 0.,
+                                max: Some(width),
+                                max_fraction: None,
+                            },
+                        }],
                     ));
                     i += 1;
                 }

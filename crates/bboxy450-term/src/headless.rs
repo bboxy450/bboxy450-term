@@ -530,6 +530,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         app.document.image_failed(reason);
                         app.document_layout = None;
                     }
+                    for pane in app.rich_panes.values() {
+                        gpu.install_document_images(&pane.snapshot.images)?;
+                    }
                     let layouts = app.solve_ui(size)?;
                     app.focus_layout_ready();
                     let (next, changed) = crate::pane_controls(
