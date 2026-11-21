@@ -239,3 +239,10 @@ action	{"kind":"GuiHello","body":{"id":"00000000000000000000000001","claim":fals
 reply	{"kind":"CurrentAttention","body":{"op":null,"update":{"epoch":"00000000000000000000000002","revision":0,"snapshot":true,"seats":[],"removed":[]}}}
 action	{"kind":"Dream","body":{"id":"00000000000000000000000001","seat":"00000000000000000000000002","request":{"method":"status","v":1,"run_id":"00000000000000000000000003","page":null}}}
 reply	{"kind":"Dream","body":{"op":"00000000000000000000000001","response":{"v":1,"ok":false,"error":{"code":"not_found","source":null}}}}
+# Written by hand for the inbox Questions/Answer wire (2026-11-20).
+action	{"kind":"Questions","body":{"after":{"asked_at":1795100000000,"seat":"01M5SQP6Z5NW9001F9B5YR63NS","generation":2,"item":"01M5SQP6Z5NW9001F9B5YR63NT"}}}
+action	{"kind":"Answer","body":{"seat":"01M5SQP6Z5NW9001F9B5YR63NS","generation":2,"item":"01M5SQP6Z5NW9001F9B5YR63NT","op_id":"01M5SQP6Z5NW9001F9B5YR63NV","reply":{"db":"Postgres"}}}
+reply	{"kind":"Questions","body":{"items":[{"seat":"01M5SQP6Z5NW9001F9B5YR63NS","seat_name":"atlas","swarm":"01M5SQP6Z5NW9001F9B5YR63NW","role":"executor","generation":2,"item":"01M5SQP6Z5NW9001F9B5YR63NT","message":"Which database?","asked_at":1795100000000,"kind":"question","schema":{"type":"object"}}],"cursor":{"asked_at":1795100000000,"seat":"01M5SQP6Z5NW9001F9B5YR63NS","generation":2,"item":"01M5SQP6Z5NW9001F9B5YR63NT"}}}
+reply	{"kind":"Answer","body":{"op_id":"01M5SQP6Z5NW9001F9B5YR63NV","result":{"status":"already_answered","by":{"name":"Desktop","key":"local"}}}}
+reply	{"kind":"QuestionOpened","body":{"seat":"01M5SQP6Z5NW9001F9B5YR63NS","item":"01M5SQP6Z5NW9001F9B5YR63NT"}}
+reply	{"kind":"QuestionClosed","body":{"seat":"01M5SQP6Z5NW9001F9B5YR63NS","item":"01M5SQP6Z5NW9001F9B5YR63NT","by":{"name":"Desktop","key":"local"}}}
