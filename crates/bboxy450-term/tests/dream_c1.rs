@@ -15,7 +15,10 @@
 use serde_json::{Value, json};
 use std::{
     fs,
-    os::unix::fs::{DirBuilderExt, PermissionsExt},
+    os::unix::{
+        fs::{DirBuilderExt, PermissionsExt},
+        process::CommandExt,
+    },
     path::{Path, PathBuf},
     process::{Child, Command, Output, Stdio},
     time::{Duration, Instant},
@@ -459,6 +462,7 @@ if args[:2]==['dream','inspect-c1']:
                 .arg(self.root.join("repository"))
                 .stdout(log.try_clone().unwrap())
                 .stderr(log)
+                .process_group(0)
                 .spawn()
                 .unwrap(),
         );
@@ -547,30 +551,12 @@ if args[:2]==['dream','inspect-c1']:
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
-        // Read only the backend identities created in this fixture's private run.
-        let owners: Vec<u32> = ["supervisor", "logic"]
-            .into_iter()
-            .filter_map(|name| {
-                let data: Value = serde_json::from_slice(
-                    &fs::read(self.root.join(format!("run/{name}.owner.json"))).ok()?,
-                )
-                .ok()?;
-                data["process"]["pid"].as_u64().map(|pid| pid as u32)
-            })
-            .collect();
+        let owners = crate::processes::backend_owners(&self.root.join("run"));
         let _ = self.raw(&["app", "stop"]);
-        if let Some(mut child) = self.app.take() {
-            if child.try_wait().ok().flatten().is_none() {
-                let _ = child.kill();
-            }
-            let _ = child.wait();
+        if let Some(child) = self.app.take() {
+            crate::processes::retire_app_group(child);
         }
-        for pid in owners {
-            // SAFETY: these are exact private backend PIDs started by this app.
-            unsafe {
-                libc::kill(pid as i32, libc::SIGTERM);
-            }
-        }
+        crate::processes::retire_backends(owners);
         if std::thread::panicking() {
             let directory = std::mem::replace(&mut self.directory, tempfile::tempdir().unwrap());
             eprintln!(

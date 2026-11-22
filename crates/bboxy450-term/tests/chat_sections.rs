@@ -13,6 +13,7 @@
 use serde_json::Value;
 use std::{
     fs,
+    os::unix::process::CommandExt,
     path::PathBuf,
     process::{Child, Command, Stdio},
     time::{Duration, Instant},
@@ -115,6 +116,7 @@ impl Fixture {
                 .arg(self.root.join("repository"))
                 .stdout(log.try_clone().unwrap())
                 .stderr(log)
+                .process_group(0)
                 .spawn()
                 .unwrap(),
         );
@@ -240,33 +242,16 @@ impl Drop for Fixture {
                 old.keep().display()
             );
         }
-        let owners: Vec<u32> = ["supervisor", "logic"]
-            .into_iter()
-            .filter_map(|name| {
-                let owner: Value = serde_json::from_slice(
-                    &fs::read(self.root.join(format!("run/{name}.owner.json"))).ok()?,
-                )
-                .ok()?;
-                owner["process"]["pid"].as_u64().map(|pid| pid as u32)
-            })
-            .collect();
+        let owners = crate::processes::backend_owners(&self.root.join("run"));
         let _ = self
             .command()
             .args(["ctl", "app", "stop", "--run-dir"])
             .arg(self.root.join("run"))
             .output();
-        if let Some(mut child) = self.app.take() {
-            if child.try_wait().ok().flatten().is_none() {
-                let _ = child.kill();
-            }
-            let _ = child.wait();
+        if let Some(child) = self.app.take() {
+            crate::processes::retire_app_group(child);
         }
-        for pid in owners {
-            // Only backend owner PIDs recorded inside this fixture's private run directory.
-            unsafe {
-                libc::kill(pid as i32, libc::SIGTERM);
-            }
-        }
+        crate::processes::retire_backends(owners);
     }
 }
 

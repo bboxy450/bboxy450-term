@@ -130,11 +130,23 @@ class Repository:
         return run("git", "rev-parse", "HEAD", cwd=self.root)
 
     def close(self):
+        if hasattr(self, "_lifetime"):
+            os.close(self._lifetime)
+            del self._lifetime
         self.temp.cleanup()
 
     def tooling(self):
         self.state = self.root / ".git/fixture-state"
         self.state.mkdir()
+        # The paused fake Cargo must leave even if a timeout kills the test
+        # process before its cleanup runs. No subprocess inherits this writer.
+        lifetime = self.state / "lifetime"
+        os.mkfifo(lifetime, 0o600)
+        reader = os.open(lifetime, os.O_RDONLY | os.O_NONBLOCK)
+        try:
+            self._lifetime = os.open(lifetime, os.O_WRONLY | os.O_NONBLOCK)
+        finally:
+            os.close(reader)
         self.environment = dict(os.environ, BBOXY_LANDING_STATE_DIR=str(self.state),
                                 CARGO_TARGET_DIR=str(self.state / "target"),
                                 RUSTC_WRAPPER="", RUSTC_WORKSPACE_WRAPPER="",
@@ -193,7 +205,7 @@ printf 'ci-local: result %s normal 0\\n' "$sha"
         self.bin.mkdir()
         real_cargo = shutil.which("cargo")
         cargo = '''#!/usr/bin/env python3
-import json,os,pathlib,signal,subprocess,sys
+import json,os,pathlib,subprocess,sys
 state=pathlib.Path(os.environ["BBOXY_LANDING_STATE_DIR"])
 args=sys.argv[1:]
 if args[0]=="metadata":
@@ -237,12 +249,16 @@ if cfg.get("block")==args[0] and (not cfg.get("block_once") or not (state/"block
         target.mkdir(parents=True,exist_ok=True)
         (target/"warm-build-artifact").write_text("first attempt")
     (state/"blocked-once").write_text("blocked")
+    lifetime=os.open(state/"lifetime",os.O_RDONLY|os.O_NONBLOCK)
+    os.set_blocking(lifetime,True)
     pid_file=state/"blocked.pid"
     pid_part=state/"blocked.pid.writing"
     pid_part.write_text(str(os.getpid()))
     pid_part.replace(pid_file)
     if cfg.get("test_started"):print("Running tests/fixture.rs (fixture-binary)\\nrunning 1 test",flush=True)
-    signal.pause()
+    with os.fdopen(lifetime,"rb") as owner:
+        owner.read(1)
+    raise SystemExit(0)
 if cfg.get("block_once") and cfg.get("block")==args[0]:
     assert (pathlib.Path(os.environ["BBOXY_CARGO_TARGET_DIR"])/"warm-build-artifact").read_text()=="first attempt"
 if args[0]=="test" and "corpus" in args and cfg.get("corpus_frontmatter"):
@@ -1334,6 +1350,24 @@ except Exception as error:
             for owned in owned_pids:
                 if alive(owned):
                     os.kill(owned, 15)  # exact PID created and recorded by this fixture
+
+    def test_paused_fake_cargo_exits_when_its_fixture_closes(self):
+        (self.repo.state / "behavior.json").write_text('{"block":"test"}')
+        child = subprocess.Popen([self.repo.bin / "cargo", "test", "-p", "c"],
+                                 cwd=self.repo.root, env=self.repo.environment,
+                                 start_new_session=True)
+        try:
+            marker = self.repo.state / "blocked.pid"
+            until = time.monotonic() + 5
+            while not marker.is_file() and child.poll() is None and time.monotonic() < until:
+                time.sleep(0.01)
+            self.assertEqual(marker.read_text(), str(child.pid))
+            self.assertIsNone(child.poll())
+            self.repo.close()
+            self.assertEqual(child.wait(timeout=5), 0)
+        finally:
+            if child.poll() is None:
+                landing.stop_worker(child)
 
     def test_deadline_is_enforced_and_does_not_kill_an_unrelated_process(self):
         self.deadline_fixture()

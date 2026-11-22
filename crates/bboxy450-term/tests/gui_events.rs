@@ -20,6 +20,7 @@ use std::{
     fs,
     io::Write,
     os::unix::fs::DirBuilderExt,
+    os::unix::process::CommandExt,
     path::PathBuf,
     process::{Child, Command, Output, Stdio},
     time::{Duration, Instant},
@@ -308,6 +309,7 @@ impl Fixture {
                 .arg(self.root.join("repository"))
                 .stdout(log.try_clone().unwrap())
                 .stderr(log)
+                .process_group(0)
                 .spawn()
                 .unwrap(),
         );
@@ -344,27 +346,12 @@ impl Fixture {
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
-        let owners: Vec<u32> = ["supervisor", "logic"]
-            .into_iter()
-            .filter_map(|name| {
-                let value: Value = serde_json::from_slice(
-                    &fs::read(self.root.join(format!("run/{name}.owner.json"))).ok()?,
-                )
-                .ok()?;
-                u32::try_from(value["process"]["pid"].as_u64()?).ok()
-            })
-            .collect();
+        let owners = crate::processes::backend_owners(&self.root.join("run"));
         let _ = self.raw_ctl(&["app", "stop"]);
-        if let Some(mut child) = self.app.take() {
-            if child.try_wait().ok().flatten().is_none() {
-                let _ = child.kill();
-            }
-            let _ = child.wait();
+        if let Some(child) = self.app.take() {
+            crate::processes::retire_app_group(child);
         }
-        for pid in owners {
-            // Only backend owners recorded in this fixture's private run directory.
-            unsafe { libc::kill(pid as i32, libc::SIGTERM) };
-        }
+        crate::processes::retire_backends(owners);
         if std::thread::panicking() || std::env::var_os("BBOXY_GUI_EVENTS_EVIDENCE").is_some() {
             eprintln!(
                 "private GUI events evidence: {}",

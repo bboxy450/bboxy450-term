@@ -13,7 +13,7 @@
 use serde_json::{Value, json};
 use std::{
     fs,
-    os::unix::fs::PermissionsExt,
+    os::unix::{fs::PermissionsExt, process::CommandExt},
     path::PathBuf,
     process::{Child, Command, Stdio},
     time::{Duration, Instant},
@@ -93,6 +93,7 @@ impl Process {
                 .arg(f.root.path().join("repository"))
                 .stdout(log.try_clone().unwrap())
                 .stderr(log)
+                .process_group(0)
                 .spawn()
                 .unwrap(),
         );
@@ -131,15 +132,92 @@ impl Drop for Process {
                 .collect();
             eprintln!("private headless app diagnostics: {tail}");
         }
+        let run = self.root.path().join("run");
+        let owners = crate::processes::backend_owners(&run);
         let _ = self.ctl(&["app", "stop"]);
-        if let Some(mut c) = self.app.take() {
-            if c.try_wait().ok().flatten().is_none() {
-                let _ = c.kill();
-            }
-            let _ = c.wait();
+        if let Some(child) = self.app.take() {
+            crate::processes::retire_app_group(child);
         }
+        crate::processes::retire_backends(owners);
     }
 }
+fn processes_with_home(home: &std::path::Path) -> Vec<u32> {
+    // SAFETY: getuid only reads the invoking fixture's real user ID.
+    let uid = unsafe { libc::getuid() }.to_string();
+    let output = Command::new("/bin/ps")
+        .args(["-Eww", "-U", &uid, "-o", "pid=", "-o", "command="])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "private HOME process inspection failed"
+    );
+    let marker = format!(" HOME={}", home.display());
+    let delimited = format!("{marker} ");
+    String::from_utf8_lossy(&output.stdout)
+        .lines()
+        .filter(|line| line.ends_with(&marker) || line.contains(&delimited))
+        .filter_map(|line| line.split_whitespace().next()?.parse().ok())
+        .collect()
+}
+
+#[test]
+fn panic_without_ctl_retires_the_private_app_and_backends() {
+    let mut home = None;
+    let mut group = None;
+    let mut backends = Vec::new();
+    let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let fixture = Process::open();
+        let run = fixture.root.path().join("run");
+        group = fixture.app.as_ref().map(Child::id);
+        backends = crate::processes::backend_owners(&run);
+        let fixture_home = fixture.root.path().join("home");
+        let before = processes_with_home(&fixture_home);
+        assert!(
+            before.contains(&group.unwrap()),
+            "the process scan missed the private app"
+        );
+        assert!(
+            backends
+                .iter()
+                .all(|owner| before.contains(&owner.id().unwrap())),
+            "the process scan missed a private backend"
+        );
+        home = Some(fixture_home);
+        assert!(
+            backends.len() >= 2,
+            "private supervisor and Logic must be live"
+        );
+        fs::remove_file(run.join("gui.endpoint")).unwrap();
+        assert!(
+            fixture.ctl(&["app", "stop"]).is_none(),
+            "ctl must be unavailable"
+        );
+        panic!("deliberate failure with a live private app");
+    }));
+    assert_eq!(
+        failure.unwrap_err().downcast_ref::<&str>(),
+        Some(&"deliberate failure with a live private app")
+    );
+    for mut backend in backends {
+        assert!(
+            backend.try_wait().unwrap().is_some(),
+            "private backend survived"
+        );
+    }
+    // SAFETY: signal zero only observes the process group started by this fixture.
+    assert_eq!(unsafe { libc::kill(-(group.unwrap() as i32), 0) }, -1);
+    assert_eq!(
+        std::io::Error::last_os_error().raw_os_error(),
+        Some(libc::ESRCH)
+    );
+    let survivors = processes_with_home(&home.unwrap());
+    assert!(
+        survivors.is_empty(),
+        "private HOME survivors: {survivors:?}"
+    );
+}
+
 fn rpc(peer: &mut bbt_mux::mcp::bridge::Bridge, id: u64, method: &str, params: Value) -> Value {
     peer.handle(
         &serde_json::to_vec(&json!({"jsonrpc":"2.0","id":id,"method":method,"params":params}))

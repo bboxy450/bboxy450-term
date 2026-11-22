@@ -8,6 +8,8 @@
 
 #[path = "support/events.rs"]
 mod events;
+#[path = "support/processes.rs"]
+mod processes;
 
 #[path = "capability_file.rs"]
 mod capability_file;

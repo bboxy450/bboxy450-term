@@ -55,26 +55,42 @@ def pid_alive(pid):
     return True
 
 
-def owner_pids(root):
-    """Read only the known private producer records; malformed custody fails closed."""
-    paths = [root / "home/.codex/app-server-daemon" / name
-             for name in ("daemon.pid", "daemon-updater.pid")]
-    paths += sorted((root / "run").glob("*.owner.json"))
-    result = set()
-    for path in paths:
-        if not path.exists():
-            continue
-        if path.is_symlink() or path.stat().st_size > 1024 * 1024:
+def process_identity(pid):
+    result = subprocess.run(
+        ["/bin/ps", "-ww", "-p", str(pid), "-o", "stat=", "-o", "lstart=", "-o", "command="],
+        capture_output=True, text=True, check=False,
+    )
+    state, _, identity = result.stdout.strip().partition(" ")
+    return identity.strip() if result.returncode == 0 and state and not state.startswith("Z") else None
+
+
+def daemon_records(root):
+    return [root / "home/.codex/app-server-daemon" / name
+            for name in ("daemon.pid", "daemon-updater.pid")]
+
+
+def owner_pid(path):
+    if path.is_symlink():
+        raise ValueError("invalid private owner record: " + str(path))
+    try:
+        if path.stat().st_size > 1024 * 1024:
             raise ValueError("invalid private owner record: " + str(path))
         record = json.loads(path.read_text())
-        if not isinstance(record, dict):
-            raise ValueError("invalid private owner record: " + str(path))
-        process = record.get("process", {})
-        pid = record.get("pid") or (process.get("pid") if isinstance(process, dict) else None)
-        if type(pid) is not int or pid <= 1:
-            raise ValueError("invalid private owner PID: " + str(path))
-        result.add(pid)
-    return result
+    except FileNotFoundError:
+        return None
+    if not isinstance(record, dict):
+        raise ValueError("invalid private owner record: " + str(path))
+    process = record.get("process", {})
+    pid = record.get("pid") or (process.get("pid") if isinstance(process, dict) else None)
+    if type(pid) is not int or pid <= 1:
+        raise ValueError("invalid private owner PID: " + str(path))
+    return pid
+
+
+def owner_pids(root):
+    """Read only the known private producer records; malformed custody fails closed."""
+    paths = daemon_records(root) + sorted((root / "run").glob("*.owner.json"))
+    return {pid for path in paths if (pid := owner_pid(path)) is not None}
 
 
 def reclaim_roots(parent):
@@ -113,6 +129,7 @@ class FixtureRoot:
         self.root = Path(tempfile.mkdtemp(prefix="bbt-shared-codex-", dir=parent)).resolve()
         self.pids = {os.getpid()}
         self.children = []
+        self.daemons = {}
         self.closers = []
         self.write_owner()
 
@@ -132,6 +149,40 @@ class FixtureRoot:
         self.record(child.pid)
         return child
 
+    def spawn(self, args, **kwargs):
+        return self.track(subprocess.Popen(args, start_new_session=True, **kwargs))
+
+    def record_daemons(self):
+        package = str(self.root / "home/.codex/packages/app-server-daemon") + "/"
+        for path in daemon_records(self.root):
+            pid = owner_pid(path)
+            if pid is None or pid in self.daemons:
+                continue
+            identity = process_identity(pid)
+            if identity is not None and package in identity:
+                self.daemons[pid] = identity
+                self.record(pid)
+
+    def stop_daemons(self):
+        self.record_daemons()
+        # The normal daemon stop already ran. Retire any verified detached
+        # group before its leader can exit and leave a child behind.
+        for pid, identity in self.daemons.items():
+            if process_identity(pid) != identity:
+                continue
+            try:
+                if os.getpgid(pid) == pid:
+                    os.killpg(pid, signal.SIGKILL)
+                else:
+                    os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        deadline = time.monotonic() + 2
+        while any(process_identity(pid) == identity for pid, identity in self.daemons.items()):
+            if time.monotonic() >= deadline:
+                break
+            time.sleep(.02)
+
     def retire(self, child):
         assert child.poll() is not None
         self.children.remove(child)
@@ -142,18 +193,23 @@ class FixtureRoot:
         # Popen identity and wait/reap prevent signalling an unrelated reused PID.
         for child in reversed(self.children):
             if child.poll() is None:
-                child.terminate()
                 try:
-                    child.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    child.kill()
-                    child.wait(timeout=5)
+                    if os.getpgid(child.pid) == child.pid:
+                        os.killpg(child.pid, signal.SIGKILL)
+                    else:
+                        child.kill()
+                except ProcessLookupError:
+                    pass
+                child.wait(timeout=5)
             self.pids.discard(child.pid)
+        self.stop_daemons()
         for close in self.closers:
             close()
         self.pids.update(owner_pids(self.root))
         self.write_owner()
-        live = [pid for pid in self.pids if pid != os.getpid() and pid_alive(pid)]
+        live = [pid for pid in self.pids if pid != os.getpid() and
+                (process_identity(pid) == self.daemons[pid] if pid in self.daemons
+                 else pid_alive(pid))]
         if live:
             raise RuntimeError(f"private owners still alive; root retained: {live}: {self.root}")
         if succeeded:
@@ -385,12 +441,15 @@ def run_fixture(options, binary, codex, fixture):
     log = None
 
     def command(args, timeout=35, check=True):
-        child = fixture.track(subprocess.Popen(args, env=env, cwd=work, text=True,
-                                              stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        child = fixture.spawn(args, env=env, cwd=work, text=True,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         try:
             stdout, stderr = child.communicate(timeout=timeout)
         except BaseException:
-            child.kill()
+            try:
+                os.killpg(child.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
             child.wait()
             raise
         finally:
@@ -519,11 +578,11 @@ def run_fixture(options, binary, codex, fixture):
             fixture.record(daemon_pid)
             record_updater()
         log = (root / "app.log").open("w")
-        app = fixture.track(subprocess.Popen([str(binary), *(["--native-frame-probe", str(probe)] if options.native else ["--headless"]),
+        app = fixture.spawn([str(binary), *(["--native-frame-probe", str(probe)] if options.native else ["--headless"]),
                                 "--settings-config", str(root / "settings.toml"), "--ctl", "--unattended", "--test-account",
                                 str(root / "account"), "--run-dir", str(run), "--repository",
                                 str(root / "repository")], env=env, cwd=work,
-                               stdin=subprocess.DEVNULL, stdout=log, stderr=log))
+                               stdin=subprocess.DEVNULL, stdout=log, stderr=log)
         wait(lambda: ctl("app", "status", check=False),
              lambda value: value.get("data", {}).get("backend_ready") is True and
              value.get("data", {}).get("gui_ready") is True, "headless app ready")
@@ -709,6 +768,7 @@ def run_fixture(options, binary, codex, fixture):
 
         def stop_daemon():
             if daemon_started:
+                fixture.record_daemons()
                 if updater is None:
                     record_updater()
                 command([codex, "app-server", "daemon", "stop"])

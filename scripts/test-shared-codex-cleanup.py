@@ -14,6 +14,7 @@ PID reuse is conservatively live; no fairness or arbitrary-filesystem-race proof
 import importlib.util
 import itertools
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -167,6 +168,36 @@ class CleanupTests(unittest.TestCase):
             shared.export_artifacts(fixture.root, destination)
         with self.assertRaises(ValueError):
             shared.export_artifacts(destination, destination)
+
+    def test_failed_fixture_retires_daemon_and_child_with_private_home(self):
+        fixture = shared.FixtureRoot(self.parent)
+        home = fixture.root / "home"
+        daemon = home / ".codex/packages/app-server-daemon/fixture-daemon.py"
+        daemon.parent.mkdir(parents=True)
+        daemon.write_text(
+            "import signal, subprocess, sys\n"
+            "child = subprocess.Popen([sys.executable, '-c', 'import signal; signal.pause()'])\n"
+            "print(child.pid, flush=True)\n"
+            "signal.pause()\n"
+        )
+        directory = home / ".codex/app-server-daemon"
+        directory.mkdir(parents=True)
+        child = subprocess.Popen([sys.executable, str(daemon)], stdout=subprocess.PIPE,
+                                 text=True, env=dict(os.environ, HOME=str(home)),
+                                 start_new_session=True)
+        try:
+            grandchild = int(child.stdout.readline())
+            (directory / "daemon.pid").write_text(json.dumps({"pid": child.pid}))
+            fixture.finish(False)
+            self.assertIsNotNone(child.wait(timeout=5))
+            shared.wait(lambda: shared.process_identity(grandchild), lambda row: row is None,
+                        "private daemon descendant exit", seconds=5)
+            self.assertFalse(home.exists())
+        finally:
+            if child.poll() is None:
+                os.killpg(child.pid, shared.signal.SIGKILL)
+                child.wait(timeout=5)
+            child.stdout.close()
 
     def test_live_auxiliary_owner_prevents_retirement_without_a_signal(self):
         fixture = shared.FixtureRoot(self.parent)

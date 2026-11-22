@@ -131,6 +131,7 @@ async fn normal_detach_keeps_work_and_window_state_until_hard_quit() {
         .unwrap()
     }
     let root = tempfile::tempdir().unwrap();
+    let _owners = crate::processes::BackendGuard(root.path().join("run"));
     let mut session = start(root.path()).await;
     let supervisor = session.supervisor.id().unwrap();
     let logic = session.logic.id().unwrap();
@@ -237,6 +238,7 @@ async fn changed_login_path_refreshes_logic_and_launches_through_a_retained_supe
     tokio::fs::write(shell.join(".zshrc"), "export PATH=/usr/bin:/bin\n")
         .await
         .unwrap();
+    let _owners = crate::processes::BackendGuard(root.path().join("run"));
     let mut old = start(root.path()).await;
     let supervisor = old.supervisor.id().unwrap();
     let logic = old.logic.id().unwrap();
@@ -326,6 +328,7 @@ async fn changed_login_path_refreshes_logic_and_launches_through_a_retained_supe
 )]
 async fn real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_connection() {
     let root = tempfile::Builder::new().prefix("c1a-").tempdir().unwrap();
+    let _owners = crate::processes::BackendGuard(root.path().join("run"));
     let mut session = start(root.path()).await;
     assert!(session.list().await.unwrap().is_empty());
     let swarm = Ulid::new();
@@ -384,6 +387,7 @@ async fn real_processes_list_spawn_and_push_unwatched_exit_state_on_one_gui_conn
 )]
 async fn gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames() {
     let root = tempfile::Builder::new().prefix("c1a-").tempdir().unwrap();
+    let _owners = crate::processes::BackendGuard(root.path().join("run"));
     let session = start(root.path()).await;
     let path = session.endpoint.root.join("gui.sock");
     assert_eq!(
@@ -485,6 +489,7 @@ async fn gui_endpoint_keeps_private_modes_and_rejects_bad_admission_and_frames()
 )]
 async fn app_io_owner_observes_both_child_process_exits() {
     let root = tempfile::Builder::new().prefix("c1a-").tempdir().unwrap();
+    let _owners = crate::processes::BackendGuard(root.path().join("run"));
     let mut session = start(root.path()).await;
     session.logic.start_kill().unwrap();
     tokio::time::timeout(Duration::from_secs(30), async {
@@ -534,6 +539,7 @@ async fn cancelled_exit_watch_preserves_orderly_child_shutdown() {
         .prefix("c1a-watch-")
         .tempdir()
         .unwrap();
+    let _owners = crate::processes::BackendGuard(root.path().join("run"));
     let mut session = start(root.path()).await;
     assert!(session.list().await.unwrap().is_empty());
     // The live IO loop repeatedly cancels this wait when another command wins.
@@ -568,6 +574,7 @@ async fn same_run_directory_relaunches_and_spawns_after_orderly_shutdown() {
         .tempdir()
         .unwrap();
     let swarm = Ulid::new();
+    let _owners = crate::processes::BackendGuard(root.path().join("run"));
     for _ in 0..2 {
         let mut session = start(root.path()).await;
         let seat = spawn(&mut session, root.path(), swarm).await;

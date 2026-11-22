@@ -150,12 +150,12 @@ impl Fixture {
 }
 impl Drop for Fixture {
     fn drop(&mut self) {
-        if self.run.join("gui.endpoint").exists() && self.ctl(&["app", "stop"]).0 == 0 {
-            return;
-        }
+        let owners = crate::processes::backend_owners(&self.run);
+        let stopped = self.run.join("gui.endpoint").exists() && self.ctl(&["app", "stop"]).0 == 0;
+        crate::processes::retire_backends(owners);
         // Failure-only cleanup of the exact child created by this fixture.
         // The shipped ctl stop command has no signal/PID fallback.
-        if let Some(pid) = self.pid {
+        if !stopped && let Some(pid) = self.pid {
             let owned = Command::new("/bin/ps")
                 .args(["-p", &pid.to_string(), "-o", "args="])
                 .output()
