@@ -17,6 +17,7 @@ const SHUTDOWN: usize = 6;
 const DEADLINE: usize = 7;
 const HISTORY: usize = 8;
 const AUDITS: usize = 9;
+const WATCH: usize = 10;
 const B: i64 = 2;
 const D: i64 = 3;
 const H: i64 = 4;
@@ -30,18 +31,33 @@ fn increment_to(index: usize, limit: i64) -> Expr {
 }
 
 fn worker(broken: bool, shutdown_property: bool, audits: bool, history: i64) -> Model {
-    let name = match (audits, shutdown_property) {
-        (false, false) => "LogicWorkerRequests",
-        (false, true) => "LogicWorkerShutdown",
-        (true, false) => "LogicWorkerAuditRequests",
-        (true, true) => "LogicWorkerAuditShutdown",
+    worker_with_watcher(broken, shutdown_property, audits, history, false)
+}
+
+fn worker_with_watcher(
+    broken: bool,
+    shutdown_property: bool,
+    audits: bool,
+    history: i64,
+    owner_joins_watcher: bool,
+) -> Model {
+    let has_watcher = audits && shutdown_property;
+    let name = if owner_joins_watcher {
+        "LogicWorkerWatcherShutdown"
+    } else {
+        match (audits, shutdown_property) {
+            (false, false) => "LogicWorkerRequests",
+            (false, true) => "LogicWorkerShutdown",
+            (true, false) => "LogicWorkerAuditRequests",
+            (true, true) => "LogicWorkerAuditShutdown",
+        }
     };
     // phase: idle=0, serving=1, inside step=2, stopped=3. Ages saturate at
     // B+1 (retain a violation); elapsed shutdown time saturates at D, forever
     // distinguishing a late join from a successful stop. Two FIFO slots.
     let mut m = model(
         name,
-        broken,
+        broken || owner_joins_watcher,
         &[
             ("phase", 3, 0),
             ("work_left", H, 0),
@@ -53,6 +69,8 @@ fn worker(broken: bool, shutdown_property: bool, audits: bool, history: i64) -> 
             ("deadline", D, 0),
             ("history_pages", H, history),
             ("audit_pages", 2 * H, if audits { 2 * history } else { 0 }),
+            // Watcher: attached=0, handed off=1, closed (or absent)=2.
+            ("watcher", 2, if has_watcher { 0 } else { 2 }),
         ],
     );
     action(
@@ -75,6 +93,20 @@ fn worker(broken: bool, shutdown_property: bool, audits: bool, history: i64) -> 
         Int(0).lt(Var(AUDITS)),
         &[(AUDITS, Var(AUDITS).minus(Int(1)))],
     );
+    if has_watcher {
+        // Native close has no fairness assumption.
+        action(
+            &mut m,
+            "CloseWatcher",
+            eq(WATCH, 1).or(all([
+                Bool(owner_joins_watcher),
+                eq(PHASE, 0),
+                eq(SHUTDOWN, 1),
+                eq(WATCH, 0),
+            ])),
+            &[(WATCH, Int(2))],
+        );
+    }
     let first_worker_action = m.actions.len();
     action(
         &mut m,
@@ -156,11 +188,32 @@ fn worker(broken: bool, shutdown_property: bool, audits: bool, history: i64) -> 
         all([eq(PHASE, 2), eq(LEFT, 0)]),
         &[(PHASE, Int(0))],
     );
+    if owner_joins_watcher {
+        action(
+            &mut m,
+            "WaitOnOwner",
+            all([
+                eq(PHASE, 0),
+                eq(SHUTDOWN, 1),
+                eq(WATCH, 0),
+                Var(DEADLINE).lt(Int(D)),
+            ]),
+            &[(DEADLINE, increment_to(DEADLINE, D))],
+        );
+    }
+    let mut stopped = vec![(PHASE, Int(3))];
+    if has_watcher && !owner_joins_watcher {
+        stopped.push((WATCH, Int(1)));
+    }
     action(
         &mut m,
         "StopWorker",
-        all([eq(PHASE, 0), eq(SHUTDOWN, 1)]),
-        &[(PHASE, Int(3))],
+        all([
+            eq(PHASE, 0),
+            eq(SHUTDOWN, 1),
+            Bool(!owner_joins_watcher).or(eq(WATCH, 2)),
+        ]),
+        &stopped,
     );
     // Only the worker action group is weakly fair, never requests/shutdown/
     // audits. This ensures eventual dispatch, not bounded OS scheduling.
@@ -186,7 +239,7 @@ fn worker(broken: bool, shutdown_property: bool, audits: bool, history: i64) -> 
 }
 
 pub(super) fn cases() -> Vec<(Model, &'static str)> {
-    let mut cases = Vec::new();
+    let mut cases = vec![(worker_with_watcher(false, true, true, H, true), "liveness")];
     for audits in [false, true] {
         for shutdown in [false, true] {
             cases.push((worker(false, shutdown, audits, H), "pass"));
@@ -197,6 +250,25 @@ pub(super) fn cases() -> Vec<(Model, &'static str)> {
         }
     }
     cases
+}
+
+#[test]
+fn watcher_join_on_logic_owner_breaks_shutdown_progress() -> Result<(), String> {
+    assert!(
+        worker(false, true, true, H)
+            .check(100_000)?
+            .violations
+            .is_empty()
+    );
+    let broken = worker_with_watcher(false, true, true, H, true).check(100_000)?;
+    let violation = broken
+        .violations
+        .iter()
+        .find(|v| v.property == STOP_BOUND)
+        .expect("joining the watcher on the owner must fail shutdown progress");
+    assert!(!violation.prefix.is_empty());
+    assert!(!violation.cycle.is_empty());
+    Ok(())
 }
 
 #[test]

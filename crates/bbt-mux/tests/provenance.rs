@@ -26,8 +26,12 @@ use std::{
 
 #[test]
 fn twenty_commit_rebase_keeps_control_requests_responsive() {
-    use std::process::{Command, Stdio};
-    fn git(root: &Path, args: &[&str]) -> String {
+    use std::{
+        fmt::Write as _,
+        fs::File,
+        process::{Command, Stdio},
+    };
+    fn git(root: &Path, args: &[&str], input: Option<&Path>) -> String {
         // Exercise native Git, without the operator's PATH wrappers or inherited
         // repository/object-directory settings affecting this private fixture.
         let output = Command::new("/usr/bin/git")
@@ -44,54 +48,77 @@ fn twenty_commit_rebase_keeps_control_requests_responsive() {
                 "-c",
                 "commit.gpgsign=false",
                 "-c",
+                "maintenance.auto=false",
+                "-c",
                 "user.name=Watcher fixture",
                 "-c",
                 "user.email=fixture@example.invalid",
             ])
             .args(args)
-            .stdin(Stdio::null())
+            .stdin(input.map_or_else(Stdio::null, |path| File::open(path).unwrap().into()))
             .output()
             .unwrap();
         assert!(
             output.status.success(),
-            "git {args:?}: {}",
+            "git {args:?} in {root:?} (.git/objects exists={}): {}",
+            root.join(".git/objects").is_dir(),
             String::from_utf8_lossy(&output.stderr)
         );
         String::from_utf8(output.stdout).unwrap().trim().to_owned()
     }
-    let f = Fixture::new();
-    let root = &f.config.repository;
-    git(root, &["init", "--quiet", "--initial-branch=main"]);
-    std::fs::write(root.join(".gitignore"), ".bboxy/\n").unwrap();
-    std::fs::create_dir(root.join("src")).unwrap();
+    let temp = tempfile::Builder::new()
+        .prefix("prov-rebase-")
+        .tempdir()
+        .unwrap();
+    let root = &temp.path().join("repository");
+    std::fs::create_dir(root).unwrap();
+    git(root, &["init", "--quiet", "--initial-branch=main"], None);
+
+    // Fixture seeding should not depend on thousands of loose-object
+    // temporary files. Import the same history as a pack in one Git process.
+    let mut history = String::new();
+    let commit = |history: &mut String, branch: &str, mark: &str, message: &str| {
+        writeln!(
+            history,
+            "commit refs/heads/{branch}\n{mark}committer Watcher fixture <fixture@example.invalid> 1 +0000\ndata <<MSG\n{message}\nMSG"
+        )
+        .unwrap();
+    };
+    let file = |history: &mut String, path: &str, body: &str| {
+        writeln!(history, "M 100644 inline {path}\ndata <<BODY\n{body}\nBODY").unwrap();
+    };
+    commit(&mut history, "main", "mark :1\n", "base");
+    file(&mut history, ".gitignore", ".bboxy/");
     for n in 0..64 {
-        std::fs::write(root.join(format!("src/{n}.txt")), "base\n").unwrap();
+        file(&mut history, &format!("src/{n}.txt"), "base");
     }
-    git(root, &["add", ".gitignore", "src"]);
-    git(root, &["commit", "--quiet", "-m", "base"]);
-    let base = git(root, &["rev-parse", "HEAD"]);
-    git(root, &["checkout", "--quiet", "-b", "topic"]);
     for revision in 0..20 {
-        for n in 0..64 {
-            std::fs::write(
-                root.join(format!("src/{n}.txt")),
-                format!("revision {revision} file {n}\n"),
-            )
-            .unwrap();
+        commit(&mut history, "topic", "", &format!("change {revision}"));
+        if revision == 0 {
+            history.push_str("from :1\n");
         }
-        git(
-            root,
-            &["commit", "--quiet", "-am", &format!("change {revision}")],
-        );
+        for n in 0..64 {
+            file(
+                &mut history,
+                &format!("src/{n}.txt"),
+                &format!("revision {revision} file {n}"),
+            );
+        }
     }
-    git(root, &["checkout", "--quiet", "main"]);
-    std::fs::write(root.join("README.md"), "upstream change\n").unwrap();
-    git(root, &["add", "README.md"]);
-    git(root, &["commit", "--quiet", "-m", "upstream"]);
-    git(root, &["checkout", "--quiet", "topic"]);
+    commit(&mut history, "main", "", "upstream");
+    file(&mut history, "README.md", "upstream change");
+    history.push_str("done\n");
+    let input = temp.path().join("history.fi");
+    std::fs::write(&input, history).unwrap();
+    git(root, &["fast-import", "--quiet", "--done"], Some(&input));
+    let base = git(root, &["merge-base", "main", "topic"], None);
+    git(root, &["checkout", "--quiet", "topic"], None);
+
+    // The native rebase and control reads below still run concurrently.
+    let f = Fixture::at(temp.path(), None);
     let path = root.to_owned();
     let rebasing =
-        std::thread::spawn(move || git(&path, &["rebase", "--onto", "main", &base, "topic"]));
+        std::thread::spawn(move || git(&path, &["rebase", "--onto", "main", &base, "topic"], None));
     let started = Instant::now();
     let mut samples = 0;
     let mut maximum = Duration::ZERO;
@@ -119,7 +146,10 @@ fn twenty_commit_rebase_keeps_control_requests_responsive() {
     }
     rebasing.join().unwrap();
     assert!(samples > 1);
-    assert_eq!(git(root, &["rev-list", "--count", "main..topic"]), "20");
+    assert_eq!(
+        git(root, &["rev-list", "--count", "main..topic"], None),
+        "20"
+    );
     assert_eq!(
         std::fs::read_to_string(root.join("src/0.txt")).unwrap(),
         "revision 19 file 0\n"

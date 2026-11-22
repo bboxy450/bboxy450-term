@@ -84,6 +84,8 @@ impl Pending {
 /// Callback work only records bounded dirtiness. Scanning/parsing stays on IO.
 pub struct FileWatch {
     _watcher: notify::RecommendedWatcher,
+    #[cfg(test)]
+    on_drop: Option<Box<dyn FnOnce() + Send>>,
     pending: Arc<Mutex<Pending>>,
     root: std::path::PathBuf,
     failed: Arc<AtomicBool>,
@@ -115,11 +117,18 @@ impl FileWatch {
         watcher.watch(&root, RecursiveMode::Recursive)?;
         Ok(Self {
             _watcher: watcher,
+            #[cfg(test)]
+            on_drop: None,
             pending,
             root,
             failed,
         })
     }
+    #[cfg(test)]
+    pub(crate) fn on_drop(&mut self, hook: impl FnOnce() + Send + 'static) {
+        self.on_drop = Some(Box::new(hook));
+    }
+
     // Preserve the immediate consuming API for existing callers and fixtures.
     pub fn changed(&self) -> bool {
         self.take(true).is_some()
@@ -158,6 +167,15 @@ impl FileWatch {
                 .lock()
                 .unwrap_or_else(|error| error.into_inner())
                 .push(ScanBatch::Paths(paths), Instant::now());
+        }
+    }
+}
+
+#[cfg(test)]
+impl Drop for FileWatch {
+    fn drop(&mut self) {
+        if let Some(hook) = self.on_drop.take() {
+            hook();
         }
     }
 }

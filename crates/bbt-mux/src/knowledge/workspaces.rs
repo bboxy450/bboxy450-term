@@ -523,4 +523,68 @@ impl Workspaces {
             workspace.close();
         }
     }
+
+    pub(crate) fn retire(&mut self) {
+        self.close();
+        for workspace in std::mem::take(&mut self.roots).into_values() {
+            // These watches only record hints into the retired root. Native
+            // destruction can join FSEvents, just as when replacing a watch.
+            self.config.runtime.spawn_blocking(move || drop(workspace));
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::plugins::DiscoveryRoots;
+    use std::{sync::mpsc, time::Duration};
+
+    #[test]
+    fn watcher_drop_can_stay_blocked_after_workspace_retirement_returns() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        let repository = root.join("repository");
+        let run_dir = root.join("run");
+        let store = SqliteStore::open(&object_dir(&run_dir, "account").unwrap()).unwrap();
+        let plugins = PluginRegistry::new(
+            store,
+            DiscoveryRoots::new(&root.join("support"), &repository),
+        )
+        .unwrap();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let mut workspaces = Workspaces::open(Config {
+            startup_repository: repository,
+            run_dir,
+            plugins,
+            runtime: runtime.handle().clone(),
+            provider: ProviderConfig::default(),
+            activity: None,
+            issued_by: None,
+            messages: None,
+        })
+        .unwrap();
+        let (enter, entered) = mpsc::channel();
+        let (release, held) = mpsc::channel::<()>();
+        workspaces.startup_mut().watch.on_drop(move || {
+            enter.send(()).unwrap();
+            let _ = held.recv();
+        });
+        let (retired, returned) = mpsc::channel();
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                workspaces.retire();
+                retired.send(()).unwrap();
+            });
+            let dropping = entered.recv_timeout(Duration::from_secs(5));
+            let done = returned.recv_timeout(Duration::from_secs(5));
+            drop(release);
+            dropping.expect("retirement did not reach the real workspace's watch");
+            done.expect("the owner joined a blocked native watcher");
+        });
+        assert!(workspaces.roots().next().is_none());
+    }
 }

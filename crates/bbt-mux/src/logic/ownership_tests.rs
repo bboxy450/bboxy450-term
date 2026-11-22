@@ -309,9 +309,14 @@ fn ownership_child() {
     assert_eq!(cursor(&store), before);
     let at = Instant::now();
     logic.shutdown().unwrap();
+    let elapsed = at.elapsed();
     assert!(
-        at.elapsed() < Duration::from_secs(5),
-        "shutdown waited for blocking IO"
+        stale.upgrade().is_some(),
+        "shutdown retired the held IO lease"
+    );
+    assert!(
+        elapsed < Duration::from_secs(5),
+        "Logic shutdown took {elapsed:?} with the IO lease still held"
     );
     registry
         .update_swarm_workdir(seats[0].1, Some(other.to_str().unwrap()))

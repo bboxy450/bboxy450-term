@@ -994,6 +994,11 @@ expected = "liveness"
 frontend = "project"
 
 [[model]]
+name = "BrokenLogicWorkerWatcherShutdown"
+expected = "liveness"
+frontend = "project"
+
+[[model]]
 name = "ProjectionWriterExclusion"
 expected = "pass"
 frontend = "project"

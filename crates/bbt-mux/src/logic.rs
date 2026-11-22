@@ -13274,7 +13274,7 @@ fn retry_capture(mut request: impl FnMut() -> Result<Reply>) -> Result<Reply> {
 impl Drop for Worker {
     fn drop(&mut self) {
         self.dream_runtime.retire();
-        self.workspaces.cache.close();
+        self.workspaces.cache.retire();
         let roots: BTreeSet<_> = self
             .endpoints
             .values()
