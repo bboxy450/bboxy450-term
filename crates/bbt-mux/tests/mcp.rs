@@ -7714,6 +7714,116 @@ fn mcp_task_amend_rejects_workers_nondelegators_terminal_and_stale_etag() {
 }
 
 #[test]
+fn mcp_task_close_scopes_purged_seats_to_the_recorded_swarm() {
+    let f = Fixture::new();
+    let close = || {
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "task_close",
+            json!({"task_path":f.task_path()}),
+        )
+    };
+    let missing = format!("seat:{}", Ulid::new());
+    let foreign = format!("seat:{}", f.outside.id);
+    for (assignee, delegator, swarm, closes) in [
+        (None, Some(&missing), json!(f.own.swarm), true),
+        (Some(&missing), None, json!(f.own.swarm), true),
+        (Some(&missing), Some(&missing), json!(f.own.swarm), true),
+        (Some(&foreign), Some(&missing), json!(f.own.swarm), false),
+        (Some(&missing), Some(&foreign), json!(f.own.swarm), false),
+        (None, Some(&missing), json!(f.outside.swarm), false),
+        (Some(&missing), Some(&missing), Value::Null, false),
+    ] {
+        let mut metadata = f.task_metadata();
+        metadata["status"] = json!("accepted");
+        metadata["swarm"] = swarm;
+        if let Some(assignee) = assignee {
+            metadata["assignee"] = json!(assignee);
+        }
+        if let Some(delegator) = delegator {
+            metadata["delegated_by"] = json!(delegator);
+        }
+        f.task_file(metadata.clone());
+        let result = close();
+        assert_eq!(result["isError"], !closes, "{metadata}: {result}");
+        let after = f.task_document();
+        assert_eq!(
+            after.metadata["status"],
+            if closes { "done" } else { "accepted" }
+        );
+        assert_eq!(after.metadata["delegated_by"], metadata["delegated_by"]);
+    }
+}
+
+#[test]
+fn mcp_task_amend_adopts_closed_or_purged_delegator_and_keeps_live_owner_exclusive() {
+    let f = Fixture::new();
+    for seat in [f.peer.id, f.outside.id] {
+        f.registry()
+            .update(seat, |r| {
+                r.role.class = Class::Oracle;
+                r.role.name = "architect".into();
+                Ok(())
+            })
+            .unwrap();
+    }
+    let mut metadata = f.task_metadata();
+    metadata["swarm"] = json!(f.own.swarm);
+    f.task_file(metadata.clone());
+    let amend = |actor, reader| {
+        let current = data(knowledge_fetch(&f, reader, "#1"));
+        let mut args = knowledge_update_args(&current);
+        args["body"] = json!("Successor brief");
+        args["frontmatter"]["verify"] = json!("true && true");
+        args["frontmatter"]["allowed_paths"] = json!(["fixture/src/**"]);
+        f.mutate(actor, Ulid::new(), "knowledge_write", args)
+    };
+    knowledge_denied(amend(f.peer.id, f.peer.id), "task_field_protected");
+    f.registry()
+        .update(f.oracle.id, |r| {
+            r.lifecycle = bbt_mux::registry::Lifecycle::ClosedRetained;
+            Ok(())
+        })
+        .unwrap();
+    let missing = json!(format!("seat:{}", Ulid::new()));
+    for delegator in [metadata["delegated_by"].clone(), missing.clone()] {
+        metadata["delegated_by"] = delegator;
+        f.task_file(metadata.clone());
+        knowledge_denied(amend(f.outside.id, f.peer.id), "task_field_protected");
+        let record = data(amend(f.peer.id, f.peer.id))["record"].clone();
+        assert_eq!(record["body"].as_str().unwrap().trim(), "Successor brief");
+        assert_eq!(
+            record["frontmatter"]["delegated_by"],
+            format!("seat:{}", f.peer.id)
+        );
+        assert_eq!(record["frontmatter"]["assignee"], metadata["assignee"]);
+        assert_eq!(record["frontmatter"]["status"], "running");
+        assert_eq!(record["frontmatter"]["verify"], "true && true");
+        assert_eq!(record["frontmatter"]["verify_revision"], 1);
+        assert_eq!(
+            record["frontmatter"]["allowed_paths"],
+            json!(["fixture/src/**"])
+        );
+    }
+
+    // The lifecycle write also adopts a purged delegator and has no inbox
+    // dependency when the old assignee has been purged.
+    metadata["delegated_by"] = missing;
+    metadata["assignee"] = json!(format!("seat:{}", Ulid::new()));
+    f.task_file(metadata);
+    data(f.mutate(
+        f.peer.id,
+        Ulid::new(),
+        "task_reject",
+        json!({"task_path": f.task_path(), "reason": "Superseded by the new brief"}),
+    ));
+    let task = f.task_document();
+    assert_eq!(task.metadata["status"], "rejected");
+    assert_eq!(task.metadata["delegated_by"], format!("seat:{}", f.peer.id));
+}
+
+#[test]
 fn mcp_task_amend_verify_requires_a_fresh_report_even_after_a_b_a() {
     let f = Fixture::new();
     f.task_file(f.task_metadata());

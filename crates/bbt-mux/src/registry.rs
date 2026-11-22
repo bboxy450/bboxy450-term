@@ -208,11 +208,13 @@ impl Registry {
         Ok(())
     }
     pub fn get(&self, id: Ulid) -> Result<SeatRecord> {
-        let bytes = self
-            .store
+        self.find(id)?.ok_or_else(|| invalid("unknown seat"))
+    }
+    pub(crate) fn find(&self, id: Ulid) -> Result<Option<SeatRecord>> {
+        self.store
             .get(&format!("seat/{id}"))?
-            .ok_or_else(|| invalid("unknown seat"))?;
-        Ok(serde_json::from_slice(&bytes)?)
+            .map(|bytes| serde_json::from_slice(&bytes).map_err(Into::into))
+            .transpose()
     }
     pub fn list(&self) -> Result<Vec<SeatRecord>> {
         self.store

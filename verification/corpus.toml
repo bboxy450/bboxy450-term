@@ -894,6 +894,16 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "ScopedTaskClose"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenScopedTaskClose"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "SeatLaunchEnvironment"
 expected = "pass"
 frontend = "project"

@@ -136,7 +136,7 @@ pub(super) enum Completion {
         Context,
         Box<Prepared>,
         Option<Box<crate::messaging::keys::OperatorSigning>>,
-        Vec<Ulid>,
+        Vec<Option<Ulid>>,
         effects::Applied,
     ),
 }
@@ -712,7 +712,7 @@ impl Worker {
     ) -> Result<(
         SigningKey,
         Option<crate::messaging::keys::OperatorSigning>,
-        Vec<Ulid>,
+        Vec<Option<Ulid>>,
     )> {
         let keys = self.identity.keys();
         if let Some(reason) = keys.signing_hold() {
@@ -775,16 +775,19 @@ impl Worker {
             }
             for wake in &plan.wakes {
                 let swarm = match wake.to {
-                    bbt_proto::messaging::Recipient::Seat(seat) => self.registry.get(seat)?.swarm,
+                    // There is no inbox to wake after a seat record has been purged.
+                    bbt_proto::messaging::Recipient::Seat(seat) => {
+                        self.registry.find(seat)?.map(|record| record.swarm)
+                    }
                     bbt_proto::messaging::Recipient::Operator(device) => {
                         if self.identity.status()?.device_id != Some(device) {
                             return Err(invalid("task delegator operator unavailable"));
                         }
                         self.messaging.set_operator_device(device)?;
-                        task_swarm.ok_or_else(|| invalid("task swarm requires an assignee"))?
+                        Some(task_swarm.ok_or_else(|| invalid("task swarm requires an assignee"))?)
                     }
                     bbt_proto::messaging::Recipient::OperatorLocal(_) => {
-                        task_swarm.ok_or_else(|| invalid("task swarm requires an assignee"))?
+                        Some(task_swarm.ok_or_else(|| invalid("task swarm requires an assignee"))?)
                     }
                     bbt_proto::messaging::Recipient::Plugin(_) => {
                         return Err(invalid("a plugin is never a task recipient"));
@@ -800,9 +803,10 @@ impl Worker {
         context: &Context,
         wakes: Vec<crate::mcp::work_items::Wake>,
         operator: Option<&crate::messaging::keys::OperatorSigning>,
-        wake_swarms: Vec<Ulid>,
+        wake_swarms: Vec<Option<Ulid>>,
     ) -> Result<()> {
         for (wake, swarm) in wakes.into_iter().zip(wake_swarms) {
+            let Some(swarm) = swarm else { continue };
             let summary = format!(
                 "{}\nTask workspace: {} (knowledge root {}).",
                 wake.summary,

@@ -57,7 +57,7 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
         actor.seat_id
     ));
     let write_help = if actor.role.class == Class::Oracle {
-        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.den; the Index returns its numbered final path. Reports are append-only at reports/YYYY-MM-DD-slug.den; corrections create a new report with supersedes. Tasks are created open; their delegating seat may amend only brief/verify/allowed_paths while nonterminal. To initialize a provider's blank, open, unowned task reservation, fetch it, preserve ref/etag and all other frontmatter, and write its brief, verify and allowed_paths. The host records you as its delegator in your swarm before delegation. Existing briefs or ownership cannot be adopted. Amendments wake the assignee in the task thread; changed verify requires a fresh report. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools. Updates retain type, ref and etag."
+        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.den; the Index returns its numbered final path. Reports are append-only at reports/YYYY-MM-DD-slug.den; corrections create a new report with supersedes. Tasks are created open; their delegating Oracle may amend only brief/verify/allowed_paths while nonterminal. A same-swarm Oracle takes over on amendment if the delegating seat is closed or missing. To initialize a provider's blank, open, unowned task reservation, fetch it, preserve ref/etag and all other frontmatter, and write its brief, verify and allowed_paths. The host records you as its delegator in your swarm before delegation. This initialization applies only to blank, unowned reservations. Amendments wake the assignee in the task thread; changed verify requires a fresh report. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools. Updates retain type, ref and etag."
     } else {
         "Create/update e2e, comment, research, note and artifact records as your seat. Create append-only reports at reports/YYYY-MM-DD-slug.den for your assigned task; corrections create a new report with supersedes. For your assigned task preserve every other field and the body, changing only report.summary, report.commit, report.report and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
     };
@@ -497,13 +497,6 @@ pub(crate) fn write_plan(
                 return Err(denied(
                     "task_field_protected",
                     "terminal task status cannot be amended",
-                ));
-            }
-            if !reservation && old.frontmatter["delegated_by"] != format!("seat:{}", actor.seat_id)
-            {
-                return Err(denied(
-                    "task_field_protected",
-                    "only the delegating Oracle seat may amend this task",
                 ));
             }
             if reservation {

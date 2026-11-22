@@ -21,7 +21,7 @@ use ulid::Ulid;
 use super::{Actor, Call, tools};
 use crate::index::{Document, Index, Update};
 use crate::knowledge::{DataSource, data_source as d};
-use crate::registry::{Class, Registry, SeatRecord};
+use crate::registry::{Class, Lifecycle, Registry, SeatRecord};
 
 type Checked<T> = std::result::Result<T, String>;
 
@@ -858,7 +858,7 @@ pub(crate) fn prepare(
         return Err("task control requires oracle-class authority".into());
     }
     let task = |path: &str| -> Checked<Document> {
-        let doc = index.locate(path)?;
+        let mut doc = index.locate(path)?;
         if call.tool == "task_reconcile"
             && matches!(actor, Actor::Operator { .. })
             && index.import_root().is_ok()
@@ -874,8 +874,14 @@ pub(crate) fn prepare(
             let mut scoped = doc.clone();
             scoped.metadata["assignee"] = json!(format!("seat:{}", target.id));
             authorize(&scoped, registry, actor)?;
-        } else {
-            authorize(&doc, registry, actor)?;
+        } else if authorize(&doc, registry, actor)?
+            && matches!(
+                call.tool.as_str(),
+                "task_accept" | "task_reject" | "task_reconcile"
+            )
+            && live_status(doc.metadata["status"].as_str().unwrap_or_default())
+        {
+            doc.metadata["delegated_by"] = json!(actor.reference());
         }
         Ok(doc)
     };
@@ -1230,36 +1236,58 @@ pub(crate) fn delegator(doc: &Document) -> Checked<Option<Recipient>> {
         _ => Err("task delegated_by must name a seat or operator".into()),
     }
 }
-/// Reuse canonical task ownership and swarm checks for trusted host writes.
-pub(crate) fn authorize(doc: &Document, registry: &Registry, actor: &Actor) -> Checked<()> {
-    // Every present registry reference, never the directory, establishes scope.
+/// Check task scope and assignment. A true result also authorizes Oracle succession.
+pub(crate) fn authorize(doc: &Document, registry: &Registry, actor: &Actor) -> Checked<bool> {
     if doc.error.is_some() || !is_task(doc) {
         return Err("task frontmatter is invalid".into());
     }
     let assignee = reference(doc, "assignee")?;
     let delegator = delegator(doc)?.and_then(Recipient::seat);
-    if assignee.is_none() && delegator.is_none() {
-        return Err("task swarm is ambiguous".into());
-    }
+    let find = |id: Option<Ulid>| -> Checked<Option<SeatRecord>> {
+        id.map(|id| registry.find(id))
+            .transpose()
+            .map(Option::flatten)
+            .map_err(|error| error.to_string())
+    };
+    let assigned_seat = find(assignee)?;
+    let delegating_seat = find(delegator)?;
+    let stored_swarm = doc.metadata["swarm"]
+        .as_str()
+        .and_then(|value| value.parse::<Ulid>().ok())
+        .filter(|swarm| !swarm.is_nil());
     let swarm = match actor {
         Actor::OperatorLocal { .. } => return Err("task authority requires signing custody".into()),
         Actor::Seat(actor) => actor.swarm_id,
-        Actor::Operator { .. } => {
-            registry
-                .get(assignee.ok_or("task swarm requires an assignee")?)
-                .map_err(|_| "task assignee unavailable")?
-                .swarm
-        }
+        Actor::Operator { .. } => assigned_seat
+            .as_ref()
+            .map(|seat| seat.swarm)
+            .or(stored_swarm)
+            .ok_or("task swarm requires an assignee or recorded swarm")?,
     };
-    for id in [assignee, delegator].into_iter().flatten() {
-        if registry.get(id).map_err(|_| "task seat unavailable")?.swarm != swarm {
-            return Err("task outside caller swarm".into());
-        }
+    // A missing reference requires durable scope. Every seat still in the
+    // registry must agree, even if a different reference has been purged.
+    let needs_stored_swarm = (assignee.is_some() && assigned_seat.is_none())
+        || (delegator.is_some() && delegating_seat.is_none())
+        || (assigned_seat.is_none() && delegating_seat.is_none());
+    if needs_stored_swarm && stored_swarm.ok_or("task swarm is ambiguous")? != swarm {
+        return Err("task outside caller swarm".into());
     }
-    if actor.class() != Class::Oracle && assignee != actor.seat().map(|seat| seat.seat_id) {
+    if [assigned_seat.as_ref(), delegating_seat.as_ref()]
+        .into_iter()
+        .flatten()
+        .any(|seat| seat.swarm != swarm)
+    {
+        return Err("task outside caller swarm".into());
+    }
+    let caller = actor.seat().map(|seat| seat.seat_id);
+    if actor.class() != Class::Oracle && assignee != caller {
         return Err("task is not assigned to caller".into());
     }
-    Ok(())
+    Ok(actor.class() == Class::Oracle
+        && caller.is_some()
+        && delegator.is_some()
+        && delegator != caller
+        && delegating_seat.is_none_or(|seat| seat.lifecycle != Lifecycle::Open))
 }
 fn validate_task_role(target: &SeatRecord, role: &str) -> Checked<()> {
     if (!matches!(

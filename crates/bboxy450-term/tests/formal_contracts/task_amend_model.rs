@@ -21,11 +21,16 @@ pub(super) fn cases() -> Vec<(Model, &'static str)> {
         broken.name = format!("Broken{name}");
         cases.extend([(passing, "pass"), (broken, "safety")]);
     }
+    cases.extend([
+        (scoped_close(false), "pass"),
+        (scoped_close(true), "safety"),
+    ]);
     cases
 }
 
 fn amendment(control: Option<&str>) -> Model {
-    // Actor: worker=0, exact delegator=1, same-swarm Oracle=2, foreign Oracle=3.
+    // Actor: worker=0, two same-swarm Oracles=1/2, foreign Oracle=3.
+    // The delegator starts at Oracle 1; presence is open/closed/purged=0..2.
     // Status: open/claimed/running/reported/rejected/blocked/accepted/closed=0..7.
     // Body and paths are abstract payloads. Publication with the final digest
     // check is atomic; real source races, signatures and persistence use API tests.
@@ -40,11 +45,13 @@ fn amendment(control: Option<&str>) -> Model {
             ("command", 1, 0),
             ("report_revision", 2, 0),
             ("reported", 1, 0),
-            ("last_actor", 3, 1),
+            ("last_amender_authorized", 1, 1),
             ("last_status", 7, 0),
             ("last_etag_current", 1, 1),
             ("pending_wake", 1, 0),
             ("report_command", 1, 0),
+            ("delegator", 2, 1),
+            ("delegator_presence", 2, 0),
         ],
     );
     for actor in 0..=3 {
@@ -87,11 +94,17 @@ fn amendment(control: Option<&str>) -> Model {
     );
     // task_close: only an accepted task becomes done; the brief stays frozen.
     action(&mut m, "CloseAccepted", eq(1, 6), &[(1, Int(7))]);
+    action(&mut m, "CloseDelegator", eq(13, 0), &[(13, Int(1))]);
+    action(&mut m, "PurgeDelegator", eq(13, 1), &[(13, Int(2))]);
+    let oracle = eq(0, 1).or(eq(0, 2));
+    let exact = Var(0).eq(Var(12));
+    let eligible = oracle.clone().and(exact.clone().or(ne(13, 0)));
     let owner = match control {
-        Some("Worker") => eq(0, 1).or(eq(0, 0)),
-        Some("Delegator") => eq(0, 1).or(eq(0, 2)),
-        _ => eq(0, 1),
+        Some("Worker") => eligible.clone().or(eq(0, 0)),
+        Some("Delegator") => oracle,
+        _ => eligible.clone(),
     };
+    let succeeds = eligible.clone().and(exact.negate());
     let live = if control == Some("Terminal") {
         Bool(true)
     } else {
@@ -100,10 +113,12 @@ fn amendment(control: Option<&str>) -> Model {
     for verify in [false, true] {
         let mut updates = vec![
             (2, Var(2).plus(Int(1))),
-            (7, Var(0)),
+            (7, eligible.clone().ite(Int(1), Int(0))),
             (8, Var(1)),
             (9, Int(1)),
             (10, Int(1)),
+            (12, succeeds.clone().ite(Var(0), Var(12))),
+            (13, succeeds.clone().ite(Int(0), Var(13))),
         ];
         if verify {
             updates.extend([(3, Var(3).plus(Int(1))), (4, Int(1).minus(Var(4)))]);
@@ -125,12 +140,12 @@ fn amendment(control: Option<&str>) -> Model {
             &mut m,
             "PublishStaleEtag",
             all([owner, live, ne(2, 0)]),
-            &[(7, Var(0)), (8, Var(1)), (9, Int(0)), (10, Int(1))],
+            &[(8, Var(1)), (9, Int(0)), (10, Int(1))],
         );
     }
     let deliver = m.actions.len();
     action(&mut m, "DeliverAmendmentWake", eq(10, 1), &[(10, Int(0))]);
-    safe(&mut m, "OnlyExactDelegatorAmends", eq(7, 1));
+    safe(&mut m, "OnlyDelegatorOrEligibleSuccessorAmends", eq(7, 1));
     safe(&mut m, "TerminalBriefFrozen", Var(8).lt(Int(6)));
     safe(&mut m, "StaleEtagHasNoEffect", eq(9, 1));
     safe(
@@ -146,5 +161,56 @@ fn amendment(control: Option<&str>) -> Model {
         request: eq(10, 1),
         response: eq(10, 0),
     });
+    m
+}
+
+fn scoped_close(broken: bool) -> Model {
+    // Seat observations are missing/local/foreign. Stored scope is absent,
+    // matching, or foreign. Local includes a retained closed seat.
+    let mut m = model(
+        if broken {
+            "BrokenScopedTaskClose"
+        } else {
+            "ScopedTaskClose"
+        },
+        false,
+        &[
+            ("assignee", 2, 1),
+            ("delegator", 2, 1),
+            ("stored_swarm", 2, 1),
+            ("done", 1, 0),
+        ],
+    );
+    for (field, name) in ["Assignee", "Delegator", "StoredSwarm"]
+        .into_iter()
+        .enumerate()
+    {
+        for value in 0..=2 {
+            action(
+                &mut m,
+                &format!("{name}{value}"),
+                eq(3, 0),
+                &[(field, Int(value))],
+            );
+        }
+    }
+    let scope = eq(0, 1).and(eq(1, 1)).or(eq(2, 1));
+    let local = ne(0, 2).and(ne(1, 2));
+    let close = if broken {
+        local.clone()
+    } else {
+        local.clone().and(scope.clone())
+    };
+    action(
+        &mut m,
+        "CloseAcceptedTask",
+        eq(3, 0).and(close),
+        &[(3, Int(1))],
+    );
+    safe(
+        &mut m,
+        "ClosedTaskHasLocalScope",
+        implies(eq(3, 1), local.and(scope)),
+    );
     m
 }

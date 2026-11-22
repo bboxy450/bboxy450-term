@@ -187,7 +187,7 @@ pub(crate) fn prepare(
                     request.frontmatter["type"].as_str(),
                     Some("task" | "bug" | "epic")
                 ) {
-                    let document = crate::index::Document {
+                    let mut document = crate::index::Document {
                         id: request.frontmatter["id"]
                             .as_str()
                             .unwrap_or_default()
@@ -209,8 +209,17 @@ pub(crate) fn prepare(
                         links: Vec::new(),
                         written_header: None,
                     };
-                    tasks::authorize(&document, registry, actor)
+                    let successor = tasks::authorize(&document, registry, actor)
                         .map_err(|reason| d::CommandError::new("task_field_protected", reason))?;
+                    if document.metadata["delegated_by"] != actor.reference() {
+                        if !successor {
+                            return Err(d::CommandError::new(
+                                "task_field_protected",
+                                "only the delegating Oracle seat may amend this task while available",
+                            ));
+                        }
+                        document.metadata["delegated_by"] = serde_json::json!(actor.reference());
+                    }
                     if let Some(old) = &current
                         && let Some(mut plan) =
                             tasks::amendment(document, old, call).map_err(rejected)?

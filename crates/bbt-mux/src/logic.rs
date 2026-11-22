@@ -5000,19 +5000,15 @@ impl Worker {
             // A reassignment can notify both the old and the new assignee.
             // Scope each notice by its actual recipient, never by a default swarm.
             let swarm = match wake.to {
-                bbt_proto::messaging::Recipient::Seat(seat) => match self.registry.get(seat) {
-                    Ok(record) => record.swarm,
-                    Err(_) => {
-                        return crate::mcp::error(
-                            call.op_id,
-                            "rejected",
-                            "task recipient is unavailable",
-                        );
+                bbt_proto::messaging::Recipient::Seat(seat) => match self.registry.find(seat) {
+                    Ok(record) => record.map(|record| record.swarm),
+                    Err(error) => {
+                        return crate::mcp::error(call.op_id, "rejected", &error.to_string());
                     }
                 },
                 bbt_proto::messaging::Recipient::Operator(_)
                 | bbt_proto::messaging::Recipient::OperatorLocal(_) => match task_swarm {
-                    Some(swarm) => swarm,
+                    Some(swarm) => Some(swarm),
                     None => {
                         return crate::mcp::error(
                             call.op_id,
@@ -5122,6 +5118,9 @@ impl Worker {
             }
         }
         for (wake, wake_swarm) in plan.wakes.into_iter().zip(wake_swarms) {
+            let Some(wake_swarm) = wake_swarm else {
+                continue;
+            };
             let summary = format!(
                 "{}\nTask workspace: {} (knowledge root {}).",
                 wake.summary,
