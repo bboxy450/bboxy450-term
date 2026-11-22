@@ -107,6 +107,8 @@ timed='package(bboxy450-term-mux) & test(/^(logic::hol_tests::|logic::knowledge_
 coverage="$BBOXY_CARGO_TARGET_DIR/ci-local-coverage.json"
 rm -f -- "$coverage"
 export BBOXY_PRESUBMIT_ATTEMPT="ci-local.$$"
+# Only the explicit replay target below selects a session directory.
+unset BBOXY_SMOKE_SESSIONS
 # The gate profile (.config/nextest.toml) runs six tests at once, integration
 # binaries two at once as before, and the timing witnesses one at a time.
 full unit env NEXTEST_PROFILE=gate BBOXY_PRESUBMIT_COVERAGE="$coverage" sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked -E "not ($timed) & not ($dream)"
@@ -114,7 +116,10 @@ full unit env NEXTEST_TEST_THREADS=1 sh scripts/quarantine-test.sh --workspace -
 ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR" FORMAL_REUSE=0
 ledger integration make test-harness-source TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger integration make test-harness-native TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
-ledger integration make test-real-sessions TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
+# Saved operator sessions are an explicit smoke input. Fixture tests run above.
+if [ -n "${SESSIONS_DIR:-}" ]; then
+    ledger integration make test-real-sessions "SESSIONS_DIR=$SESSIONS_DIR" TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
+fi
 # This real exec-environment control restores and hashes its source before
 # returning; no other compilation runs while the broken variant is present.
 ledger integration make test-capability-control TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
