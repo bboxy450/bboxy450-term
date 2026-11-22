@@ -124,6 +124,9 @@ export RUST_TEST_THREADS ?= 2
 unexport BBOXY_CAPABILITY BBOXY_CAPABILITY_FILE BBOXY_GENERATION BBOXY_HOOK_SOCKET_ONLY BBOXY_PROCESS_GENERATION BBOXY_ROLE BBOXY_RUN_DIR BBOXY_SEAT_ID BBOXY_SOCK BBOXY_USER_ZDOTDIR
 INSTALL_DIR ?= $(HOME)/Applications
 UNSIGNED_INSTALL_DIR ?= $(TARGET_DIR)/install-unsigned
+unsigned_chart_home = $(abspath $(UNSIGNED_INSTALL_DIR))/home
+chart_runtime = $(1)/Library/Application Support/bboxy450-term/chart-runtime
+install_chart_runtime = python3 -I crates/bboxy450-svg/install_chart_runtime.py '$(call chart_runtime,$(1))' --optional
 BUNDLE ?= $(TARGET_DIR)/$(PROFILE)/$(APP).app
 DIST_DIR ?= $(TARGET_DIR)/dist
 RELEASE_REPO := bboxy450/bboxy450-term-releases
@@ -153,6 +156,7 @@ help:
 	@printf '%s\n' \
 	  'make svg-loop                   Pinned SVG corpus and native renderer verification' \
 	  'make test-python-execute         Real CPython/MCP/command, cancellation and recovery checks' \
+	  'make test-chart-artifacts        Private installed chart runtime, artifact pins and native painting' \
 	  'make build / build-release       Build the app (debug / optimized)' \
 	  'make build-node                  Build the headless node into TARGET_DIR/node/debug' \
 	  'make test-node                   Build and smoke-test the host node' \
@@ -870,7 +874,7 @@ bundle-unsigned: bundle-files
 # Keep the outer .app inode (Dock/Finder aliases) and the old mapped executable.
 # Previous Contents are retained in the printed private staging directory.
 define install_bundle
-set -eu; mkdir -p '$(1)'; \
+set -eu; $(call install_chart_runtime,$(2)); mkdir -p '$(1)'; \
 stage=$$(mktemp -d '$(1)/.$(APP)-install.XXXXXX'); \
 ditto '$(BUNDLE)' "$$stage/new.app"; codesign --verify --strict "$$stage/new.app"; \
 destination='$(1)/$(APP).app'; mkdir -p "$$destination"; \
@@ -887,7 +891,7 @@ printf 'Installed: %s\n' "$$destination"
 endef
 
 install: bundle
-	@$(call install_bundle,$(INSTALL_DIR))
+	@$(call install_bundle,$(INSTALL_DIR),$(HOME))
 
 # Hard restart of window, logic and supervisor that resumes every running seat
 # with its id, role, swarm, tasks and native session (scripts/restart-recover.sh).
@@ -925,11 +929,15 @@ test-startup-modal: init-submodules
 
 install-unsigned: PROFILE=debug
 install-unsigned: bundle-unsigned
-	@$(call install_bundle,$(UNSIGNED_INSTALL_DIR))
+	@$(call install_bundle,$(UNSIGNED_INSTALL_DIR),$(unsigned_chart_home))
 
 define smoke_binary
 set -eu; run=$$(mktemp -d "$${TMPDIR:-/tmp}/bboxy-make-smoke.XXXXXX"); \
 	mkdir "$$run/repository" "$$run/home"; \
+if test -d '$(2)'; then \
+  mkdir -p "$$run/home/Library/Application Support/bboxy450-term"; \
+  ln -s '$(2)' "$$run/home/Library/Application Support/bboxy450-term/chart-runtime"; \
+fi; \
 	if env -i PATH="$$PATH" TERM="$${TERM:-xterm-256color}" LANG="$${LANG:-en_US.UTF-8}" TMPDIR="$${TMPDIR:-/tmp}" \
 	  HOME="$$run/home" CODEX_HOME="$$run/home/.codex" CLAUDE_CONFIG_DIR="$$run/home/.claude" ZDOTDIR="$$run/home" \
 	  '$(1)' \
@@ -940,12 +948,12 @@ endef
 
 smoke: PROFILE=debug
 smoke: install-unsigned
-	@$(call smoke_binary,$(abspath $(UNSIGNED_INSTALL_DIR))/$(APP).app/Contents/MacOS/$(APP))
+	@$(call smoke_binary,$(abspath $(UNSIGNED_INSTALL_DIR))/$(APP).app/Contents/MacOS/$(APP),$(call chart_runtime,$(unsigned_chart_home)))
 
 .PHONY: smoke-installed
 smoke-installed:
 	@codesign --verify --strict '$(INSTALL_DIR)/$(APP).app'
-	@$(call smoke_binary,$(abspath $(INSTALL_DIR))/$(APP).app/Contents/MacOS/$(APP))
+	@$(call smoke_binary,$(abspath $(INSTALL_DIR))/$(APP).app/Contents/MacOS/$(APP),$(call chart_runtime,$(HOME)))
 
 release: bundle
 	@set -eu; mkdir -p '$(DIST_DIR)'; \
@@ -2624,10 +2632,10 @@ check-prepared-unsigned:
 	@codesign --verify --strict '$(BUNDLE)'
 
 install-prepared: check-prepared
-	@$(call install_bundle,$(INSTALL_DIR))
+	@$(call install_bundle,$(INSTALL_DIR),$(HOME))
 
 install-prepared-unsigned: check-prepared-unsigned
-	@$(call install_bundle,$(UNSIGNED_INSTALL_DIR))
+	@$(call install_bundle,$(UNSIGNED_INSTALL_DIR),$(unsigned_chart_home))
 
 GUI_RUN_DIR ?=
 GUI_REPOSITORY ?=
@@ -2912,13 +2920,18 @@ test-python-execute-native: init-submodules
 	BBOXY_PYTHON_EXECUTE_FIXTURE='$(abspath $(TARGET_DIR))/debug/examples/python_execute_fixture' cargo nextest run --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' -E '(binary(it)&test(/^(mcp)::/))&(test(python_))' --run-ignored all
 
 .PHONY: test-chart-artifacts
-test-chart-artifacts: svg-exporters init-submodules
+test-chart-artifacts: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
+	chart_install=$$(mktemp -d "$${TMPDIR:-/tmp}/bboxy-chart-install.XXXXXX"); \
+	trap 'rm -rf -- "$$chart_install"' EXIT; \
+	$(MAKE) install-unsigned UNSIGNED_INSTALL_DIR="$$chart_install"; \
+	export BBOXY_CHART_TEST_INSTALL="$$chart_install"; \
+	env BBOXY_CAPABILITY_FILE=junk BBOXY_GENERATION=junk BBOXY_PROCESS_GENERATION=junk BBOXY_ROLE=junk BBOXY_RUN_DIR=junk BBOXY_SEAT_ID=junk BBOXY_SOCK=junk \
+	  cargo nextest run --locked -p bboxy450-harness --lib --target-dir '$(TARGET_DIR)' -E 'test(store) | test(unavailable_chart_runtime)' --retries 0; \
 	cargo build --locked -p bboxy450-term --example python_execute_fixture --target-dir '$(TARGET_DIR)'; \
 	cargo nextest run --locked -p bboxy450-term-mux --lib --features model --target-dir '$(TARGET_DIR)' -E 'test(artifact)'; \
-	BBOXY_CHART_PYTHON_BIN='$(abspath $(TARGET_DIR))/svg-loop/venv/bin' BBOXY_PYTHON_EXECUTE_FIXTURE='$(abspath $(TARGET_DIR))/debug/examples/python_execute_fixture' cargo nextest run --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' -E 'test(artifact_mcp) | test(python_chart_artifact)' --run-ignored all --retries 0 --no-capture; \
-	cargo build --locked -p bboxy450-harness --features standalone --bin bboxy450-harness --target-dir '$(TARGET_DIR)'; \
-	BBOXY_CHART_PYTHON_BIN='$(abspath $(TARGET_DIR))/svg-loop/venv/bin' BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo nextest run --locked -p bboxy450-term --test it --target-dir '$(TARGET_DIR)' -E 'test(chart_artifact_live_and_pinned_images_paint_in_private_app)' --run-ignored only --retries 0 --no-capture
+	BBOXY_PYTHON_EXECUTE_FIXTURE='$(abspath $(TARGET_DIR))/debug/examples/python_execute_fixture' cargo nextest run --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' -E 'test(artifact_mcp) | test(python_chart_artifact)' --run-ignored all --retries 0 --no-capture; \
+	cargo nextest run --locked -p bboxy450-term --test it --target-dir '$(TARGET_DIR)' -E 'test(chart_artifact_live_and_pinned_images_paint_in_private_app)' --run-ignored only --retries 0 --no-capture
 
 # C1 consumer join uses the pinned corpus named in .cargo/config.toml [env].
 # DREAM_C1_FIXTURES may name the approved producer worktree for development;

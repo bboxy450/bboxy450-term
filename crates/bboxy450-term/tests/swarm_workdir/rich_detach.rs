@@ -709,17 +709,38 @@ fn app_detach(replace: bool) {
 }
 
 #[test]
-#[ignore = "make test-chart-artifacts supplies the native harness and pinned exporter"]
+#[ignore = "make test-chart-artifacts supplies the private unsigned install"]
 fn chart_artifact_live_and_pinned_images_paint_in_private_app() {
-    let harness = PathBuf::from(std::env::var_os("BBOXY_HARNESS_TEST_BIN").unwrap());
-    let python = PathBuf::from(std::env::var_os("BBOXY_CHART_PYTHON_BIN").unwrap());
+    let install = PathBuf::from(std::env::var_os("BBOXY_CHART_TEST_INSTALL").unwrap());
+    let contents = install.join("bboxy450-term.app/Contents");
+    let harness = contents.join("MacOS/bboxy450-harness");
     let mut f = Fixture::with_directory(
         tempfile::Builder::new()
             .prefix("chart-app-")
             .tempdir_in("/tmp")
             .unwrap(),
     );
-    fs::copy(BIN, f.root.join("bin/bboxy450-term")).unwrap();
+    // Keep the installed bundle intact. The isolated copy replaces only the
+    // bundled harness entry point, to feed scripts to the installed harness.
+    let private_contents = f.root.join("bboxy450-term.app/Contents");
+    let bin = private_contents.join("MacOS");
+    fs::create_dir_all(&bin).unwrap();
+    let app = bin.join("bboxy450-term");
+    fs::copy(contents.join("MacOS/bboxy450-term"), &app).unwrap();
+    std::os::unix::fs::symlink(
+        contents.join("Resources"),
+        private_contents.join("Resources"),
+    )
+    .unwrap();
+    f.binary = Some(app);
+    let support = Path::new("Library/Application Support/bboxy450-term");
+    let private_support = f.root.join("home").join(support);
+    fs::create_dir_all(&private_support).unwrap();
+    std::os::unix::fs::symlink(
+        install.join("home").join(support).join("chart-runtime"),
+        private_support.join("chart-runtime"),
+    )
+    .unwrap();
     let root = f.root.join("repository");
     fs::create_dir_all(root.join(".bboxy/notes")).unwrap();
     let shared = r#"
@@ -730,11 +751,18 @@ def chart(colour):
     return alt.Chart(alt.Data(values=[{'label':'A','value':3}, {'label':'B','value':5}])).mark_bar(color=colour).encode(x='label:N',y='value:Q').properties(title='Native chart',width=160,height=74)
 "#;
     let first = r#"
+import sys
+from matplotlib.figure import Figure
+assert 'chart-runtime-' in sys.prefix, sys.executable
+figure = Figure(figsize=(3.5, 2))
+figure.subplots().plot([1, 2, 3], [1, 3, 2], color='#175ccb', linewidth=4)
+line = display(figure)
 saved = display(chart('#11f183'))
 bboxy.knowledge_write(path='notes/live-chart.md',
     frontmatter={'type':'note','title':'Private chart revisions'},
     body='# Chart revisions\n\n' + saved.reference + '\n\n' + saved.snapshot_reference + '\n')
 Path('chart-1.json').write_text(json.dumps(saved))
+Path('matplotlib.json').write_text(json.dumps(line))
 "#;
     let update = |revision: u64, colour: &str| {
         format!(
@@ -767,10 +795,10 @@ Path('chart-{revision}.json').write_text(json.dumps(saved))
             scripts.extend(["--scripted".to_owned(), path.to_string_lossy().into_owned()]);
         }
     }
-    let shim = f.root.join("bin/bboxy450-harness");
+    let shim = bin.join("bboxy450-harness");
     fs::write(&shim, format!(
-        "#!/usr/bin/python3\nimport os,sys\nos.environ['PATH']={0}+':'+os.environ['PATH']\nos.environ['MPLCONFIGDIR']={1}\nos.execv({2},[{2},*sys.argv[1:],'--yolo',*{3}])\n",
-        json!(python), json!(f.root.join("mpl-cache")), json!(harness), json!(scripts)
+        "#!/usr/bin/python3\nimport os,sys\nos.environ['MPLCONFIGDIR']={0}\nos.execv({1},[{1},*sys.argv[1:],'--yolo',*{2}])\n",
+        json!(f.root.join("mpl-cache")), json!(harness), json!(scripts)
     )).unwrap();
     fs::set_permissions(shim, fs::Permissions::from_mode(0o700)).unwrap();
     f.start();
@@ -821,7 +849,11 @@ Path('chart-{revision}.json').write_text(json.dumps(saved))
             {
                 break value;
             }
-            assert!(Instant::now() < deadline, "chart revision {revision} was not stored: {}", f.log());
+            assert!(
+                Instant::now() < deadline,
+                "chart revision {revision} was not stored: {}",
+                f.log()
+            );
             std::thread::sleep(Duration::from_millis(20));
         }
     };
@@ -850,7 +882,10 @@ Path('chart-{revision}.json').write_text(json.dumps(saved))
                         .enumerate()
                         .filter(|(index, pixel)| {
                             columns.contains(&(index % width * 100 / width))
-                                && pixel[..3].iter().zip(colour).all(|(a, b)| a.abs_diff(*b) <= 3)
+                                && pixel[..3]
+                                    .iter()
+                                    .zip(colour)
+                                    .all(|(a, b)| a.abs_diff(*b) <= 3)
                         })
                         .count()
                 })
@@ -874,7 +909,23 @@ Path('chart-{revision}.json').write_text(json.dumps(saved))
     let b = [187, 36, 132];
     submit_chart(0, "Save the first chart.");
     let one = saved(1);
+    let line: Value = wait(|| {
+        let bytes = fs::read(root.join("matplotlib.json")).ok()?;
+        serde_json::from_slice(&bytes).ok()
+    });
+    assert_eq!(line["media_type"], "image/svg+xml");
+    assert_eq!(one["media_type"], "image/svg+xml");
     let id = one["id"].as_str().unwrap();
+    let line_id = line["id"].as_str().unwrap();
+    assert_ne!(line_id, id);
+    wait(|| {
+        let transcript = fs::read_to_string(&transcript).ok()?;
+        (transcript.contains(one["reference"].as_str().unwrap())
+            && transcript.contains(line["reference"].as_str().unwrap()))
+        .then_some(())
+    });
+    println!("installed charts: matplotlib={line_id} altair={id}");
+    capture("transcript-installed-charts", &[a, [23, 92, 203]]);
     let pinned = format!("{id}:1");
     let document_label = |revision: u64| {
         let pin = format!("artifact:{id}:{revision}");

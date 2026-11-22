@@ -136,3 +136,77 @@ pub(super) fn png(
     }
     Ok((bytes, [width, height]))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::artifact_images::{GeometryCache, Images, Prepared, Resolved, object_path};
+    use bboxy450_canvas::Action;
+    use bbt_supervisor::store::{Blobs, blobs::LocalBlobs};
+    use bbt_ui_model::draw::Prim;
+    use serde_json::json;
+
+    #[test]
+    fn canvas_artifact_image_paint_stays_inside_bounds() {
+        let id = "01M828WMTZP8TQYR4AYF6K2N6H";
+        let add: Action = serde_json::from_value(json!({
+            "op":"add","element":{"id":"image","tags":[],"kind":null,
+            "content":{"type":"image","bounds":{"origin":[0,0],"size":[240,120]},"artifact":id}}
+        }))
+        .unwrap();
+        let mut canvas = Canvas::default();
+        canvas.apply_set(&[add]).unwrap();
+
+        let directory = tempfile::tempdir().unwrap();
+        let root = "0".repeat(64);
+        let mut png = Vec::new();
+        {
+            let mut encoder = png::Encoder::new(&mut png, 2, 1);
+            encoder.set_color(png::ColorType::Rgba);
+            encoder
+                .write_header()
+                .unwrap()
+                .write_image_data(&[255; 8])
+                .unwrap();
+        }
+        let store = LocalBlobs::open(&object_path(directory.path(), &root)).unwrap();
+        let resolved = Resolved {
+            root,
+            id: id.parse().unwrap(),
+            revision: 1,
+            digest: store.put(&png).unwrap(),
+            media_type: "image/png".into(),
+            bytes: png.len(),
+        };
+        let mut images = Images::default();
+        let cache = GeometryCache::default();
+        images.canvas(&canvas, |_, remaining| {
+            Prepared::artifact(&resolved, directory.path(), &cache, remaining)
+        });
+        let viewport = Rect::new(0., 0., 600., 360.);
+        let camera = Camera::default();
+        let cx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+        let canvas = ui::modules::canvas::render_with_images(
+            &canvas,
+            &camera,
+            viewport,
+            ui::Theme::Dark,
+            &images.assets(),
+        )
+        .unwrap();
+        let layout = canvas.layout(viewport, cx, &Metrics::default()).unwrap();
+        let rects = c::paint(&layout, cx)
+            .into_iter()
+            .flat_map(|paint| match paint {
+                c::Paint::Draw(draw) => draw.primitives,
+                _ => vec![],
+            })
+            .filter_map(|primitive| match primitive {
+                Prim::Image { rect, .. } => Some(rect),
+                Prim::Text { text, .. } => panic!("unexpected canvas caption: {text}"),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(rects, [Rect::new(300., 180., 240., 120.)]);
+    }
+}

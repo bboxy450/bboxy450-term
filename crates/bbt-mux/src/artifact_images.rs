@@ -229,7 +229,13 @@ impl Images {
     ) {
         for element in canvas.elements() {
             if let bboxy450_canvas::Content::Image { artifact, .. } = &element.content {
-                self.prepare(artifact, |remaining| read(artifact, remaining));
+                self.prepare(artifact, |remaining| {
+                    let mut prepared = read(artifact, remaining)?;
+                    // A canvas image occupies only its authored bounds.
+                    // The export still returns the resolved pin as metadata.
+                    prepared.asset.revision = None;
+                    Ok(prepared)
+                });
             }
         }
     }

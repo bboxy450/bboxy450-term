@@ -175,13 +175,17 @@ impl HarnessFixture {
         let seat = SeatRecord::new(Ulid::new(), f.own.swarm, "Chart Python", "bboxy450-harness");
         let run = Self::run_directory(f, seat.id);
         let binary = std::env::var("BBOXY_PYTHON_EXECUTE_FIXTURE").expect("private Python fixture");
-        let python =
-            std::env::var("BBOXY_CHART_PYTHON_BIN").expect("Make-managed chart Python environment");
+        let install = PathBuf::from(
+            std::env::var_os("BBOXY_CHART_TEST_INSTALL").expect("private chart install"),
+        );
         let mut spec = LaunchSpec::new("/bin/sh", cwd);
         spec.seat = seat.id;
         spec.generation = seat.generation;
-        spec.env
-            .insert("PATH".into(), format!("{python}:/usr/bin:/bin"));
+        spec.env.insert("PATH".into(), "/usr/bin:/bin".into());
+        spec.env.insert(
+            "HOME".into(),
+            install.join("home").to_string_lossy().into_owned(),
+        );
         spec.env.insert(
             "MPLCONFIGDIR".into(),
             run.join("mpl-cache").to_string_lossy().into_owned(),
@@ -480,6 +484,13 @@ fn python_chart_artifact_observed_bytes_survive_harness_cleanup_and_native_resta
     let mut f = Fixture::real();
     let cwd = f.config.repository.canonicalize().unwrap();
     let (seat, host) = HarnessFixture::supervised(&f, &cwd);
+    let orientation = data(host.call("python_execute_orient", json!({})));
+    assert_eq!(orientation["ready"], true, "{orientation}");
+    assert!(orientation["chart_export_unavailable"].is_null(), "{orientation}");
+    assert!(
+        orientation["interpreter"].as_str().unwrap().contains("/bboxy450-term/chart-runtime-"),
+        "{orientation}"
+    );
     let completed = |run: &Value| {
         if run["status"] == "completed" {
             return;
@@ -570,6 +581,19 @@ emit(saved)"#, saved.clone()));
     assert_eq!(second["result"]["id"], saved["id"]);
     assert_eq!(second["result"]["revision"], 2);
     assert_ne!(second["result"]["digest"], saved["digest"]);
+    let pin = json!({"id":saved["id"],"revision":1});
+    let pinned = data(host.execute("saved = display(inputs)\nemit(saved)", pin));
+    completed(&pinned);
+    assert_eq!(pinned["displayed"], json!([saved["snapshot_reference"]]));
+    assert_eq!(pinned["result"]["digest"], saved["digest"]);
+    let text_pin = json!({"id":result["plain"]["id"],"revision":1});
+    let rejected = data(host.execute(
+        "try:\n    display(inputs)\nexcept ValueError as error:\n    emit(str(error))",
+        text_pin,
+    ));
+    completed(&rejected);
+    assert_eq!(rejected["result"], "display requires a stored SVG or PNG image");
+    assert!(rejected["displayed"].is_null());
 
     let run = host.run.clone();
     drop(host);

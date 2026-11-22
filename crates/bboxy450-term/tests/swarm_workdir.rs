@@ -22,6 +22,7 @@ const BIN: &str = env!("CARGO_BIN_EXE_bboxy450-term");
 struct Fixture {
     directory: tempfile::TempDir,
     root: PathBuf,
+    binary: Option<PathBuf>,
     app: Option<Child>,
 }
 impl Fixture {
@@ -58,6 +59,7 @@ impl Fixture {
         Self {
             directory,
             root,
+            binary: None,
             app: None,
         }
     }
@@ -65,11 +67,13 @@ impl Fixture {
         // A fixture may copy the current app beside its private native launcher.
         // This exercises bundled-binary resolution without changing the shared target.
         let private = self.root.join("bin/bboxy450-term");
-        let mut command = Command::new(if private.is_file() {
-            private
-        } else {
-            PathBuf::from(BIN)
-        });
+        let mut command = Command::new(self.binary.clone().unwrap_or_else(|| {
+            if private.is_file() {
+                private
+            } else {
+                PathBuf::from(BIN)
+            }
+        }));
         self.environment(&mut command);
         command
     }
