@@ -1,0 +1,34 @@
+module tasks.`2026-11-22-kb-index-external-adds`
+
+task KbIndexExternalAdds {
+  title "KB index misses records added by git pull while running"
+  verify $ cargo nextest run -p bboxy450-term-mux -E 'test(index) | test(knowledge)'
+  paths "crates/bbt-mux", "crates/bboxy450-term-data_source-bboxy", "verification", "Cargo.lock"
+  brief """
+    Our stand: subtract before you add; report what you removed. ROLE: EXECUTOR.
+
+    ## Gap (Oracle, observed 2026-11-22)
+    After `git pull --rebase` fast-forwarded the shared KB checkout by 59 commits, records that arrived that way are on disk but not in the knowledge index: `knowledge_fetch specs/python-charts` and `specs/svg-renderer` return `not_found` (files present, `den.check` sound, `managed {}` blocks present), while `specs/canvas` (modified, previously indexed) resolves. `knowledge_status` reports root revision 0, 28985 records.
+
+    ## Do
+    Find why externally added files (git pull, checkout) are not indexed while running: watcher scope, create vs modify events, a startup-only scan, or a refusal. Make externally added and removed records reach the index without an app restart, with a process witness that adds a record through `git` while the host runs and fetches it. Name what you removed.
+
+    ## Land
+    Long commands detached. `make land`. Report at reports/2026-11-22-kb-index-external-adds.den, then `task_report`.
+    """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"+Z+SffD6ma7+9tH7HcO8nu+L88bfZ9A4Xu1v6WL7C48=\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\"}"
+    created = json"\"2026-11-22T18:40:45.262Z\""
+    created_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    delegated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    id = json"\"01M828YTHGX82AKMA49DBF11C7\""
+    number = json"1794292861627760"
+    status = Open
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-22T18:40:45.262Z\""
+    updated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    provenance = json"{\"digest\":\"sha256:99e1e9098ff5cc85c0c3dc8ca848c2f44c463e880698b2aabe21dd5d61d60b22\",\"frontmatter_digest\":\"sha256:8f4c013407d82f721a5e312c79a8da15b00855f4d76e3074847d3a8709d51c36\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"/879FV9C5FWtXffmGR6IkoEjC7Hf4FZryTRNvkg25sVzIfKKyxJ33nK/oLgMUGD9ZjAnjgeeK+r+8yO7O3iqCQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1045\",\"event\":{\"id\":\"01M828Z2ES5F3ECSS6KBZD71EJ\",\"sequence\":1045,\"hash\":\"3894ad2574dfa3ea72ce0936104523ffa6d3e639bfa66c32218e86522c58e1e3\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

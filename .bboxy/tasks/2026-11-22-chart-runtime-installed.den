@@ -1,0 +1,45 @@
+module tasks.`2026-11-22-chart-runtime-installed`
+
+task ChartRuntimeInstalled {
+  title "Installed app: display(plot) has no chart runtime; pin display, canvas image caption"
+  verify $ make test-chart-artifacts
+  paths "crates/bboxy450-harness", "crates/bboxy450-svg", "crates/bbt-mux", "crates/bboxy450-canvas", "crates/bboxy450-term", "Makefile", "scripts", "verification", "Cargo.lock"
+  brief """
+    Our stand: subtract before you add; report what you removed. ROLE: EXECUTOR.
+
+    ## Gaps (Oracle live witness, 2026-11-22, installed app from main 647d97ab8)
+    1. **Charts are dead in the installed app.** `display(plot)` (advertised in every seat prompt) fails: `ModuleNotFoundError: vl_convert` / `matplotlib` / `fontTools`. The harness Python host runs `python3` from PATH (`crates/bboxy450-harness/src/python_execute/mod.rs:983,1131` → Homebrew 3.15 here). The pinned, hash-locked chart environment (`crates/bboxy450-svg/requirements.lock`, Makefile `svg-exporters`, `target/svg-loop/venv`) exists only for tests via `BBOXY_CHART_PYTHON_BIN`.
+    2. `display({"id":..., "revision":...})` (a pin) fails with `invalid stored image reference`: `_display_reference` requires the server `reference` string. Passing the full `artifact_read` result works.
+    3. Canvas image element draws its `artifact:ID:N` caption outside the element bounds, colliding with the next element (witness canvas 01M828WMTZP8TQYR4AYF6K2N6H: image bounds 240x120 at 0,0; caption overlaps text at y=130).
+    4. `.bboxy/skills/canvas/SKILL.md` does not document the image element (`content: {type:"image", bounds:{origin,size}, artifact:"ID[:N]"}`).
+
+    ## Do
+    1. One home for the chart interpreter: `make install` (and `make install-unsigned`/`make smoke` for tests) provisions the same hash-locked environment from `requirements.lock` into a machine-local path under the app's support directory, without global installs or operator prompts. The Python host uses that interpreter when present and falls back to PATH `python3` with chart export reported unavailable (explicit reason, not ModuleNotFoundError). Retire `BBOXY_CHART_PYTHON_BIN` if the same resolution covers tests; otherwise say why it stays.
+    2. `display(pin)` builds the reference from `id`/`revision` itself; keep the media-type check by reading the artifact if needed.
+    3. Keep the caption inside the image element's bounds (or drop it) with a geometry regression.
+    4. Document the image element in the canvas skill (Oracle-owned record: write the exact paragraph into your report; the Oracle writes the skill).
+    5. Witness: in a fresh install-unsigned private app, `python_execute` with a 3-point matplotlib line and an Altair bar chart → `display()` → artifact stored, transcript shows it. Record the artifact ids.
+
+    5. **Test isolation (Oracle, observed):** `cargo nextest run -p bboxy450-harness -E 'test(store)'` exits 100 inside a live seat (3 tests panic at `src/python_execute/tests.rs:132`: `native_context_unavailable`) and exits 0 with 20/20 once `BBOXY_CAPABILITY_FILE BBOXY_GENERATION BBOXY_PROCESS_GENERATION BBOXY_ROLE BBOXY_RUN_DIR BBOXY_SEAT_ID BBOXY_SOCK` are unset. Make these tests hermetic: the fixture clears or overrides inherited `BBOXY_*` seat variables itself. Add a check that runs them with those variables set to junk values.
+
+    ## Land
+    Long commands detached with exit code to a file. `make land`. Report at reports/2026-11-22-chart-runtime.den, then `task_report`.
+    """
+
+  managed {
+    assignee = json"\"seat:01M82G2ST0JY0HD8CX6BD6FGNH\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"+Z+SffD6ma7+9tH7HcO8nu+L88bfZ9A4Xu1v6WL7C48=\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\"}"
+    created = json"\"2026-11-22T18:40:37.179Z\""
+    created_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    delegated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    id = json"\"01M828YSP5S3N5CZH239TDJDW2\""
+    number = json"1794292861627759"
+    role = json"\"executor\""
+    status = Claimed
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-22T20:45:10.310Z\""
+    updated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    provenance = json"{\"digest\":\"sha256:3a418e8feb4cb7feafb12f5e8e3151a0dd59cf2eb400c43ae86424e7deffb270\",\"frontmatter_digest\":\"sha256:7edde48e383319929a67c4b77a530945e3e749c66a64362dd18ad14689949978\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"y4zRED7gi2n28ohkXgU4WbogFNYvxGGUv0dc+qNOiYCsn3D2j6eQQSHIRXMu760wf0f6O/zd3PR6V6/3aMRcAA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1067\",\"event\":{\"id\":\"01M82G2WDWA1WW9XRK9MVB6M51\",\"sequence\":1067,\"hash\":\"4399f5bc69b3a45b5a7133ba61506705ec6b2661ed25eca604eb10e375585809\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

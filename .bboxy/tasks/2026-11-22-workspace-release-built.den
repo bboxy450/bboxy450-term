@@ -1,0 +1,42 @@
+module tasks.`2026-11-22-workspace-release-built`
+
+task WorkspaceReleaseBuilt {
+  title "workspace_release fails on every built worktree (ignored target/, output bound, rebased commits)"
+  verify $ cargo nextest run -p bboxy450-term-mux -E 'test(workspace)'
+  paths "crates/bbt-mux", "verification", "Cargo.lock"
+  brief """
+    Our stand: subtract before you add; report what you removed. ROLE: EXECUTOR.
+
+    ## Gap (Oracle, observed 2026-11-22)
+    `workspace_release` cannot release any worktree that has been built, so every landed task leaves its checkout behind (25-54 GB each) and the Oracle removes them by hand. Five releases today ended `failed`:
+    - `workspace_provider_output_exceeded: process output exceeded the 65536-byte evidence bound` (01M7T74K1JSW9P50HNAXWC17JA, 01M828HT7WNNXG502NHED80V2M);
+    - `workspace_dirty: preserve tracked, untracked and ignored private data before release` / `...inside submodules` (01M7T74NXNG7C013YBN8KRY7K9, 01M7TDT9R8YAAY20R3ZYECQDN6, 01M7TEHNZ603REYV9VP3FD2PVN). They held only ignored build outputs (`target/`) and no modified tracked files.
+    - Their single "unlanded" commits had all landed under rebased hashes (`git cherry` sees them as unlanded): 01d4b66ac=10bbaa4d4, ff1ab401c=ee65ca2b7, 232750f61=0ff6caba8, and 49df32fa3 is a harness pointer bump superseded by main's pin.
+    - The app's own logic process (pid 70825 here) keeps files open in a released task's checkout.
+
+    ## Do
+    1. Build outputs are not private data: release removes ignored build output (target dirs and the paths `.gitignore` marks as build/cache) and still refuses modified tracked files, untracked non-ignored files, and unlanded commits.
+    2. Unlanded detection treats a commit as preserved when origin/main has a patch-equivalent or same-subject-and-tree change, or (for a pointer-only commit) when main's pin contains it. Keep refusing a genuinely unique commit.
+    3. Bound the evidence the release keeps instead of failing when a step prints more than 64 KiB (keep a digest plus head/tail).
+    4. Find which logic-process handle stays open in a checkout after its seat closes, and close it on release.
+    Process witness: build in a managed worktree, land its commit by rebase (new hash), release, and the directory is gone; plus a negative where a unique commit refuses.
+
+    ## Land
+    Long commands detached. `make land`. Report at reports/2026-11-22-workspace-release-built.den, then `task_report`.
+    """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"+Z+SffD6ma7+9tH7HcO8nu+L88bfZ9A4Xu1v6WL7C48=\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\"}"
+    created = json"\"2026-11-22T21:25:46.733Z\""
+    created_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    delegated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    id = json"\"01M82JD6WWSXAMPNKX8EJFNY9W\""
+    number = json"1794292861627769"
+    status = Open
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-22T21:25:46.733Z\""
+    updated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    provenance = json"{\"digest\":\"sha256:8033460cf13b033e1e113926363a0d5ba991e85c908f05050174b0f28df9fb57\",\"frontmatter_digest\":\"sha256:ed72cbed5a8aa1e2639b422145464a7146a509d9d0880c5bcdecef0957406c75\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"4ytuBwZFoIktqffIupsGJe6dpKpBrAdDS+iiro54i9t2XultX0Hw8AmbpxKAqBCOnJ7K3UGofEseSGL9LG7tDQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1085\",\"event\":{\"id\":\"01M82JD7S7TP94ESERRAT9XDAW\",\"sequence\":1085,\"hash\":\"1c76360dd61ac943ad1314fe7e9dec1907682284764f9eb5a3256fa649714dff\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

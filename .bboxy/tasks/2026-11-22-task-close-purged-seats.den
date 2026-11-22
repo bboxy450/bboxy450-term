@@ -19,22 +19,59 @@ task TaskClosePurgedSeats {
 
     ## Land
     Run long commands detached with the exit code written to a file. `make land`. Report with `knowledge_write` at reports/2026-11-22-task-close-purged-seats.den, then `task_report`.
+
+
+    ## Report from seat:01M828J8VVZJAY5VAWA5MQJRDQ
+
+    Landed signed commit c989cf26f. All 933 mux tests passed with the repository's private test environment, and make land exited 0 with native/TLC parity across 997 models. The fix removes the registry-presence and wake-destination requirements for purged task seats and adds matching recorded-swarm checks and same-swarm Oracle succession. The original and intermediate verification failures are recorded in the report.
+
+    ```json
+    {
+      "op_id": "01M82FZ83HWW335ZMQ7J3KEQXG",
+      "commit": "c989cf26feef527d2a3dccbff7aff7839e03a3d6",
+      "report": "[[reports/2026-11-22-task-close-purged-seats.den]]",
+      "verify_result": {
+        "command": "cargo nextest run -p bboxy450-term-mux",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Close accepted tasks after seat purge and refuse absent or foreign swarm scope",
+            "reference": "crates/bbt-mux/tests/mcp.rs:7717 — passed the 933-test private mux suite and the landing selection"
+          },
+          {
+            "criterion": "Permit same-swarm Oracle succession on nonterminal amendment and lifecycle writes",
+            "reference": "crates/bbt-mux/tests/mcp.rs:7760 — compared closed, purged, live and foreign Oracle cases through authenticated MCP calls"
+          },
+          {
+            "criterion": "Check task ownership and closure with formal broken controls",
+            "reference": "verification/contracts.toml:658,698 — make land exited 0 and the native/TLC runs matched verdicts and complete state and transition sets"
+          }
+        ]
+      }
+    }
+    ```
     """
 
   managed {
+    allowed_paths = json"[\"crates/bbt-mux\",\"verification\",\"Cargo.lock\",\"crates/bboxy450-term/tests/formal_contracts/task_amend_model.rs\"]"
     assignee = json"\"seat:01M828J8VVZJAY5VAWA5MQJRDQ\""
     authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"+Z+SffD6ma7+9tH7HcO8nu+L88bfZ9A4Xu1v6WL7C48=\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\"}"
+    closed = json"{\"by\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"op_id\":\"01M82FZT3NTT9JPPQMAX9EK5BF\"}"
     created = json"\"2026-11-22T18:33:21.064Z\""
     created_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
     delegated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
     id = json"\"01M828HFH1GTPA3Z6QY9NA1MW4\""
     number = json"1794292861627753"
+    report = json"{\"commit\":\"c989cf26feef527d2a3dccbff7aff7839e03a3d6\",\"op_id\":\"01M82FZ83HWW335ZMQ7J3KEQXG\",\"report\":\"[[reports/2026-11-22-task-close-purged-seats.den]]\",\"reported_by\":\"seat:01M828J8VVZJAY5VAWA5MQJRDQ\",\"summary\":\"Landed signed commit c989cf26f. All 933 mux tests passed with the repository's private test environment, and make land exited 0 with native/TLC parity across 997 models. The fix removes the registry-presence and wake-destination requirements for purged task seats and adds matching recorded-swarm checks and same-swarm Oracle succession. The original and intermediate verification failures are recorded in the report.\",\"verify_revision\":1}"
     role = json"\"executor\""
-    status = Claimed
+    status = Done
     swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
-    updated = json"\"2026-11-22T18:33:48.850Z\""
+    updated = json"\"2026-11-22T20:43:42.184Z\""
     updated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
-    provenance = json"{\"digest\":\"sha256:ae0c7687e51c166e074b82276838a9d0d8860251e859cac82f1226732ea26b7b\",\"frontmatter_digest\":\"sha256:1ce58702ad8e75ccf7d3f539b7f10010e7c46d47851efd114249cca46bd88653\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"NkfmfpE3+xsJNjWsENOHcOT/0Ep5o0Xj1F4qWPDLu27zWUo/NZcwS+tD0d/J4HzJ+ml88gY6JqECltS5NtAHDQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1019\",\"event\":{\"id\":\"01M828JBNNKFVZJ98G3E4HVY11\",\"sequence\":1019,\"hash\":\"4c405a82b33b88cca6f9227292a27e5f3d08b43d8266710b269d3c329d257cca\"}}"
+    verify = json"\"cargo nextest run -p bboxy450-term-mux\""
+    verify_result = json"{\"command\":\"cargo nextest run -p bboxy450-term-mux\",\"evidence\":[{\"criterion\":\"Close accepted tasks after seat purge and refuse absent or foreign swarm scope\",\"reference\":\"crates/bbt-mux/tests/mcp.rs:7717 — passed the 933-test private mux suite and the landing selection\"},{\"criterion\":\"Permit same-swarm Oracle succession on nonterminal amendment and lifecycle writes\",\"reference\":\"crates/bbt-mux/tests/mcp.rs:7760 — compared closed, purged, live and foreign Oracle cases through authenticated MCP calls\"},{\"criterion\":\"Check task ownership and closure with formal broken controls\",\"reference\":\"verification/contracts.toml:658,698 — make land exited 0 and the native/TLC runs matched verdicts and complete state and transition sets\"}],\"exit_code\":0}"
+    verify_revision = json"1"
+    provenance = json"{\"digest\":\"sha256:e4cc8788693534ac61feb67ca27a68224f0eb376acbe806333ae3a763e5fd432\",\"frontmatter_digest\":\"sha256:a110231ae1b1f2c45853f5d49c5a5012419184bb5d12b3da628ab6d988c91922\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"L1lU640IeDsKn9mytU3UGOjHYzzyZDeNg/HagnX3soDmyAgCOx/mPpBJvoz6FbFSYTZFP2q8VtmgDOAFzxE4Cw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1065\",\"event\":{\"id\":\"01M82G06EMBV634X3VGMF5N82W\",\"sequence\":1065,\"hash\":\"b0383d438b085c294755414cfb2d9e5c27336e5b93901925c78c6c9e0efc1ddf\"}}"
     body_tail = json"\"\\n\""
   }
 }

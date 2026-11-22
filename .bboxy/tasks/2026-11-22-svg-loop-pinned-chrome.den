@@ -1,0 +1,43 @@
+module tasks.`2026-11-22-svg-loop-pinned-chrome`
+
+task SvgLoopPinnedChrome {
+  title "svg-loop gate depends on the installed Chrome version; pin the reference browser"
+  verify $ make svg-loop
+  paths "crates/bboxy450-svg", "Makefile", "scripts", ".gitignore"
+  brief """
+    Our stand: subtract before you add; report what you removed. ROLE: EXECUTOR.
+
+    ## Gap (Oracle audit of main 647d97ab8, 2026-11-22)
+    `make svg-loop` exits 2: `ValueError: frozen reference advisory set changed` (`crates/bboxy450-svg/review.py:108`). The only difference: `matplotlib-scatter / 1x` is now over the vector budget (changed fraction 0.006159478) and is not in `fixtures/advisories.json`.
+    Cause: the reference browser is not pinned. `references.py:181` and `capture.mjs:27` default to `/Applications/Google Chrome.app` (157.0.8103.80 on this machine); the frozen corpus records `Chrome/158.0.8127.37`. The gate's verdict depends on whichever Chrome the machine auto-updated to.
+
+    ## Do
+    1. Pin the reference browser the way the exporters are pinned: a Make-managed, hash-checked Chrome for Testing / chrome-headless-shell of the exact recorded version (158.0.8127.37 unless the spec's frozen evidence says otherwise), arm64 macOS, machine-local under the target dir, no global install, no operator prompt. `CHROME` override stays for explicit experiments only and is recorded in results.
+    2. The loop refuses to compare against a frozen corpus when the browser version differs from the recorded one, with a message naming both versions, instead of reporting a changed advisory set.
+    3. Do not widen budgets or edit the frozen advisory set. Re-run `make svg-loop` on the pinned browser; it must exit 0 with the frozen set unchanged.
+    Every headless Chrome run passes `--use-mock-keychain --password-store=basic` and a private user-data-dir.
+
+    4. **Second red full gate on main (Oracle audit):** `make test-parity` exits 2 on `scripts/test-landing.py` `GateReceiptTests.test_real_ci_entrypoint_binds_success_and_does_not_certify_failure` (`ValueError: substring not found` at line 1657). Cause: `8213133a7` made `make test-real-sessions` run only when `SESSIONS_DIR` is set (`scripts/ci-local.sh:120`), but the test still requires that stage in its ordered stage list. Update the test to match the opt-in contract: assert the default CI omits `test-real-sessions`, and that it is present and ordered when `SESSIONS_DIR` is set. Reproduce first: `python3 scripts/test-landing.py GateReceiptTests.test_real_ci_entrypoint_binds_success_and_does_not_certify_failure`.
+    After both fixes, run `make test-parity` once (detached) on your final commit and report its exit.
+
+    ## Land
+    Long commands detached with exit code to a file. `make land`. Report at reports/2026-11-22-svg-loop-pinned-chrome.den, then `task_report`.
+    """
+
+  managed {
+    assignee = json"\"seat:01M82JAGV0RX5ZC33EVF8XBX1B\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"+Z+SffD6ma7+9tH7HcO8nu+L88bfZ9A4Xu1v6WL7C48=\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\"}"
+    created = json"\"2026-11-22T19:49:00.193Z\""
+    created_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    delegated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    id = json"\"01M82CW063MAPKNWA252EZATWY\""
+    number = json"1794292861627763"
+    role = json"\"executor\""
+    status = Claimed
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-22T21:24:21.825Z\""
+    updated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    provenance = json"{\"digest\":\"sha256:a589818057317741c97a6cc39612be927534665479c4589b3bafd6ae2573d5b1\",\"frontmatter_digest\":\"sha256:c8d0bd38dffa943d1a9d78163c0f226f85ba1ececef2cfcb5fd3272606f8e038\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"56G2+WD3wIpvxSDClLqaLjOXfQxM7a+/wuYaaBsh98EMQ8Tvqjbh5lIr9Kk62H0AwBP5QCaozDueZCRJQBEACw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1080\",\"event\":{\"id\":\"01M82JAMSH4CC43PHF1AHF0Z0M\",\"sequence\":1080,\"hash\":\"2d32da87d39a995b66deb4f57e84eb970cc112ef8d02e851b5a604d317208708\"}}"
+    body_tail = json"\"\\n\""
+  }
+}
