@@ -59,7 +59,7 @@ pub struct ChromeRenderer {
     /// Terminal pictures (Kitty graphics): per-image textures, freed when unused.
     images: images::Layer,
     pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
-    group_pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
+    compositor: group::Compositor,
     group_depth: usize,
     /// Isolated group layers kept across frames, so a frame with nine groups
     /// does not allocate nine full-window textures. Keyed by size.
@@ -68,8 +68,6 @@ pub struct ChromeRenderer {
     /// Headless material renders reuse one Pass (bind layout and pipelines) per target
     /// format; see materials::render_layered_to_rgba.
     material_pass: Option<(wgpu::TextureFormat, materials::Pass)>,
-    /// Per-draw uniform/instance slices, rewound by begin_frame at a submission boundary.
-    arenas: arena::Arenas,
 }
 impl ChromeRenderer {
     /// A submission boundary: per-draw buffer slices may be reused from here on. Call it
@@ -83,12 +81,12 @@ impl ChromeRenderer {
         self.text.counters()
     }
     pub fn begin_frame(&mut self) {
-        self.arenas.begin_frame();
+        self.compositor.begin_frame();
     }
     /// Upload this frame's per-draw slices: call right before submitting the commands that use
     /// them (and before the next begin_frame, which debug-asserts that this happened).
     pub fn flush(&mut self) {
-        self.arenas.flush(&self.context);
+        self.compositor.flush(&self.context);
     }
     /// Read-only diagnostics for cache-capacity and long-lived-renderer gates.
     pub fn text_cache_stats(&self) -> TextCacheStats {
@@ -134,12 +132,11 @@ impl ChromeRenderer {
             image_sampler,
             images: images::Layer::default(),
             pipelines: HashMap::new(),
-            group_pipelines: HashMap::new(),
+            compositor: group::Compositor::default(),
             group_layers: Vec::new(),
             group_depth: 0,
             paths: paths::Renderer::default(),
             material_pass: None,
-            arenas: arena::Arenas::new("chrome draw"),
         })
     }
     pub fn draw(
@@ -333,7 +330,7 @@ impl ChromeRenderer {
                 } else {
                     self.paths.draw(
                         &self.context,
-                        &mut self.arenas,
+                        &mut self.compositor.arenas,
                         target,
                         encoder,
                         primitive,
@@ -795,11 +792,12 @@ impl ChromeRenderer {
             format: Some(gamma_format),
             ..Default::default()
         });
-        let uniform = self.arenas.uniform(
+        let uniform = self.compositor.arenas.uniform(
             &self.context,
             bytemuck::cast_slice(&[width as f32, height as f32, scale, 0.0]),
         );
         let items = self
+            .compositor
             .arenas
             .storage(&self.context, bytemuck::cast_slice(&instances));
         let mask = &self
@@ -1302,7 +1300,10 @@ mod tests {
     fn an_unflushed_frame_fails_at_the_next_begin_frame() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
         renderer.begin_frame();
-        let _slice = renderer.arenas.uniform(&renderer.context, &[0; 16]);
+        let _slice = renderer
+            .compositor
+            .arenas
+            .uniform(&renderer.context, &[0; 16]);
         let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             renderer.begin_frame();
         }));
@@ -1314,7 +1315,10 @@ mod tests {
     fn an_unflushed_frame_fails_when_its_owner_drops() {
         let mut renderer = ChromeRenderer::new(vec![]).unwrap();
         renderer.begin_frame();
-        let _slice = renderer.arenas.storage(&renderer.context, &[0; 16]);
+        let _slice = renderer
+            .compositor
+            .arenas
+            .storage(&renderer.context, &[0; 16]);
         let failure = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| drop(renderer)));
         assert!(failure.is_err());
     }
@@ -1354,12 +1358,16 @@ mod tests {
             });
         }
         let mut fallback = ChromeRenderer::new(vec![]).unwrap();
-        fallback.arenas.fallback_only();
+        fallback.compositor.arenas.fallback_only();
         let expected = fallback.render_to_rgba(&list, 240, 64, 1.).unwrap();
-        assert_eq!(fallback.arenas.capacity(), [0, 0], "per-draw buffers only");
+        assert_eq!(
+            fallback.compositor.arenas.capacity(),
+            [0, 0],
+            "per-draw buffers only"
+        );
         let mut arenas = ChromeRenderer::new(vec![]).unwrap();
         assert_eq!(arenas.render_to_rgba(&list, 240, 64, 1.).unwrap(), expected);
-        let grown = arenas.arenas.capacity();
+        let grown = arenas.compositor.arenas.capacity();
         assert!(
             grown.iter().all(|&c| c > 64 * 1024),
             "the frame outgrew both first arenas mid-frame: {grown:?}"
@@ -1368,10 +1376,10 @@ mod tests {
         // after its layer); from then on each frame rewinds into the same
         // arenas and still matches.
         assert_eq!(arenas.render_to_rgba(&list, 240, 64, 1.).unwrap(), expected);
-        let settled = arenas.arenas.capacity();
+        let settled = arenas.compositor.arenas.capacity();
         assert!(settled.iter().zip(&grown).all(|(s, g)| s >= g));
         assert_eq!(arenas.render_to_rgba(&list, 240, 64, 1.).unwrap(), expected);
-        assert_eq!(arenas.arenas.capacity(), settled);
+        assert_eq!(arenas.compositor.arenas.capacity(), settled);
     }
     // keeps: spec renderer §4.4 — a glyph has at most four horizontal masks
     #[test]

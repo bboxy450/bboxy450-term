@@ -187,6 +187,7 @@ impl super::ChromeRenderer {
             values[12] = target.width as f32;
             values[13] = target.height as f32;
             let params = self
+                .compositor
                 .arenas
                 .uniform(&self.context, bytemuck::cast_slice(&values));
             bindings.push(device.create_bind_group(&wgpu::BindGroupDescriptor {

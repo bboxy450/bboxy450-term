@@ -1143,6 +1143,18 @@ property = "NoStaleCancelAdmission: Cancel cannot reach the current approval unl
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "RichParkedMemory"
+title = "Retire the app's parked rich pane when an authoritative close expires"
+models = ["RichParkedMemory", "BrokenRichParkedMemory"]
+controls = [{name = "BrokenRichParkedMemory", expected = "safety"}]
+sources = ["crates/bboxy450-term/src/rich_faces.rs", "crates/bboxy450-term/src/rich_pane.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/tests/formal_contracts/rich_host.rs"]
+implementation_tests = ["crates/bboxy450-term/src/rich_faces.rs", "crates/bboxy450-term/tests/formal_contracts/rich_host.rs"]
+assumptions = "One authoritative seat birth with open, close grace, or closed-retained lifecycle, one app receiver and at most one pending worker completion. Publish and lifecycle publication are modeled as atomic. Completion alone is weakly fair. Exact draft data and interacting open workers remain covered by RichDraftChain. Allocator overhead, snapshot overlap and native resource sizes require implementation receipts."
+property = "Undo retains the same receiver and eventual payload. Expiry removes the receiver immediately; a pending worker may finish after expiry but cannot publish its payload back into the app. The broken expiry transition retains the receiver and fails safety. rich_memory_closed_seats_release_only_their_parked_receivers exercises twelve real channels and undo without actor or operator interaction."
+checks = ["make test-formal", "make test"]
+focused_checks = ["make test-formal-contracts"]
+
+[[contract]]
 name = "RichDraftChain"
 title = "Exclusive UI draft reservations preserve queued edits through reordered workers"
 models = ["RichDraftChain", "BrokenRichDraftChainReservation", "BrokenRichDraftChainEarlyRestore", "BrokenRichDraftChainDrop"]

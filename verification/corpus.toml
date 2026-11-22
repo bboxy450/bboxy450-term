@@ -1124,6 +1124,16 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "RichParkedMemory"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenRichParkedMemory"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "RichDraftChain"
 expected = "pass"
 frontend = "project"

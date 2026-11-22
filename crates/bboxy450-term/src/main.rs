@@ -6134,6 +6134,7 @@ impl App {
             self.message_history.watch_sends(&follow_up_ids);
             self.operation_backlog.extend(follow_up);
             self.composer_notice();
+            self.rich_reclaim_closed(&state.gui_seats);
             {
                 let _drop = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::UiOldModelDrop);
                 self.live_state = Some(state);

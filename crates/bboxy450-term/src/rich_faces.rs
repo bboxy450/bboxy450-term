@@ -98,6 +98,24 @@ impl App {
             pane.set_theme(theme);
         }
     }
+    pub(super) fn rich_reclaim_closed(&mut self, seats: &[bbt_proto::GuiSeat]) {
+        let mut closed = Vec::new();
+        if self.rich_drafts.is_empty() {
+            return;
+        }
+        for seat in seats {
+            if seat.record.lifecycle == bbt_proto::registry::Lifecycle::ClosedRetained {
+                let id = SeatId::from_u128(seat.record.id.0);
+                closed.extend(self.rich_drafts.remove(&id).flatten());
+            }
+        }
+        if !closed.is_empty() {
+            bbt_rt::handle().spawn(async move {
+                bboxy450_harness::runtime::blocking(move || drop(closed)).await;
+            });
+        }
+    }
+
     pub(super) fn rich_sync(&mut self) {
         if self.occluded || self.document.open || self.local_tab.is_some() {
             self.rich_panes.clear();
@@ -113,6 +131,9 @@ impl App {
                 }
                 let model = self.live_state.as_ref()?;
                 let row = model.gui_seats.iter().find(|s| s.record.id.0 == id.0.0)?;
+                if row.record.lifecycle == bbt_proto::registry::Lifecycle::ClosedRetained {
+                    return None;
+                }
                 let image_root = model
                     .ui
                     .window
@@ -471,6 +492,73 @@ mod verification {
         b.truncate(n);
         b
     }
+    #[test]
+    fn rich_memory_closed_seats_release_only_their_parked_receivers() {
+        use bbt_proto::registry::{Lifecycle, SeatRecord};
+        let (mut app, _) = crate::lazy_projection_tests::fixture();
+        let mut seats = Vec::new();
+        let mut workers = Vec::new();
+        for index in 1..=12 {
+            let id = SeatId::from_u128(index);
+            let (sender, receiver) = tokio::sync::oneshot::channel();
+            app.rich_drafts.insert(id, Some(receiver));
+            let mut record = SeatRecord::new(
+                bbt_mux::Ulid(index),
+                bbt_mux::Ulid(1),
+                "private",
+                "bboxy450-harness",
+            );
+            record.lifecycle = Lifecycle::ClosedGrace;
+            seats.push(bbt_proto::GuiSeat {
+                state: bbt_proto::SeatState {
+                    generation: record.generation,
+                    process: bbt_proto::ProcessStatus::Running { pid: 0 },
+                    activity: bbt_proto::Activity::Idle,
+                    grade: bbt_proto::Grade::Reported,
+                    title: String::new(),
+                    detail: None,
+                    stale: false,
+                    turn_open: false,
+                    observed_ms: 1,
+                    subagents: vec![],
+                },
+                record,
+                rich_socket: None,
+                attention: None,
+                notification_episode: None,
+            });
+            workers.push((id, sender));
+        }
+        app.rich_reclaim_closed(&seats);
+        assert_eq!(app.rich_drafts.len(), 12, "grace preserves a usable undo");
+        let (reopened, sender) = workers.pop().unwrap();
+        let (undo, expiring) = seats.split_last_mut().unwrap();
+        undo.record.lifecycle = Lifecycle::Open;
+        for seat in expiring {
+            seat.record.lifecycle = Lifecycle::ClosedRetained;
+        }
+        app.rich_reclaim_closed(&seats);
+        assert_eq!(
+            app.rich_drafts.keys().copied().collect::<Vec<_>>(),
+            vec![reopened]
+        );
+        assert!(!sender.is_closed(), "undo kept the exact predecessor");
+        seats.last_mut().unwrap().record.lifecycle = Lifecycle::ClosedRetained;
+        app.rich_reclaim_closed(&seats);
+        assert!(
+            app.rich_drafts.is_empty(),
+            "closed seats cannot keep an App cache entry"
+        );
+        workers.push((reopened, sender));
+        bbt_rt::handle().block_on(async {
+            for (_, mut worker) in workers {
+                tokio::time::timeout(Duration::from_secs(5), worker.closed())
+                    .await
+                    .unwrap();
+            }
+        });
+    }
+
     #[test]
     fn harness_theme_parent_preferences_fan_out_without_model_update() {
         let name = "rich_faces::verification::harness_theme_parent_preferences_fan_out_without_model_update";

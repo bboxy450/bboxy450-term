@@ -6,8 +6,9 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Isolated offscreen layers on the chrome device, composed in CSS sRGB space.
 use super::{ChromeRenderer, ChromeTarget};
-use crate::Result;
+use crate::{Result, atlas::AtlasRect, device::DeviceContext};
 use bbt_ui_model::draw::LinearAlphaMask;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Filter {
@@ -86,6 +87,187 @@ fn pipeline(device: &wgpu::Device, format: wgpu::TextureFormat) -> wgpu::RenderP
         cache: None,
     })
 }
+fn validate_layer(
+    layer: &wgpu::TextureView,
+    region: Option<super::ImageRegion>,
+    filter: Filter,
+    mask: Option<LinearAlphaMask>,
+    target: &ChromeTarget<'_>,
+) -> Result<()> {
+    filter.validate()?;
+    if let Some(mask) = mask {
+        mask.validate()?;
+    }
+    let size = layer.texture().size();
+    let origin = region.map_or([0, 0], |crop| [crop.pixels[0], crop.pixels[1]]);
+    if region.is_none() && (size.width != target.width || size.height != target.height) {
+        return Err("group layer size differs from target".into());
+    }
+    if origin[0].saturating_add(size.width) > target.width
+        || origin[1].saturating_add(size.height) > target.height
+    {
+        return Err("group layer exceeds target bounds".into());
+    }
+    Ok(())
+}
+
+/// The group pass and its submission arena. A terminal raster worker needs
+/// this pass without allocating a chrome image or glyph atlas.
+pub struct Compositor {
+    pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
+    pub(super) arenas: super::arena::Arenas,
+}
+
+impl Default for Compositor {
+    fn default() -> Self {
+        Self {
+            pipelines: HashMap::new(),
+            arenas: super::arena::Arenas::new("chrome draw"),
+        }
+    }
+}
+
+impl Compositor {
+    pub fn begin_frame(&mut self) {
+        self.arenas.begin_frame();
+    }
+
+    pub fn flush(&mut self, context: &DeviceContext) {
+        self.arenas.flush(context);
+    }
+
+    pub fn composite_group(
+        &mut self,
+        context: &DeviceContext,
+        layer: &wgpu::TextureView,
+        filter: Filter,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<()> {
+        validate_layer(layer, None, filter, None, &target)?;
+        self.draw(
+            context,
+            (layer, None),
+            filter,
+            None,
+            None,
+            (target, wgpu::LoadOp::Load),
+            encoder,
+        )
+    }
+
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "one GPU pass carries its source, masks and destination"
+    )]
+    fn draw(
+        &mut self,
+        context: &DeviceContext,
+        (layer, region): (&wgpu::TextureView, Option<super::ImageRegion>),
+        filter: Filter,
+        mask: Option<LinearAlphaMask>,
+        coverage: Option<(super::text_cache::Part, AtlasRect, wgpu::TextureView)>,
+        (target, load): (ChromeTarget<'_>, wgpu::LoadOp<wgpu::Color>),
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<()> {
+        let size = layer.texture().size();
+        let origin = region.map_or([0, 0], |crop| [crop.pixels[0], crop.pixels[1]]);
+        let device = &context.device;
+        let format = target.format.remove_srgb_suffix();
+        let pipeline = self
+            .pipelines
+            .entry(format)
+            .or_insert_with(|| pipeline(device, format));
+        let mut values = [0.; 28];
+        values[0] = filter.opacity;
+        values[1] = filter.saturation;
+        values[18..20].copy_from_slice(&origin.map(|n| n as f32));
+        if let Some(region) = region {
+            values[10] = 1.;
+            values[20..24].copy_from_slice(&region.clip);
+            values[24..28].copy_from_slice(&region.radii);
+        }
+        if let Some(mask) = mask {
+            values[2] = 1.;
+            values[4..8].copy_from_slice(&[
+                mask.start[0] * target.scale,
+                mask.start[1] * target.scale,
+                mask.end[0] * target.scale,
+                mask.end[1] * target.scale,
+            ]);
+            values[8] = mask.alpha0;
+            values[9] = mask.alpha1;
+        }
+        if let Some((part, rect, _)) = &coverage {
+            values[3] = 1.;
+            values[12..16].copy_from_slice(&[
+                part.offset[0] as f32,
+                part.offset[1] as f32,
+                f32::from(rect.x),
+                f32::from(rect.y),
+            ]);
+            values[16] = part.size[0] as f32;
+            values[17] = part.size[1] as f32;
+        }
+        let params = self.arenas.uniform(context, bytemuck::cast_slice(&values));
+        let bindings = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("group composite bindings"),
+            layout: &pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(layer),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: params.binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(
+                        coverage.as_ref().map_or(layer, |(_, _, view)| view),
+                    ),
+                },
+            ],
+        });
+        let view = target
+            .view
+            .texture()
+            .create_view(&wgpu::TextureViewDescriptor {
+                format: Some(format),
+                ..Default::default()
+            });
+        crate::passes::count(crate::passes::Kind::Group);
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("isolated group source-over"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            ..Default::default()
+        });
+        pass.set_pipeline(pipeline);
+        pass.set_bind_group(0, &bindings, &[]);
+        if region.is_some() {
+            pass.set_viewport(
+                origin[0] as f32,
+                origin[1] as f32,
+                size.width as f32,
+                size.height as f32,
+                0.,
+                1.,
+            );
+        }
+        pass.draw(0..3, 0..1);
+        Ok(())
+    }
+}
+
 impl ChromeRenderer {
     /// Retained consumers use the same pooled isolation layers as Prim::Group.
     pub fn paint_group(
@@ -258,20 +440,7 @@ impl ChromeRenderer {
         (target, load): (ChromeTarget<'_>, wgpu::LoadOp<wgpu::Color>),
         encoder: &mut wgpu::CommandEncoder,
     ) -> Result<()> {
-        filter.validate()?;
-        if let Some(mask) = mask {
-            mask.validate()?;
-        }
-        let size = layer.texture().size();
-        let origin = region.map_or([0, 0], |crop| [crop.pixels[0], crop.pixels[1]]);
-        if region.is_none() && (size.width != target.width || size.height != target.height) {
-            return Err("group layer size differs from target".into());
-        }
-        if origin[0].saturating_add(size.width) > target.width
-            || origin[1].saturating_add(size.height) > target.height
-        {
-            return Err("group layer exceeds target bounds".into());
-        }
+        validate_layer(layer, region, filter, mask, &target)?;
         let coverage = if let Some(path) = coverage {
             let Some(part) = self.text.prepared_path(path)? else {
                 return Ok(());
@@ -291,101 +460,15 @@ impl ChromeRenderer {
         } else {
             None
         };
-        let device = &self.context.device;
-        let format = target.format.remove_srgb_suffix();
-        let pipeline = self
-            .group_pipelines
-            .entry(format)
-            .or_insert_with(|| pipeline(device, format));
-        let mut values = [0.; 28];
-        values[0] = filter.opacity;
-        values[1] = filter.saturation;
-        values[18..20].copy_from_slice(&origin.map(|n| n as f32));
-        if let Some(region) = region {
-            values[10] = 1.;
-            values[20..24].copy_from_slice(&region.clip);
-            values[24..28].copy_from_slice(&region.radii);
-        }
-        if let Some(mask) = mask {
-            values[2] = 1.;
-            values[4..8].copy_from_slice(&[
-                mask.start[0] * target.scale,
-                mask.start[1] * target.scale,
-                mask.end[0] * target.scale,
-                mask.end[1] * target.scale,
-            ]);
-            values[8] = mask.alpha0;
-            values[9] = mask.alpha1;
-        }
-        if let Some((part, rect, _)) = &coverage {
-            values[3] = 1.;
-            values[12..16].copy_from_slice(&[
-                part.offset[0] as f32,
-                part.offset[1] as f32,
-                f32::from(rect.x),
-                f32::from(rect.y),
-            ]);
-            values[16] = part.size[0] as f32;
-            values[17] = part.size[1] as f32;
-        }
-        let params = self
-            .arenas
-            .uniform(&self.context, bytemuck::cast_slice(&values));
-        let bindings = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("group composite bindings"),
-            layout: &pipeline.get_bind_group_layout(0),
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(layer),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: params.binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(
-                        coverage.as_ref().map_or(layer, |(_, _, view)| view),
-                    ),
-                },
-            ],
-        });
-        let view = target
-            .view
-            .texture()
-            .create_view(&wgpu::TextureViewDescriptor {
-                format: Some(format),
-                ..Default::default()
-            });
-        crate::passes::count(crate::passes::Kind::Group);
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("isolated group source-over"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &view,
-                depth_slice: None,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load,
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            ..Default::default()
-        });
-        pass.set_pipeline(pipeline);
-        pass.set_bind_group(0, &bindings, &[]);
-        if region.is_some() {
-            pass.set_viewport(
-                origin[0] as f32,
-                origin[1] as f32,
-                size.width as f32,
-                size.height as f32,
-                0.,
-                1.,
-            );
-        }
-        pass.draw(0..3, 0..1);
-        Ok(())
+        self.compositor.draw(
+            &self.context,
+            (layer, region),
+            filter,
+            mask,
+            coverage,
+            (target, load),
+            encoder,
+        )
     }
     /// Headless host bridge. Both buffers use the renderer's premultiplied RGBA
     /// convention; compositing still runs on the caller's existing device.
@@ -461,7 +544,7 @@ impl ChromeRenderer {
                 },
             );
         }
-        self.arenas.begin_frame();
+        self.compositor.begin_frame();
         let mut encoder = device.create_command_encoder(&Default::default());
         self.composite_group_with_mask(
             &source.create_view(&Default::default()),
@@ -476,7 +559,7 @@ impl ChromeRenderer {
             },
             &mut encoder,
         )?;
-        self.arenas.flush(&self.context);
+        self.compositor.flush(&self.context);
         self.readback(&destination, encoder, width, height)
     }
 }

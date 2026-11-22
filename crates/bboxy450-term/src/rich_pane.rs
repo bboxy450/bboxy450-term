@@ -363,6 +363,7 @@ impl Pane {
                     let (paints,error,send_rect)=match view.render(&bridge.state,[rect.w,rect.h]) {
                         Ok(frame)=>(Arc::new(paints(frame,rect)),bridge.state.error.clone(),frame.layout.as_ref().and_then(|l|bboxy450_harness::frontends::gui::view::find(l,"composer/send")).map(|n|n.rect)),Err(error)=>(Arc::default(),Some(error),None)
                     };
+                    view.request_visible_rows(&bridge);
                     let text_runs=Arc::new(selection_runs(&view.frame,rect));
                     let controls=Arc::new(view.frame.actions.iter().map(|(rect,action)| (*rect, if matches!(action, Action::Menu(_)) {ui::cursor::Cursor::Default} else {ui::cursor::Cursor::Pointer})).collect());
                     let approval_choices=view.frame.actions.iter().filter_map(|(r,a)|matches!(a,Action::Approval(..)).then_some([r.x,r.y,r.w,r.h])).take(16).collect();

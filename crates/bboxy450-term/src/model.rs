@@ -1690,7 +1690,7 @@ struct CachedPane {
 pub struct PanePreparer {
     context: Arc<DeviceContext>,
     renderer: TerminalRenderer,
-    compositor: bbt_render::chrome::ChromeRenderer,
+    compositor: bbt_render::chrome::group::Compositor,
     options: terminal::Options,
     cached: BTreeMap<SeatId, CachedPane>,
     /// Keep the final GPU-resource release on the preparation worker. A GUI
@@ -1708,18 +1708,10 @@ impl PanePreparer {
     ) -> bbt_render::Result<Self> {
         bbt_rt::assert_not_ui_thread();
         let renderer = TerminalRenderer::new(&context, options.clone())?;
-        let compositor = bbt_render::chrome::ChromeRenderer::with_context(
-            DeviceContext {
-                device: context.device.clone(),
-                queue: context.queue.clone(),
-                adapter_info: context.adapter_info.clone(),
-            },
-            bbt_render::chrome::icons::Assets::default(),
-        )?;
         Ok(Self {
             context,
             renderer,
-            compositor,
+            compositor: Default::default(),
             options,
             cached: BTreeMap::new(),
             retired: Vec::new(),
@@ -1824,7 +1816,7 @@ impl PanePreparer {
         // The shared GPU queue orders these immutable rasters before any UI
         // command that can observe this publication. Never repaint a texture
         // retained by an older model; a slow GUI may still be displaying it.
-        self.compositor.flush();
+        self.compositor.flush(&self.context);
         self.context.queue.submit([encoder.finish()]);
         model.frames = frames;
         model.prepared_screens = prepared_screens;
@@ -1899,6 +1891,7 @@ impl PanePreparer {
             },
         );
         self.compositor.composite_group(
+            &self.context,
             &normal.create_view(&Default::default()),
             group::Filter {
                 opacity: TOKENS.dim.opacity as f32,

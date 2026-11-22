@@ -188,6 +188,73 @@ fn draft_receivers(base: usize, receiver: i64, off_owner: bool) -> Expr {
     }
     owners
 }
+// One birth. The lifecycle publication owns retire/undo, and the pane worker
+// completes a previously accepted handoff independently. A retained receiver
+// is the only way a late worker can put the payload back into the app.
+fn parked_memory(broken: bool) -> Model {
+    let mut m = model(
+        if broken {
+            "BrokenRichParkedMemory"
+        } else {
+            "RichParkedMemory"
+        },
+        false,
+        &[
+            ("lifecycle", 2, 0), // open, grace, closed retained
+            ("receiver", 1, 0),
+            ("worker", 1, 0), // one outstanding worker
+            ("parked", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "Park",
+        all([eq(0, 0), eq(1, 0), eq(2, 0)]),
+        &[(1, Int(1)), (2, Int(1))],
+    );
+    action(&mut m, "Publish", eq(2, 1), &[(2, Int(0)), (3, Var(1))]);
+    action(
+        &mut m,
+        "Attach",
+        all([eq(0, 0), eq(3, 1)]),
+        &[(1, Int(0)), (3, Int(0))],
+    );
+    action(&mut m, "Close", eq(0, 0), &[(0, Int(1))]);
+    action(&mut m, "Undo", eq(0, 1), &[(0, Int(0))]);
+    let retire = [(0, Int(2)), (1, Int(0)), (3, Int(0))];
+    let effects = if broken { &retire[..1] } else { &retire[..] };
+    action(&mut m, "Expire", eq(0, 1), effects);
+    safe(
+        &mut m,
+        "SealedSeatHasNoParkedOwner",
+        implies(eq(0, 2), all([eq(1, 0), eq(3, 0)])),
+    );
+    safe(
+        &mut m,
+        "ParkedPayloadNeedsReceiver",
+        implies(eq(3, 1), eq(1, 1)),
+    );
+    m.responses.push(Response {
+        name: "LateWorkerSettles".into(),
+        request: eq(2, 1),
+        response: eq(2, 0),
+    });
+    m.weak_fair.push(vec![1]);
+    m
+}
+
+#[test]
+fn rich_memory_model_retires_queued_and_settled_work_after_grace() -> Result<(), String> {
+    let good = parked_memory(false).check(100_000)?;
+    assert!(good.violations.is_empty());
+    assert!(good.states.iter().any(|s| s[..] == [0, 1, 0, 1]));
+    assert!(good.states.iter().any(|s| s[..] == [2, 0, 1, 0]));
+    let broken = parked_memory(true).check(100_000)?;
+    assert!(!broken.violations.is_empty());
+    assert!(broken.states.iter().any(|s| s[0] == 2 && s[1] == 1));
+    Ok(())
+}
+
 fn draft_chain(control: u8) -> Model {
     let mut m = model(
         match control {
@@ -522,6 +589,8 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         cases.extend([(good, "pass"), (broken, "safety")]);
     }
     cases.extend([(cancel(false), "pass"), (cancel(true), "safety")]);
+    cases.push((parked_memory(false), "pass"));
+    cases.push((parked_memory(true), "safety"));
     cases.push((draft_chain(0), "pass"));
     cases.extend((1..=3).map(|control| (draft_chain(control), "safety")));
     cases
