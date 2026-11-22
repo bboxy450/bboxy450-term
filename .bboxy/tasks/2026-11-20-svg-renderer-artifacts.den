@@ -1,0 +1,171 @@
+module tasks.`2026-11-20-svg-renderer-artifacts`
+
+task SvgRendererArtifacts {
+  title "SVG renderer (Phase B) landing, then Python chart artifacts (Phase C), from the Nyx handoff"
+  verify $ make svg-loop && make test-formal
+  paths "crates", "scripts", "verification", "plugins", "Makefile", "Cargo.toml", "Cargo.lock", "ATTRIBUTION.md", "NOTICE", "licensing.json", ".bboxy/specs/svg-renderer.den", ".bboxy/specs/python-charts.den", ".bboxy/specs/canvas.md", ".bboxy/specs/licensing.md"
+  brief """
+    Our stand (verbatim, `specs/philosophy.md`): Find every abstraction, dependency, framework, and layer that exists only to compensate for the complexity introduced by another layer. Question every inherited architectural decision. Don't make my software more like Linux. Make it more like DOS. Everything should be inspectable, understandable, and modifiable. Subtract before you add. Minimize concepts, not lines of code. Report what you removed.
+
+    ## Start only after [[tasks/2026-11-20-provider-link-refusal-land]] has landed.
+
+    ## Source (published by the other machine)
+    - `origin/handoff/nyx-svg-artifacts-20261120` `a06d5a999`: full SVG implementation + the four approved specs (`svg-renderer.den` sha256 `60841c3b…`, `python-charts.den` `428dee3e…`, `canvas.md` `a34c7317…`, `licensing.md` `c7f7c4d2…`, approved by Architect Rook). Do not change behavioural spec text; a change needs renewed review (message the Oracle).
+    - `origin/handoff/nyx-svg-accepted-84f83810`: the accepted renderer checkpoint (`make -j1 svg-loop` exit 0: 216 native layers, 72 exact vector geometries, 792 recorded inspections; max vector/text/image changed fraction .000346/.01873/.00073).
+    - Evidence (`target/svg-loop`) stayed on the other machine. Regenerate what you need locally; do not claim the old evidence for new source.
+
+    ## Phase B: land the renderer
+    1. Same worktree `/Users/feral/mydev/bbx-svg`. New branch `exec/svg-b` from the landed main; bring over the SVG commits (rebase/cherry-pick from `a06d5a999`), keeping the four spec files byte-identical.
+    2. **Harness:** this machine has rustc 1.100 and main pins harness `7717bcc`. Drop the 1.99 compatibility harness pin (`compat/svg-close-rust-1.99` `b204b1fe`); if SVG needs the two `Close` pass-throughs, check whether `7717bcc`+ already covers them, else land the minimum in the harness first and `make bump-harness`. Drop any per-crate 1.99 MSRV edits that main's 1.100 baseline makes dead; report each one you drop.
+    3. `make svg-loop` at the rebased source (inspect the worst text case, matplotlib heatmap1x). Gallery: the full 2456-case gallery is red on main (176 preexisting rows); requalify only that the SVG branch adds **zero** attributable differences against the exact merge base with the same references, without a new Chrome run.
+    4. `make test-formal`, then `make land` (one gate machine-wide). Report at `reports/2026-11-20-svg-renderer-b.den` and `task_report`; the task stays open for Phase C.
+
+    ## Phase C: Python chart artifacts (only after B is on main)
+    Implement per `specs/python-charts.den` and `specs/canvas.md`: `display(plot)` stores an SVG **image artifact** in the existing Blobs-backed artifact storage (no chart registry, kind, SDK or GUI-side JS renderer); `[[artifact:ID]]` / `![[artifact:ID]]` with `:N` revision pins; `display(new, update=saved)` CAS-updates the same ID; evidence artifacts immutable at revision 1; source, definitions, data snapshot and SVG kept as provenance; store/read/update tools reachable through the existing Python MCP proxy; one shared resolver for transcript, document and canvas. Harness touchpoints only: `src/python_execute/{mod.rs,process.rs,server.rs,worker.py}`, `src/frontends/gui/rich.rs`, test-only `tests.rs`/`fixture.py`; land harness changes through harness `main` (no compat branches), then `make bump-harness`.
+    Add API/process/model controls, provenance/history/restart witnesses and a broken control per stateful contract. Land with `make land`; report at `reports/<date>-python-chart-artifacts.den`.
+
+    ## Rules
+    - Unattended only. One cargo command at a time; at most two compiling executors machine-wide. No app install. Do not touch the other machine's worktree paths.
+    - Latitude: internal structure is yours. Stop and message the Oracle only if a spec line or invariant would have to break.
+    ## Oracle amendment, 2026-11-20 12:40 (Vesper Greywind): prerequisite landed, start Phase B
+    - The provider prerequisite is on origin/main as `05685ed50` (done). Start Phase B now in `/Users/feral/mydev/bbx-svg` (branch `exec/svg` = `05685ed50`, clean): create `exec/svg-b` from it.
+    - Codex seats have been dying during long gates (tasks/2026-11-20-codex-seat-exits-mid-gate). Run each long command with its output to a file under `target/svg-handoff/` and its exit code to a `.exit` file, so the Oracle can resume from evidence if your session ends.
+
+    ## Oracle ruling, 2026-11-20 12:50: licensing.md is merged, not byte-identical
+    - `.bboxy/specs/licensing.md` is the crate licensing registry, not a behavioural spec; the byte-identity rule covers only `svg-renderer.den`, `python-charts.den` and `canvas.md`.
+    - **Do:** start from main's `licensing.md` (keeps `bboxy450-seat-keys` and every other current row) and add the SVG handoff's rows for its new crate(s) exactly as approved (`c7f7c4d2…`). No other edits. One signed commit; name the added rows in the report. No renewed Architect review needed.
+
+    ## Oracle ruling, 2026-11-20 13:05: one private gallery capture
+    - The other machine's 2,456-case bundle (`cases.json`, `web/`, `backdrops/`) is not on this machine (Oracle searched `~/mydev`, `/tmp`, caches). The no-new-Chrome rule is amended: take **one** private capture with the pinned Chrome 158 and reuse the same bundle for both the exact merge base (`05685ed50`) and the SVG build.
+    - Headless Chrome must run with `--use-mock-keychain --password-store=basic` and a private `--user-data-dir` under `target/`; no operator keychain prompt, no desktop capture.
+    - Keep the bundle under `target/` (not Git); record its path, case count and sha256 of `cases.json` in the report. Pass criterion unchanged: SVG adds zero attributable differences against the base on the same references; preexisting red rows are reported, not waived.
+
+    ## Ruling, 2026-11-20 13:20: host reference refresh (operator-approved; recorded by Oracle Vesper Greywind)
+    - **Decision:** operator approved, in the Oracle pane, the option "refresh refs on this host". This stands in for the Architect review that `specs/svg-renderer.den:113` requires for an advisory-row change.
+    - **Evidence (executor, target/svg-handoff/):** pinned Chrome 158 reproduces 22/31 frozen advisory triplets on this host; 9 Chrome hashes differ with identical resvg hashes; `matplotlib-scatter/1x` moves 0.61194% -> 0.17637% and leaves the advisory set (31 -> 30 rows), so that case becomes hard-gated. Native: 216 layers, 0 comparison failures, 73 admission and 8 broken-control checks pass.
+    - **Do:** re-freeze the Chrome reference captures and the advisory list on this host from one private capture, with **every budget, tolerance and gate unchanged**. The advisory list may only shrink in this refresh; any row that would be **added** or change to a looser status stops and returns to the Oracle. Record in the report: old and new frozen hashes for the 9 cases, the 30-row list, and the removed row with its new changed fraction. Reference bytes stay under `target/` (not Git); only the frozen list/hashes the repository already pins change.
+    - No spec text change in this task; the spec's line 113 rule stands for future changes.
+
+    ## Operator/Oracle ruling, 2026-11-20 16:20: images in Markdown everywhere (Phase C scope)
+    Operator: "increase support for images in markdown output, and basically render inline images in bboxy harness ... do it in the best way you see this to be done fits".
+    - The transcript image-preparation hook lands first as [[tasks/2026-11-20-transcript-inline-images]] (existing PNG resolver). Phase C **extends that same hook** with the `artifact:ID[:N]` branch and SVG preparation; no second resolver, decoder or store.
+    - **Spec extension (operator-authorized):** `image/png` artifacts are admitted for display alongside `image/svg+xml`: `![[artifact:ID]]` renders a PNG artifact inline through the existing bounded PNG decoder and limits (16 MiB, sides 1..2047, 4,000,000 decoded pixels per host). PNG artifacts are write-once (no `artifact_update` CAS in v1; that stays SVG-only). This makes artifacts the one way any seat shows an image (screenshots, captures, plots). Record this as an amendment in `specs/python-charts.den` when Phase C lands.
+
+    ## Oracle ruling, 2026-11-20 16:45: link-only amendment to svg-renderer.den
+    - The two notes `notes/2026-11-19-svg-rc7-candidate-review` and `notes/2026-11-19-svg-exporter-geometry-gap` stayed on the originating machine (Nyx handoff); they are not in Git or this KB.
+    - **Authorized:** in `.bboxy/specs/svg-renderer.den` lines 96 and 178 only, replace each `[[notes/...]]` link with the plain text `` `notes/<same slug>` (Nyx machine note, not in this KB) ``. No other byte of the spec changes; requirements and measurements stay as approved. Same pattern as main's `716aefbee`.
+    - Separate signed commit `Spec links: Nyx notes cited as plain references`, then rerun `make land`. Report the spec's new sha256 next to the approved one.
+
+
+    ## Report from seat:01M7XBGWB3P8Y1NQD75NPPHT6Y
+
+    [[Implement]] [[Done]] Phase B landed on origin/main at signed b1da37bf1c. SVG, formal and landing gates exited 0. All 2,456 gallery cases matched, with the same 184 inherited review rows on both sides. The renderer adds bounded retained SVG scenes and shares native glyph and PNG primitives. It drops the Rust 1.99 compatibility pin, duplicate policy/glyph paths and the scatter 1x advisory. The two authorized Nyx citations resolve as plain references and all seven document corpus tests passed. Phase C remains open.
+
+    ```json
+    {
+      "op_id": "01M7XWZN3J7YCZM7AHJYNHH0XV",
+      "commit": "b1da37bf1cff9f847ad1d68c713c69e14144732f",
+      "report": "[[reports/2026-11-20-svg-renderer-b-landed.den]]",
+      "verify_result": {
+        "command": "make svg-loop && make test-formal",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Native SVG captures, unchanged policy and current advisories",
+            "reference": "target/svg-handoff/phase-b-link-svg-loop.log; target/svg-loop/native-results.json"
+          },
+          {
+            "criterion": "Exact-base gallery qualification",
+            "reference": "target/svg-handoff/gallery-qualification.json; target/svg-handoff/gallery-qualification-reuse.json"
+          },
+          {
+            "criterion": "Current-source native/TLC parity",
+            "reference": "target/svg-handoff/phase-b-link-formal.log; receipt 31ef3529a8d6eca5f733e5fd661fae8fde39ef0f8aba72a84562a0c367dabddc"
+          },
+          {
+            "criterion": "Signed landing and remote main",
+            "reference": "target/svg-handoff/phase-b-link-land.log; target/svg-handoff/phase-b-link-remote.log"
+          }
+        ]
+      }
+    }
+    ```
+
+    ## Oracle verification of Phase B, 2026-11-20 18:10: accepted as a milestone; Phase C next
+    - Checked: 15 signed commits d949b0eb8..b1da37bf1 on origin/main; `phase-b-link-land.log` shows `LANDED b1da37bf1c`; harness `0b9c2e85` (Close transforms) on harness main. Spec sha256: python-charts.den `428dee3e...` and canvas.md `a34c7317...` equal the approved bytes; svg-renderer.den differs from `60841c3b...` only in the two authorized note links (diff read).
+    - **Next, in this seat:** Phase C, starting with [[tasks/2026-11-20-transcript-inline-images]] (delegated to you as well): land the transcript image-preparation hook with the existing PNG resolver first, then extend it with `artifact:ID[:N]`, SVG and PNG artifacts as ruled above. A term landing (inbox) may be running; one gate machine-wide.
+
+    ## Oracle ruling, 2026-11-20 22:20: Python display rows (harness touchpoint added)
+    - Granted harness `src/frontends/gui/face_rows.rs` (in addition to the listed Phase C touchpoints): the Python cell row (`face_rows.rs:1464` -> `python_body`) calls the existing image-preparation hook **only for the image reference that `display()` emitted** (the returned `![[artifact:ID]]`/`:N`), per `specs/python-charts.den:97`.
+    - Ordinary stdout, code fences, JSON and text that merely contain an embed string stay literal terminal rows; no Markdown rendering of general Python output.
+
+    ## Oracle ruling, 2026-11-21 03:30: single-row Chrome hash refresh (under the operator's 2026-11-20 host-refresh approval)
+    - Authorized: refresh only `matplotlib-layered/2x`'s Chrome and diff hashes and its measured fraction (frozen `6f5b9231...` 1.51582% -> fresh `ca9ecb2c...` 1.51649%) from this private capture. SVG and resvg bytes are identical; the row stays advisory; the advisory set stays the same 30 rows; every budget, tolerance and gate unchanged.
+    - Separate signed commit naming old/new hashes and fractions; evidence `target/svg-handoff/chart-pinned-svg-reference-drift.json` cited in the report.
+    - Any other row drifting, or a status change, stops and returns to the Oracle.
+
+    ## Oracle ruling, 2026-11-21 07:45: land Phase C with `make land`
+    - Authorized: `make land` on `f2b8eb380` (rebased). The required SVG/formal command, the 17 chart witnesses, test-boundaries and the exact-base gallery pass.
+    - The two full-`make test` landing-fixture failures (stage-claim count `4 != 3`; QoS priority `20`) reproduce on exact base `a05e43aef` (`target/svg-handoff/chart-ci-{base,candidate}-control.log`): inherited, not caused by this diff; name them in the report. They go to `tasks/2026-11-19-full-gate-repairs`. Do not repair them in this task.
+    - One gate machine-wide (rust-1-100 may be landing).
+
+
+    ## Report from seat:01M7XBGWB3P8Y1NQD75NPPHT6Y
+
+    [[Implement]] [[Done]] Phase C landed on origin/main at signed 57cc8e4e7. The lean gate passed all 2,434 selected tests, and the exact post-landing SVG and formal command passed all 987 model comparisons. All 17 chart witnesses passed and the 2,456-case paired gallery showed zero changed PNGs. Python display stores SVG revisions with exact source and data pins, and transcript, Markdown and canvas share the saved image. PNG artifacts are immutable. Removed duplicate exporter/font policy, document-only image budgeting and clip calculations. The report records earlier gate failures, configured retries and the upstream fixture repairs.
+
+    ```json
+    {
+      "op_id": "01M804WF9MMZPHQDT8M0BJFMA4",
+      "commit": "57cc8e4e73d15fb80e8e93541e56a19496230a9b",
+      "report": "[[reports/2026-11-21-python-chart-artifacts.den]]",
+      "verify_result": {
+        "command": "make svg-loop && make test-formal",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Landed source and clean signed tree",
+            "reference": "target/svg-handoff/chart-21e8-land.log; target/svg-handoff/chart-21e8-remote.txt; target/svg-handoff/chart-fbd0-lean-test-summary.json"
+          },
+          {
+            "criterion": "Exact landed SVG and native/TLC verdict",
+            "reference": "target/svg-handoff/chart-21e8-svg-formal.log; target/svg-handoff/chart-21e8-formal-receipt-check.log; formal receipt 2e57081316b7e9127896f7fcd0255f82d2623e7dce3ed8c2c568aa728fefb89d"
+          },
+          {
+            "criterion": "Private owner, immutable evidence and revision/CAS recovery",
+            "reference": "target/svg-handoff/chart-12680-witnesses.log; target/svg-handoff/chart-21e8-reuse.json; target/svg-handoff/chart-fbd0-reuse.json"
+          },
+          {
+            "criterion": "Transcript and documents, live/pinned canvas and export",
+            "reference": "target/svg-handoff/chart-gui-evidence-12680/canvas-three.png; target/svg-handoff/chart-gui-evidence-12680/chart-canvas-revisions.json"
+          },
+          {
+            "criterion": "Exactly matched native gallery by merge base and inherited review rows",
+            "reference": "target/svg-handoff/chart-gallery-12680-qualification.json; target/svg-handoff/chart-21e8-reuse.json; target/svg-handoff/chart-fbd0-reuse.json"
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    assignee = json"\"seat:01M7XBGWB3P8Y1NQD75NPPHT6Y\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    closed = json"{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"op_id\":\"01M804X760PCYHT61M90DXBR9V\"}"
+    created = json"\"2026-11-20T18:15:55.500Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7X2QVH6EEZH29RPDSDSJ1SW\""
+    number = json"1794292861627619"
+    report = json"{\"commit\":\"57cc8e4e73d15fb80e8e93541e56a19496230a9b\",\"op_id\":\"01M804WF9MMZPHQDT8M0BJFMA4\",\"report\":\"[[reports/2026-11-21-python-chart-artifacts.den]]\",\"reported_by\":\"seat:01M7XBGWB3P8Y1NQD75NPPHT6Y\",\"summary\":\"[[Implement]] [[Done]] Phase C landed on origin/main at signed 57cc8e4e7. The lean gate passed all 2,434 selected tests, and the exact post-landing SVG and formal command passed all 987 model comparisons. All 17 chart witnesses passed and the 2,456-case paired gallery showed zero changed PNGs. Python display stores SVG revisions with exact source and data pins, and transcript, Markdown and canvas share the saved image. PNG artifacts are immutable. Removed duplicate exporter/font policy, document-only image budgeting and clip calculations. The report records earlier gate failures, configured retries and the upstream fixture repairs.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-21T22:51:30.229Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"make svg-loop && make test-formal\",\"evidence\":[{\"criterion\":\"Landed source and clean signed tree\",\"reference\":\"target/svg-handoff/chart-21e8-land.log; target/svg-handoff/chart-21e8-remote.txt; target/svg-handoff/chart-fbd0-lean-test-summary.json\"},{\"criterion\":\"Exact landed SVG and native/TLC verdict\",\"reference\":\"target/svg-handoff/chart-21e8-svg-formal.log; target/svg-handoff/chart-21e8-formal-receipt-check.log; formal receipt 2e57081316b7e9127896f7fcd0255f82d2623e7dce3ed8c2c568aa728fefb89d\"},{\"criterion\":\"Private owner, immutable evidence and revision/CAS recovery\",\"reference\":\"target/svg-handoff/chart-12680-witnesses.log; target/svg-handoff/chart-21e8-reuse.json; target/svg-handoff/chart-fbd0-reuse.json\"},{\"criterion\":\"Transcript and documents, live/pinned canvas and export\",\"reference\":\"target/svg-handoff/chart-gui-evidence-12680/canvas-three.png; target/svg-handoff/chart-gui-evidence-12680/chart-canvas-revisions.json\"},{\"criterion\":\"Exactly matched native gallery by merge base and inherited review rows\",\"reference\":\"target/svg-handoff/chart-gallery-12680-qualification.json; target/svg-handoff/chart-21e8-reuse.json; target/svg-handoff/chart-fbd0-reuse.json\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:29189742f97d8883e9be6930e5cf216f5811a5b1be5653ee64d016b3ffceee2f\",\"frontmatter_digest\":\"sha256:bad0542420741c95f078bc6cc6de52c07ade63c2d7435e1dfe064170165e5e18\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"DkFlbi78AwM2jhiUkEd4cHdrRt/CxGhz6uYO0H4M+J5Z3/6Ot3bJSyTW76DBCdLDZTuLqBIp1vOJfu907LBiCA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/762\",\"event\":{\"id\":\"01M804XFNQZS713EA0D6EFCHST\",\"sequence\":762,\"hash\":\"1cfa373181edb4274d40a22d330b056a09232b723f53f3bbf59d92a053633fc6\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

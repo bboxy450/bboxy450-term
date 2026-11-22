@@ -1,0 +1,45 @@
+module tasks.`2026-11-20-provider-link-refusal-land`
+
+task ProviderLinkRefusalLand {
+  title "Land the provider link-refusal prerequisite (from the Nyx handoff) over main's type-only Spawn exception"
+  verify $ cargo nextest run -p bboxy450-term-mux -E 'test(provider_fake) | test(workspaces) | test(dream_c1)' && make test-formal
+  paths "crates/bbt-mux", "crates/bboxy450-term/tests/formal_contracts", "crates/bbt-yarn/tests/ui", "verification"
+  brief """
+    Our stand (verbatim, `specs/philosophy.md`): Find every abstraction, dependency, framework, and layer that exists only to compensate for the complexity introduced by another layer. Question every inherited architectural decision. Don't make my software more like Linux. Make it more like DOS. Everything should be inspectable, understandable, and modifiable. Subtract before you add. Minimize concepts, not lines of code. Report what you removed.
+
+    ## Context
+    Handoff from another machine (Oracle Nyx, Architect Rook), published to origin: branch `bboxy/provider-link-refusal-20261120` at `e4b18cf48` (4 commits on `adf454d92`): `6fe9773aa` post-dispatch LinkDown witness (test-only), `293195f92` production repair (one existing `ListOwnedSeats` read for a **fresh** record before `request_launch`/`Spawn`; only a direct LinkDown from that read rejects), `a31c0c17d` independent managed-workspace writer controls (`BrokenManagedWorkspaceWriter` violates only `RejectedReleasesWriter`, `BrokenManagedWorkspaceWriterProbe` only `RequestPassedProbe`), `e4b18cf48` two Yarn `.stderr` diagnostics written for **Rust 1.99.1**.
+    Already proven there: four real process witnesses, workspace provisioning 18 lib + 8 integration, `make test-boundaries` 39 tests, 49 formal-contract tests, strict Clippy. Their full `make test-formal` was stopped mid-Java-parity (exit 2, not green).
+
+    ## Conflict you must resolve
+    Main now has `ce7bcfe33` ("Restore mux Dream fixtures and down-provider spawn refusal"), which added a **type-only** `crate::provider::fake::is_link_down(&error)` exception on the **Spawn result** match in `crates/bbt-mux/src/logic.rs` (~8107). The handoff's witness `6fe9773aa` shows that exception is unsafe (a LinkDown after Spawn was sent must stay `Unknown`). Keep the handoff's design: remove main's Spawn-result exception, keep `293195f92`'s pre-launch read, and leave the Spawn-result match as it was before `ce7bcfe33`. Keep `ce7bcfe33`'s Dream fixture changes. `provider_fake::headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_restart` must still pass.
+
+    ## Steps
+    1. Worktree `/Users/feral/mydev/bbx-svg`, branch `exec/svg` (currently `e4b18cf48`). Rebase onto `origin/main` (`f17cc5295` or newer); resolve as above. Keep the four commits separate and signed (Boxy <bboxy450@gmail.com>).
+    2. This machine runs **rustc 1.100**, not 1.99.1. Re-check the two Yarn `.stderr` fixtures under 1.100; keep whichever text 1.100 emits. Harness pin stays main's `7717bcc`.
+    3. Targeted: the verify's nextest filter; then `make test-boundaries` (process-boundary change); then `make test-formal` once.
+    4. `make land`. One gate machine-wide: `pgrep -fl 'land-fast|ci-local|land.sh'` first and wait if one runs.
+    5. Report at `reports/2026-11-20-provider-link-refusal-land.den`, `task_report` with commit SHAs and real exits. Then start [[tasks/2026-11-20-svg-renderer-artifacts]].
+
+    ## Rules
+    - Unattended only. One cargo command at a time; at most two compiling executors run machine-wide.
+    - Latitude: resolution details are yours. Stop and message the Oracle only if a spec line or invariant would have to break.
+  """
+
+  managed {
+    assignee = json"\"seat:01M7X2RBSVESM3WQA9G5WK6QF6\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    created = json"\"2026-11-20T18:15:45.036Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7X2QSYNK0B25XSBS00ZFS9C\""
+    number = json"1794292861627618"
+    reconciliation = json"[{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"disposition\":\"implemented\",\"evidence\":[\"make land exit 0, LANDED 05685ed5001c872153fdc7199ba1b670653392a5 (~/mydev/bbx-svg/target/svg-handoff/oracle-land.log)\",\"make test-boundaries exit 0 (oracle-boundaries.log); make test-formal exit 0, 968 models, native/TLC parity held (oracle-formal.log)\",\"executor: targeted mux nextest 107/107 exit 0 (provider-nextest.log); bboxy450-yarn ui under rustc 1.100 exit 0 (provider-yarn-ui-1.100.log)\",\"main's ce7bcfe33 type-only Spawn-result LinkDown exception removed; Nyx 293195f92 pre-launch ListOwnedSeats read kept (crates/bbt-mux/src/logic.rs ~8087)\"],\"fresh_accepted\":false,\"kind\":\"historical\",\"op_id\":\"01M7XBGKN8BNKWBPH62YY8HAE5\",\"previous_status\":\"claimed\",\"reason\":\"Executor seat 01M7X2RB exited mid test-boundaries after rebasing and resolving; Oracle ran the remaining gates and landed.\"}]"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-20T20:49:06.891Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    provenance = json"{\"digest\":\"sha256:2af2c14437567d1b8e90b90a471f0aa7600c5d6aa86f2a15e1a88e6d719a901a\",\"frontmatter_digest\":\"sha256:f9b305709dd15742943b418f5fef91c603bb823db88c9487601214981e307c3b\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"fQI9jDCa8yp1HO5KNQYwLNXyUE51bJNgJypdafJKu8vvC6aM+5ugSKGF/zN4KDx3Ekg6aH7XbU1Gt258BLzNDw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/456\",\"event\":{\"id\":\"01M7XBGNDPKMZD5NMTSCSRE79N\",\"sequence\":456,\"hash\":\"aaeb631b919aeebc3ee969bb3edd8f77d69362f0cf9a76354974c491b04f85a8\"}}"
+  }
+}

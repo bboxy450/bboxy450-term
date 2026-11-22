@@ -1,0 +1,42 @@
+module tasks.`2026-11-20-codex-seat-exits-mid-gate`
+
+task CodexSeatExitsMidGate {
+  title "Codex executor seats exit on their own during long gates (adapter 'exit 0', no report)"
+  verify $ make test-boundaries
+  paths "crates/bboxy450-harness", "crates/bbt-mux"
+  brief """
+    Our stand: subtract before you add; report what you removed.
+
+    ## Evidence (2026-11-19..20, all bboxy450-harness seats on the `codex` profile)
+    - rust-1-100 (seat 01M7TZYP...) and spawn-fix (01M7V08C...): Codex session ended "Cancelled", adapter exit 0, during `make land` (4390 s on spawn-fix).
+    - ui-kit-land (01M7VGHT...): committed its fix, ended mid `make land` (log stops at 20:12, nextest starting).
+    - svg (01M7X2RB...): ended mid `make test-boundaries` (log `~/mydev/bbx-svg/target/svg-handoff/provider-boundaries.log` stops at 11:09).
+    The seat shows `idle` / `exit 0`; the task stays `claimed`; no message reaches the delegator. The `claude` profile seat (Oracle) survived the same windows.
+
+    ## Do
+    Find why: a codex-acp turn or tool-call timeout, the harness ending a turn whose tool call outlives a limit, or a Codex-side cancel. Read the harness seat's own logs for those seat ids first. Then (1) a long-running shell tool call must not end the session; (2) a seat whose agent exits while it holds a claimed task tells its delegator once, with the last tool call and exit cause. Add a process witness with a fake agent that exits mid tool call.
+    ## Evidence added 2026-11-21 08:45 (Oracle)
+    - Deaths 5-7: inbox (11-20, mid-land), interrupt (11-21 01:41, mid test-boundaries), rust-1-100 01M7Z8XW... (11-21 06:44, at the start of an 818-test nextest run). All inside one multi-minute foreground tool call.
+    - Workaround in briefs since 08:45: run long commands detached (`nohup ... &`, exit code to a file) and poll briefly. If seats that follow it survive, the cause is a per-tool-call limit in codex-acp or the harness, which narrows this task.
+    - The landed Interrupt `agent.exited` recovery (a05e43aef / harness c50a9767) should resume such seats once installed; verify that after the final install.
+
+    ## Evidence added 2026-11-22 07:50 (cause discovery, reports/2026-11-21-interrupt-cause-discovery)
+    - Six of the seven dead executor seats end with an ACP **`Cancelled`** turn followed by `SessionClosed` (adapter exit 0): spawn-fix, ui-kit-land, svg, interrupt, rust-1-100 (`*.jsonl` ending lines in the report); rust-1-100-x and inbox end `EndTurn` then `SessionClosed`. None crashed. Combined with the detached-command result (rust-1-100b survived), the turn is cancelled from the agent side during a long foreground tool call.
+    - **Do:** determine who sends the cancel (codex-acp tool-call timeout, Codex CLI, or the harness) from those session lines and the codex-acp source/config; prefer raising/removing that limit at its source. Check that the landed Interrupt does **not** treat an agent-side `Cancelled` like an operator cancel: an agent-initiated cancel of a running turn should be an interrupt (`agent.cancelled`) with auto-continue, an operator Esc should not. Verify after the final install with one long foreground command in a fresh Codex seat.
+    """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    created = json"\"2026-11-20T19:37:58.626Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7X7ECB2C4J11J5MATQTWT7Q\""
+    number = json"1794292861627629"
+    status = Open
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-22T15:38:40.346Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    provenance = json"{\"digest\":\"sha256:888d1090e8a3bd4ffb335d62414e494bca727583878b84459f420b13f050384d\",\"frontmatter_digest\":\"sha256:83293faf90e44858354c27eb2ef6d5f9724709b3ef81b5c7e947f8efcb0f5965\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"BPiErI7ty7ILhaZOQQcqmi4k2Hz8P3usswrsFiQWPYxyyVzo0dEH8F0HhaT48/uu9xtLuiyoaaiKhDeV8PatDg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/999\",\"event\":{\"id\":\"01M81YHNJSWCEYM8TSTPYYFPJ7\",\"sequence\":999,\"hash\":\"4441434b57d38829da0353136d50099927f7f108cacb3c0f32bedb8acf6df0c9\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

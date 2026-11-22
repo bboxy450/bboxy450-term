@@ -1,0 +1,72 @@
+module tasks.`2026-11-20-provider-interrupt-auto-continue`
+
+task ProviderInterruptAutoContinue {
+  title "Interrupt block in the log IR for provider failures ('Selected model is at capacity'), reddish, with a visible 60 s countdown that sends 'Continue'"
+  verify $ make test-formal
+  paths "crates/bboxy450-harness", "crates/bbt-mux", "crates/bbt-ui", "crates/bbt-render", "verification", "Cargo.lock"
+  brief """
+    **Scope (Oracle rewrite, 2026-11-20 15:40; supersedes the capacity-only text that was here).** Interrupt is ONE IR type for every turn the agent did not end itself: provider failures, harness crash, hook bug, tool/MCP failure, agent exit, anything. Operator: "its not just Selected model is at capacity, can be crash in harness, or bug in a hook, anything, we need just type that handles all of those and as we discover them we integrate them into Interrupt". The capacity error is one example.
+
+    Our stand: subtract before you add; minimize concepts; one home per fact.
+
+    ## What exists (harness origin/main, Oracle-read)
+    - Every turn ends with `StopReason` (`src/protocol/mod.rs:551`): EndTurn, Quiet, Cancelled, MaxTokens, MaxRounds, Interrupted, `Error { class: ErrorClass, message }`, Unknown. `ErrorClass` (`mod.rs:1244`): Transient, RateLimited, Auth, BadRequest, Malformed, MidStream, Cancelled, Config, Store, Tool, Internal, Unknown.
+    - ACP `stopReason` mapping at `src/backend/acp_agent.rs:2081` (end_turn, max_tokens, max_turn_requests, cancelled, refusal -> Error{BadRequest}, other -> Error{Malformed}).
+    - A JSON-RPC error on prompt/initialize/new-session becomes `Error{BadRequest|Auth}` (`acp_agent.rs:~1900`). "Selected model is at capacity" lands there today, misclassified as BadRequest.
+    - An agent process exiting mid-turn becomes `Error{MidStream}` "agent exited" + stderr tail (`acp_agent.rs:1729`); EOF -> `agent_gone` (`:1746`).
+
+    ## Design rule
+    - **Interrupt = a turn that ended without the agent choosing to end it.** Carrier: the existing `StopReason::Error{class, message}` (MaxTokens and MaxRounds are causes too). No parallel error system. Add **additively** (the IR is add-only; `Unknown` arms stay) what is missing: a stable `cause` id (open string set, e.g. `provider.capacity`, `provider.rate_limit`, `provider.overloaded`, `provider.5xx`, `agent.exited`, `agent.protocol`, `harness.panic`, `hook.failed`, `mcp.unavailable`, `tool.timeout`, `context.max_tokens`, `turn.max_rounds`, `refusal`) and a `recovery` policy (`auto_continue{after_ms}` or `operator`). If a new `Item::Interrupt` is cleaner than extending the turn end, justify it in the report.
+    - **One catalogue** in the harness (one table): cause id -> matcher (provider error code first, then JSON-RPC code, then text pattern as fallback) -> ErrorClass -> recovery. A newly discovered failure is one row plus a fixture. Unknown failures get cause `unknown`, recovery `operator`, and the block shows the raw message.
+    - Fix the capacity misclassification through the catalogue (Transient/RateLimited, auto-continue).
+
+    ## Discovery first (report the table)
+    Mine real evidence: harness seat logs and session JSONL on this machine (the `real_session_smoke` test in `src/frontends/face_core.rs` reads `BBOXY_SMOKE_SESSIONS=<dir>`), `Level::Error` notices, `StopReason::Error` ends, agent stderr tails, hook failures, MCP transport errors. Include the four Codex executor seats that ended mid-gate on 2026-11-19/20 (tasks/2026-11-20-codex-seat-exits-mid-gate): find what they emitted. Report cause, count, example and proposed recovery. Raw transcripts stay out of Git; fixtures are minimal redacted shapes.
+
+    ## Behaviour (model it first)
+    - Per seat: `running` -> `interrupted(cause, deadline?)` -> `continuing` -> `running`; or `cancelled` (operator Esc/click), `edited` (the operator's message replaces "Continue"), `waiting_operator`.
+    - `auto_continue`: after the deadline (default 60 s) send one ordinary user turn "Continue", marked automatic. For `agent.exited`, first respawn/resume the agent session through the existing resume path, then Continue; if resume is impossible, `operator`.
+    - One timer owner: the harness seat, not the GUI; the GUI renders `deadline` and stays correct after a GUI restart or reattach.
+    - Exactly one automatic Continue per interrupt; a duplicate timer fire, a late provider reply or a cancel sends nothing. After 3 consecutive interrupts without a completed turn, stop in `waiting_operator`.
+
+    ## Render
+    Reddish block (existing red pill/theme colour, no new palette entry): cause, message, seconds remaining, Continue now / Cancel. Desktop GUI first; the TUI shows the same text and a countdown line.
+
+    ## Verify
+    - TLA+ model of the lifecycle (timer fire, cancel, edit, duplicate fire, late reply, GUI restart, agent exit + resume, A -> B -> A interrupt, the 3-strike stop) with a broken control that sends Continue twice; registered in contracts/coverage; `make test-formal`.
+    - Harness fixtures with a fake agent: capacity error, rate limit, agent exit mid tool call, hook failure. Assert one automatic Continue after the deadline (test clock), none after cancel, and `operator` for auth/unknown.
+    - A GUI capture of the block via the app's `--capture` on a private fixture account.
+    Land harness first (its own landing), then `make bump-harness` and `make land` in term. Report the cause table and what you removed.
+
+    ## Operator ruling, 2026-11-20 15:55: always auto-continue, growing back-off (supersedes `operator` recovery and the 3-strike stop above)
+    Operator: "always auto continue with increasing timeout 1 min, 3 min, 6 min, whatever logic - coz if service is down we dont want to wait for me to wake up".
+    - **Every cause auto-continues**, `unknown`/auth/config included. There is no `waiting_operator` end state and no 3-strike stop; nothing waits on the operator.
+    - **Back-off per seat:** consecutive interrupts without a completed turn wait 1, 3, 6, 10, 15, 30 min, then stay at 30 min indefinitely. A completed turn resets the sequence to 1 min. The block shows the attempt number and the countdown.
+    - The operator can still cancel (stops auto-continue for this interrupt), press Continue now, or type their own message; those are optional, never required.
+    - `agent.exited`: each attempt resumes the session through the existing resume path, then sends Continue; if resume fails, that counts as the next interrupt in the back-off.
+    - Formal model: replace the 3-strike stop with the back-off; keep exactly one Continue per attempt and nothing after cancel; add the liveness property "an interrupted, uncancelled seat eventually sends Continue" (weak fairness on the timer), and a broken control that never re-arms after a failed attempt.
+
+    ## Oracle amendment, 2026-11-20 23:00: start
+    - Worktree `/Users/feral/mydev/bbx-interrupt`, branch `exec/interrupt`, from origin/main `adff0bd14` (harness pin `3fdf8506`). Harness changes go through the harness submodule's own landing to harness `main`, then `make bump-harness`.
+    - Start with `python_execute_orient`; do discovery and edits from `python_execute` programs. Write each long command's output and exit code under `target/interrupt-handoff/` (`<step>.log`, `<step>.exit`) so the Oracle can resume from evidence if your session ends. One gate machine-wide (svg-b may be landing Phase C).
+    - Report the discovery cause table first in your report; it is a deliverable on its own.
+    """
+
+  managed {
+    assignee = json"\"seat:01M7YES9NX3M575QN3X1H6VCHP\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    created = json"\"2026-11-20T23:25:51.545Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7XMFDTCNZFRPKZCG6J3DYH3\""
+    number = json"1794292861627645"
+    reconciliation = json"[{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"disposition\":\"implemented\",\"evidence\":[\"make land exit 0, LANDED a05e43aef7c8ab33142fdaac409fb2caade63a89 (~/mydev/bbx-interrupt/target/interrupt-handoff/oracle-land2.log); land1 failed only because the Oracle restarted the kache daemon mid-compile\",\"make test-boundaries exit 0, make test-formal exit 0 (oracle-boundaries.log, oracle-formal.log)\",\"harness main: c50a9767 owned continuation deadline + recovery; 8d8a1c34 additive interrupt wire; b8987a1c idle on reported close; 7c21b3e5 formal inventory\",\"harness src/interrupt.rs: one catalogue of 16 causes (provider.capacity/rate_limit/overloaded/5xx/auth, agent.exited/protocol/config/cancelled, harness.exited/panic, hook.failed, mcp.unavailable, tool.timeout, context.max_tokens, turn.max_rounds), provider code -> JSON-RPC -> text; BACKOFF [1,3,6,10,15,30] min (:162)\",\"GAPS: no discovery cause table from real logs, no GUI --capture of the countdown block, no executor report (seat died)\"],\"fresh_accepted\":false,\"kind\":\"historical\",\"op_id\":\"01M7Z0WSG4D6HJ4X72W6TM9F4K\",\"previous_status\":\"claimed\",\"reason\":\"Executor seat 01M7YES9 exited after landing the harness side and committing the term side; Oracle ran test-boundaries, test-formal and make land.\"}]"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-21T12:22:00.408Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    provenance = json"{\"digest\":\"sha256:7164cdfdafe5a6a1e8140fa0c1a9f778cb69e319ac57b32a7432c5e87854da07\",\"frontmatter_digest\":\"sha256:5357f19b2f25a7aaf8ffb95afca0a85c0ab3a9ea1fc6ac3decd1bdd1809ee130\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"VmB5x+VIvmKYgV51UMvDM5SnnxJJYJpwl50ECYEjwCSQkYIEWnY+0ov9QIhd2n6PZgnNEvK4hLBmXhyCea/jDw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/655\",\"event\":{\"id\":\"01M7Z0WV2MCJ52Q311ZZSPCBSQ\",\"sequence\":655,\"hash\":\"af26c69b810d77237416dbad05971662afc3e203390fb393cd44118cb48316fa\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

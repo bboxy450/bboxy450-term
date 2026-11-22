@@ -1,0 +1,78 @@
+module tasks.`2026-11-21-parallel-run-flakes`
+
+task ParallelRunFlakes {
+  title "Parallel full-suite flakes: provenance twenty_commit_rebase (Git temp file ENOENT/EINVAL) and projection_ownership_real_io (shutdown timing)"
+  verify $ for i in 1 2 3; do make test-parity || exit 1; done
+  paths "crates/bbt-mux"
+  brief """
+    Our stand: find the shared cause; never retry, quarantine or widen a window to hide it.
+
+    ## Evidence
+    - `bboxy450-term-mux::it provenance::twenty_commit_rebase_keeps_control_requests_responsive`: `git commit -am` -> "unable to create temporary file: No such file or directory" (inbox landing 2026-11-20 19:14, `crates/bbt-mux/tests/provenance.rs:55`) and EINVAL (full-suite candidate `1e23b5207`, 2026-11-21 ~17:00). The fixture's own temp repository loses files mid-test.
+    - `bboxy450-term-mux logic::ownership_tests::projection_ownership_real_io_survives_cancel_restart_and_root_aba`: shutdown timing under the parallel `make test-parity` (2,895/2,897), passes serially.
+    - Logs: `~/mydev/bbx-gate-repairs/target/ci-local.log`, `target/suite-handoff/`.
+    - Leaked `dream_read.rs` supervisors (`dq1-*` temp homes, tasks/2026-11-20-test-process-leaks) keep running after their test and may operate on recycled paths; check whether either flake correlates with them or with any test that deletes shared temp space.
+
+    ## Do
+    Find the cause (shared temp paths, a test removing another's directory, a leaked process, fd/temp exhaustion); fix it at the source; prove with three consecutive green `make test-parity` runs. Run long commands detached (`nohup ... &`), one full gate machine-wide.
+    ## Oracle amendment, 2026-11-21 22:30: watcher shutdown
+    - Cause accepted: logic teardown blocks 6.564 s in `Worker -> Workspace -> FileWatch -> FsEventWatcher::stop -> pthread_join` (`target/fixture-handoff/mux-stack-41824.txt:447`) after an 8.792 us bus shutdown. The provenance Git flake passed in parity and 4/4 targeted runs after `42dac19c3`; record it as cured by that commit unless it recurs.
+    - Granted: `crates/bboxy450-term/tests/formal_contracts/logic_worker_model.rs`, `verification/contracts.toml`, `verification/corpus.toml`. Retire the watcher off the owner thread with the existing off-owner retirement path (no new thread pool or daemon); update the logic-worker model with a broken control that joins on the owner and must violate the shutdown-progress property. Then the three consecutive green `make test-parity` runs.
+
+    ## Oracle ruling, 2026-11-22 03:00: land the flake fix now
+    - `fe4a3723d` fixes both flakes (watcher stop off the owner; Git bootstrap), passes all 2,900 parallel tests and 990 native/TLC models. The only full-run failure, `test-real-sessions`, reproduces on landed `42dac19c3` and is unrelated: two saved Python cards in the Oracle's own session log (`01M7VC8QBWY7P55AVTX648HXKJ.jsonl`: one cancelled run, one moved-to-background run) render without a status. Moved to [[tasks/2026-11-22-python-card-status-shapes]].
+    - **Do:** `make land` `fe4a3723d` (detached, one gate). The "three green test-parity runs" criterion is replaced by: full `make test-parity` green except `test-real-sessions`, named. Report with the task verify command and its real exit.
+
+
+    ## Report from seat:01M7ZVK9YFPRSBR7EJF6DPC5E1
+
+    Landed both MUX flake fixes at signed e05c4c21194c229c501a8fc076ef786603ecd4e4. Detached make land exited 0 with 437 MUX tests and 992 native/TLC models on the landed source. The full gate passed 2,900 parallel tests and 990 models on the equal pre-rebase patch. The parity loop exited 1 at the Oracle’s amended test-real-sessions exception, reproduced on landed baseline 42dac19c3. Removed the owner-thread watcher join, repeated loose Git fixture writes, temporary tracing, and the redundant contract registration.
+
+    ```json
+    {
+      "op_id": "01M81GADN5ADV5MPKXFH22Y53P",
+      "commit": "e05c4c21194c229c501a8fc076ef786603ecd4e4",
+      "report": "[[reports/2026-11-22-parallel-run-flakes-landed.den]]",
+      "verify_result": {
+        "command": "for i in 1 2 3; do make test-parity || exit 1; done",
+        "exit_code": 1,
+        "evidence": [
+          {
+            "criterion": "Amended parity exception and exact command exit",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/watcher-fix/registered-coverage/parity-ci-1.log:2580"
+          },
+          {
+            "criterion": "Both assigned tests passed on first attempt",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/watcher-fix/registered-coverage/parity-1.junit.xml"
+          },
+          {
+            "criterion": "Signed make land passed on origin/main",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/watcher-fix/registered-coverage/mux-land.log"
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    allowed_paths = json"[\"crates/bbt-mux\",\"crates/bboxy450-term/tests/formal_contracts/logic_worker_model.rs\",\"verification/contracts.toml\",\"verification/corpus.toml\"]"
+    assignee = json"\"seat:01M7ZVK9YFPRSBR7EJF6DPC5E1\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    created = json"\"2026-11-22T01:35:06.837Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M80E8TMQD8GTGZD3F53VVFM2\""
+    number = json"1794292861627709"
+    reconciliation = json"[{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"disposition\":\"implemented\",\"evidence\":[\"origin/main e05c4c211 (flake fixes): make land exit 0, 437 mux tests, 992 native/TLC models\",\"full gate on equal pre-rebase patch fe4a3723d: 2,900 parallel tests, 990 models; only failure test-real-sessions, reproduced on 42dac19c3\",\"removed owner-thread watcher join, repeated loose Git fixture writes, temporary tracing, redundant contract registration\"],\"fresh_accepted\":false,\"kind\":\"historical\",\"op_id\":\"01M81GAY2T623ZM01Y22ZJYXQT\",\"previous_status\":\"reported\",\"reason\":\"Flakes fixed and landed; parity loop exits 1 only on the Oracle-amended test-real-sessions exception (inherited, moved to python-card-status-shapes).\"}]"
+    report = json"{\"commit\":\"e05c4c21194c229c501a8fc076ef786603ecd4e4\",\"op_id\":\"01M81GADN5ADV5MPKXFH22Y53P\",\"report\":\"[[reports/2026-11-22-parallel-run-flakes-landed.den]]\",\"reported_by\":\"seat:01M7ZVK9YFPRSBR7EJF6DPC5E1\",\"summary\":\"Landed both MUX flake fixes at signed e05c4c21194c229c501a8fc076ef786603ecd4e4. Detached make land exited 0 with 437 MUX tests and 992 native/TLC models on the landed source. The full gate passed 2,900 parallel tests and 990 models on the equal pre-rebase patch. The parity loop exited 1 at the Oracle’s amended test-real-sessions exception, reproduced on landed baseline 42dac19c3. Removed the owner-thread watcher join, repeated loose Git fixture writes, temporary tracing, and the redundant contract registration.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-22T11:30:21.071Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"for i in 1 2 3; do make test-parity || exit 1; done\",\"evidence\":[{\"criterion\":\"Amended parity exception and exact command exit\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/watcher-fix/registered-coverage/parity-ci-1.log:2580\"},{\"criterion\":\"Both assigned tests passed on first attempt\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/watcher-fix/registered-coverage/parity-1.junit.xml\"},{\"criterion\":\"Signed make land passed on origin/main\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/watcher-fix/registered-coverage/mux-land.log\"}],\"exit_code\":1}"
+    provenance = json"{\"digest\":\"sha256:41b622a5ef78819a8d99e2caeb1589105a553faae0f071e59a114c197a73b253\",\"frontmatter_digest\":\"sha256:6d2bb479ebf3efd7da9465d588b0fbda14e4cf8cd7efe68b1dc0a1e54dc024a8\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"io15gqzogO5rJ20bNfRIYn0SP8d0vBgIdRCU4fbgRE/AUAv7tpWt0tYPEgtbF30bqjG2au/3sx2fSgafm+U8BA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/933\",\"event\":{\"id\":\"01M81GAZF31TK0Q0EJEK5AVCTN\",\"sequence\":933,\"hash\":\"536d2497971c5d4385ef6a29591b5f23664e100d468f1ce9c25aeab9b47a6085\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

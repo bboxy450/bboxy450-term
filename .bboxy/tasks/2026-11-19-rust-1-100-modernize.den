@@ -1,0 +1,122 @@
+module tasks.`2026-11-19-rust-1-100-modernize`
+
+task Rust1100Modernize {
+  title "Rust 1.100: clippy-clean workspace, prune stale #[allow], modernize to 2024 idioms, drop dependencies std now covers"
+  verify $ cargo clippy --workspace --all-targets --locked -- -D warnings && make test
+  paths "crates", "Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "Makefile", "scripts", "verification"
+  brief """
+    Our stand: subtract before you add. Minimize concepts, not lines. Report what you removed.
+
+    ## Goal
+    The operator, 2026-11-19: "upgrading to 1.100 is very important and updating and modernizing codebase is also very very very important!"
+
+    The workspace is fully clean on Rust 1.100.0, the pinned stable compiler (`rust-toolchain.toml`). The code is modern idiomatic Rust 2024, and every lint suppression left in it is still needed.
+
+    ## Steps
+    1. Set `rust-version = "1.100"` in the root `Cargo.toml` (it is `1.99`).
+    2. Run `cargo clippy --workspace --all-targets --locked -- -D warnings` and fix every finding at its cause. Do not add `#[allow]`. If a finding is a false positive, report it with the lint name and the reason you kept the code.
+    3. **Prune suppressions.** There are 483 `#[allow(...)]` attributes in `crates/`, 172 of them for Clippy. Remove each one whose lint no longer fires, or whose code can be rewritten so that it does not fire. A suppression that stays needs a one-line reason beside it. Report the count before and after.
+    4. **Modernize** where 1.100 and edition 2024 make code simpler, with behaviour unchanged:
+       - std APIs that replace hand-written helpers or dependencies; delete the dependency when that happens;
+       - let-chains in place of nested `if let`;
+       - `LazyLock`/`OnceLock` in place of `lazy_static` or `once_cell`;
+       - removing dead code.
+       Clean up dependencies with `cargo machete` or an equivalent, and remove any crate that std now covers. List every dependency you removed.
+    5. `crates/bboxy450-harness` is a submodule. Do the same there through its own landing (its `main`, signed), then `make bump-harness`.
+    6. **Land in small batches** of a few crates each, through `make land`. Five other executors are working in parallel: ui-kit (`bbt-render`, `bbt-ui`), inbox (`bbt-proto`, `bbt-mux`, `bbt-ui`, `bbt-ui-model`, `bboxy450-term`, harness, wake-up), seat-keys (a new crate), node-linux (gating across crates) and gate-repairs (`scripts`, `bbt-yarn`). Do the crates no one else is touching first, and rebase often. Where your fix conflicts with someone else's open work, theirs wins: rebase over it.
+    7. The final verify is the full suite on the last commit. It needs [[tasks/2026-11-19-full-gate-repairs]] to have landed first; if it hasn't, report the remaining failures by name.
+
+    ## Acceptance
+    - [ ] `cargo clippy --workspace --all-targets --locked -- -D warnings` exits 0 on Rust 1.100.0, in term and in the harness.
+    - [ ] `#[allow]` count before and after, with a reason beside each one that remains.
+    - [ ] A list of removed dependencies and removed dead code, with line counts.
+    - [ ] `make land` is green for each batch, and `make test` is green on the final commit, or the remaining failures are named.
+
+    ## Rules
+    Work only in your worktree. Use signed commits, and stage exact paths. Run one build at a time, and only targeted tests while you iterate. Write the report at `reports/2026-11-19-rust-1-100-modernize.den`, then send `task_report`. Do not stop to ask: you choose the order and the batches, and you stop only for a red gate you cannot fix in scope.
+
+
+    ## Oracle amendment, 2026-11-19 15:00 (Vesper Greywind, seat 01M7TZN6JR4PC59P45MZ14S4Q9)
+    - Your commit 232750f61 is in the worktree. Rebase it on `origin/main` and land it as batch 1.
+    - **Cargo 1.100 build-dir layout drift.** Fingerprints and executables moved to `<profile>/build/<crate>/<hash>/{fingerprint,out}`. `scripts/test-dream-c1.py` already reads both layouts (c0411341e). Fix `scripts/verify-signatures.py` and its test the same way: read both layouts, keep the matching rule unchanged, and add a negative control for the new layout. Then grep `scripts`, `Makefile` and every `build.rs` for `.fingerprint`, `release/deps` and `debug/deps`, and fix every other reader you find.
+    - **Build slot.** At most 2 compiling executors on this machine. You hold one of the two slots. Run one cargo command at a time.
+
+    - **Worktree (supersedes the managed checkout):** `/Users/feral/mydev/bbx-rust-1-100`, branch `exec/rust-1-100`, at your 232750f61. Managed checkouts cannot be respawned after amendment. Work and land from here only.
+    - **Toolchain gap seen in the ui-kit landing:** `rust-objcopy` aborts with `Library not loaded: @rpath/libLLVM.dylib` (stable-aarch64-apple-darwin). It is a warning (debug-info stripping), not a failure. If `rustup component add llvm-tools` or a toolchain reinstall fixes it, record which in your report.
+
+    ## Oracle amendment, 2026-11-21 07:20 (Vesper Greywind, seat 01M7VC8EK2C7DQXBNCE9V0J0MH): land batch 1
+    - **State:** worktree `/Users/feral/mydev/bbx-rust-1-100`, branch `exec/rust-1-100` at `0ff6caba8` (signed; rebased on origin/main `a05e43aef`; harness pin `7c21b3e5`; 74 files, +82 -209).
+    - **Blocker:** two `make land` runs failed only on `gui_endpoint::gui_inbox_question_race_and_retry_cross_real_sockets` (20.755 s / 21.390 s at 463/818, "missing GUI inbox event: Elapsed(())", `crates/bbt-mux/tests/gui_endpoint.rs:358`). Alone on this source it passes 3/3 in 0.2-0.6 s. The same full mux run **passed** at origin/main `a05e43aef` (interrupt landing), so this branch's changes make it stall under the parallel run. Logs: `target/oracle-land.log:862`, `target/oracle-land2.log`.
+    - **Do:** find which of the 74 lint changes alters the inbox event path or its timing (bisect the commit's hunks in `crates/bbt-mux`, e.g. a changed `await`/drop order, a `let _ =` that now drops a guard or subscription early, a removed clone holding a sender alive). Fix the cause; keep the 20 s hang guard; no `#[allow]`, no assertion change. Reproduce with the full `cargo nextest run -p bboxy450-term-mux --test it` (or a parallel stress loop), not only alone. Related: [[tasks/2026-11-21-inbox-race-test-stall]].
+    - Then `make land` (one gate machine-wide). Write each long step's output and exit code under `target/rust-handoff/` so the Oracle can resume. Report at `reports/2026-11-21-rust-1-100-batch1.den`.
+
+    ## Oracle amendment, 2026-11-21 08:45: never run a long command in the foreground
+    - The previous seat (01M7Z8XW...) died at 06:44 inside the full mux nextest baseline, like every Codex executor death so far (all inside multi-minute tool calls). The landed Interrupt resume (a05e43aef) is not installed yet.
+    - **Rule for this seat:** start every command that can exceed ~2 minutes detached, e.g. `nohup sh -c 'make land > target/rust-handoff/land.log 2>&1; echo $? > target/rust-handoff/land.exit' >/dev/null 2>&1 &`, then poll with short calls (`test -f target/rust-handoff/land.exit && cat ...`, `tail -5 ...log`) a few minutes apart. Same for nextest runs, bisect steps and `make test-formal`.
+    - `target/rust-handoff/mux-baseline.log` (06:44) has the compile done and 818 tests starting; rerun it detached.
+
+
+    ## Report from seat:01M7ZFC7T7DY15DE466TCZHTDE
+
+    [[Implement]] Rust 1.100 batch 1 landed on origin/main at `12680bf7f74033c94dad25efe20eb53971e446e2`. `make land` exited 0 with 818 selected mux tests passed and 973 native/TLC model matches. Strict Clippy passed in term and the pinned harness. The inbox fixture now serves status discovery before accepting the approver, removing the single-accept assumption that killed the child when discovery won. The status-first control went from exit 1 to 0, and the parallel stress run passed 16/16 iterations with retries disabled. The batch also removed 65 term suppressions, unused task-import hooks, a regex helper and two direct `resvg` edges. [[Pending]] **Check** the full-suite prerequisite in the gate-repairs task. Its stage-claim and QoS fixtures still fail on this source. The report is saved locally. The KB checkpoint refused the ignored reports directory.
+
+    ```json
+    {
+      "op_id": "01M7ZNMJ9QJ5DCTZR6T7YFH0H2",
+      "commit": "12680bf7f74033c94dad25efe20eb53971e446e2",
+      "report": "[[reports/2026-11-21-rust-1-100-batch1.den]]",
+      "verify_result": {
+        "command": "make land",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Batch 1 passes landing and is on origin/main",
+            "reference": "/Users/feral/mydev/bbx-rust-1-100/target/rust-handoff/land.log:2394"
+          },
+          {
+            "criterion": "Optimized mux integration gate passes",
+            "reference": "/Users/feral/mydev/bbx-rust-1-100/target/rust-handoff/land.log:439"
+          },
+          {
+            "criterion": "Native and Java TLC agree",
+            "reference": "/Users/feral/mydev/bbx-rust-1-100/target/rust-handoff/land.log:2391"
+          },
+          {
+            "criterion": "Status discovery may connect ahead of the approver",
+            "reference": "/Users/feral/mydev/bbx-rust-1-100/target/rust-handoff/status-first-source.log:2"
+          },
+          {
+            "criterion": "Both parallel real-socket tests pass without retries",
+            "reference": "/Users/feral/mydev/bbx-rust-1-100/target/rust-handoff/mux-inbox-parallel-stress.log"
+          },
+          {
+            "criterion": "Remaining full-gate failures are named",
+            "reference": "/Users/feral/mydev/bbx-rust-1-100/target/rust-handoff/full-gate-repair-controls.log"
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    allowed_paths = json"[\"crates\",\"Cargo.toml\",\"Cargo.lock\",\"rust-toolchain.toml\",\"Makefile\",\"scripts\",\"verification\",\"crates/bbt-mux\"]"
+    assignee = json"\"seat:01M7ZFC7T7DY15DE466TCZHTDE\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    created = json"\"2026-11-19T17:43:59.463Z\""
+    created_by = json"\"seat:01M7T65M2S25WYQKF65ZXM5RZ8\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7TEGWZ1FPCNR98D3EMW1SX1\""
+    number = json"1794292861627570"
+    reconciliation = json"[{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"disposition\":\"implemented\",\"evidence\":[\"origin/main 0ff6caba8 Raise the workspace MSRV to Rust 1.100 and finish lint cleanup (74 files, +82 -209); 12680bf7f fixture fix\",\"make land exit 0, LANDED 12680bf7f74033c94dad25efe20eb53971e446e2 (~/mydev/bbx-rust-1-100/target/rust-handoff/), 818 mux tests, 973 native/TLC models\",\"executor: strict clippy term + pinned harness; removed 65 suppressions, unused task-import hooks, a regex helper, two direct resvg edges\",\"Known: full make test still fails the two inherited landing fixtures (stage-claim 4!=3, QoS 20) -> tasks/2026-11-19-full-gate-repairs\"],\"fresh_accepted\":false,\"kind\":\"historical\",\"op_id\":\"01M7ZNN9CZJ4FNJYY1V6PZ0RJ1\",\"previous_status\":\"reported\",\"reason\":\"Batch 1 landed; executor reported make land as its verify, so acceptance refused the mismatched command; Oracle checked the landing directly.\"}]"
+    report = json"{\"commit\":\"12680bf7f74033c94dad25efe20eb53971e446e2\",\"op_id\":\"01M7ZNMJ9QJ5DCTZR6T7YFH0H2\",\"report\":\"[[reports/2026-11-21-rust-1-100-batch1.den]]\",\"reported_by\":\"seat:01M7ZFC7T7DY15DE466TCZHTDE\",\"summary\":\"[[Implement]] Rust 1.100 batch 1 landed on origin/main at `12680bf7f74033c94dad25efe20eb53971e446e2`. `make land` exited 0 with 818 selected mux tests passed and 973 native/TLC model matches. Strict Clippy passed in term and the pinned harness. The inbox fixture now serves status discovery before accepting the approver, removing the single-accept assumption that killed the child when discovery won. The status-first control went from exit 1 to 0, and the parallel stress run passed 16/16 iterations with retries disabled. The batch also removed 65 term suppressions, unused task-import hooks, a regex helper and two direct `resvg` edges. [[Pending]] **Check** the full-suite prerequisite in the gate-repairs task. Its stage-claim and QoS fixtures still fail on this source. The report is saved locally. The KB checkpoint refused the ignored reports directory.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-21T18:24:58.605Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"make land\",\"evidence\":[{\"criterion\":\"Batch 1 passes landing and is on origin/main\",\"reference\":\"/Users/feral/mydev/bbx-rust-1-100/target/rust-handoff/land.log:2394\"},{\"criterion\":\"Optimized mux integration gate passes\",\"reference\":\"/Users/feral/mydev/bbx-rust-1-100/target/rust-handoff/land.log:439\"},{\"criterion\":\"Native and Java TLC agree\",\"reference\":\"/Users/feral/mydev/bbx-rust-1-100/target/rust-handoff/land.log:2391\"},{\"criterion\":\"Status discovery may connect ahead of the approver\",\"reference\":\"/Users/feral/mydev/bbx-rust-1-100/target/rust-handoff/status-first-source.log:2\"},{\"criterion\":\"Both parallel real-socket tests pass without retries\",\"reference\":\"/Users/feral/mydev/bbx-rust-1-100/target/rust-handoff/mux-inbox-parallel-stress.log\"},{\"criterion\":\"Remaining full-gate failures are named\",\"reference\":\"/Users/feral/mydev/bbx-rust-1-100/target/rust-handoff/full-gate-repair-controls.log\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:506964c2fa855d0c2fd7086c0f23889cedf3b8358799c0965d9d0dc8d55f84b7\",\"frontmatter_digest\":\"sha256:91bdcf0872b93393363906d2e47806d195512cdf0803eb6b6c96406dc581b434\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"RTDPlAAXa3RK1E4+372Ha3YUHrqwU/o0+u2YM41mHKI4iMemC30WwiDZVmkYkt6gcZjOvn1ZLIqN/nrvOui6DA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/715\",\"event\":{\"id\":\"01M7ZNNF47BZSHVA9B3NBGPXF6\",\"sequence\":715,\"hash\":\"58da1d4d4f260c0a2d1095fe6ee62f7c617eefc1c6eed833f620471a3d26e76b\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

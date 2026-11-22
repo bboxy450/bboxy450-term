@@ -1,0 +1,86 @@
+module tasks.`2026-11-20-python-store-retention`
+
+task PythonStoreRetention {
+  title "Run Python store: bound per-session growth and reap abandoned sessions' scratch"
+  verify $ cargo nextest run -p bboxy450-harness -E 'test(store)'
+  paths "crates/bboxy450-harness"
+  brief """
+    Our stand: subtract before you add. Source: [[reports/2026-11-20-python-store-scope]] (accepted).
+
+    ## Evidence
+    `store` lives at `<sessions>/<SessionId>/python/state/` (harness `src/backend/acp_agent.rs:386-407`, `src/python_execute/worker.py:677`). Only a per-value 64 MiB limit exists (`worker.py:482`); there is no key-count, total-byte, age or session-end cleanup, and interrupted writes can leave `.tmp` files. Abandoned sessions keep their scratch forever.
+
+    ## Do
+    - A per-session total-byte budget checked before `os.replace`, refusing with a clear message (no silent eviction).
+    - Startup removes stale `*.tmp` files in `state/`.
+    - Scratch of sessions that can no longer be resumed (seat closed and not retained, or older than a stated age) is deleted by the existing session cleanup, not by a new daemon. State the rule in the usage text at `src/python_execute/mod.rs:956`.
+    - Keep `store` session-scoped; no swarm-wide map (report recommendation).
+    ## Oracle amendment, 2026-11-22 02:40: start
+    - Worktree `/Users/feral/mydev/bbx-store`, branch `exec/store-retention`, from origin/main `400f24640` (harness pin `48a38f0c`). The change is in the harness submodule: land it through harness main, then `make bump-harness` and `make land` in term.
+    - Start with `python_execute_orient`; long commands detached (`nohup ... &`, exit codes under `target/store-handoff/`); one gate machine-wide.
+    - Report with the task's verify command as `verify_result.command`.
+
+
+    ## Report from seat:01M81D591KB07DQNWB29M4H4JZ
+
+    Landed Python store retention on harness main at 47cfbe64b7f05eb4198d6bf84d76eba7ba2d1177 and verified its inclusion in signed term main 8213133a75e83ee6b0c445a54b4219c036096bd0. The exact Nextest command passed 20 tests on both the implementation and the published pin. Native and Java TLC matched all 531 models, including both new broken controls. Added a 256 MiB per-session budget and 30-day inactive retention, removed stale temporary writes and duplicate session-path construction. The term candidate passed all checks before a non-fast-forward push, and the new term main already pinned the implementation through its descendant. The report is indexed locally. Its checkpoint returned commit_failed because reports/ is ignored.
+
+    ```json
+    {
+      "op_id": "01M81R8WV48Y8HGGFS97ZZYCET",
+      "commit": "8213133a75e83ee6b0c445a54b4219c036096bd0",
+      "report": "[[reports/2026-11-22-python-store-retention.den]]",
+      "verify_result": {
+        "command": "cargo nextest run -p bboxy450-harness -E 'test(store)'",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Session-wide byte budget with atomic refusal and preserved values",
+            "reference": "crates/bboxy450-harness/src/python_execute/worker.py:489 and src/python_execute/tests.rs:1397. Final pin logs target/store-handoff/verify-main-pin.log and verify-main-pin-junit.xml."
+          },
+          {
+            "criterion": "Startup removes stale temporary state writes",
+            "reference": "crates/bboxy450-harness/src/python_execute/mod.rs:348 and src/python_execute/tests.rs:1377. Final pin startup test passed."
+          },
+          {
+            "criterion": "Inactive scratch is reaped after the stated age",
+            "reference": "crates/bboxy450-harness/src/store.rs:620,635,754 and src/python_execute/mod.rs:1012. Active, recent, expired and resumed cases passed."
+          },
+          {
+            "criterion": "Scratch remains session-scoped",
+            "reference": "crates/bboxy450-harness/src/python_execute/mod.rs:286 builds the state under the existing SessionId root."
+          },
+          {
+            "criterion": "Formal model and broken controls",
+            "reference": "target/store-handoff/harness-formal-evidence.json, SHA-256 ad49ab9c84717a1343cd517927094bbc6b7124fa1f2bc9327e95a1c51d0b9f60. New model 18 states, 68 edges, and both broken controls failed safety on both backends."
+          },
+          {
+            "criterion": "Signed term main contains the harness change",
+            "reference": "target/store-handoff/final-git.log. Term main 8213133a7 pins bd8a855d, a descendant of 47cfbe64. Both worktrees are clean."
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    assignee = json"\"seat:01M81D591KB07DQNWB29M4H4JZ\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    closed = json"{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"op_id\":\"01M81R98DGRFAJGHQGW6R8EE4M\"}"
+    created = json"\"2026-11-20T23:31:27.166Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7XMSWRF7PYB5ARF2ZXVK3P9\""
+    number = json"1794292861627648"
+    report = json"{\"commit\":\"8213133a75e83ee6b0c445a54b4219c036096bd0\",\"op_id\":\"01M81R8WV48Y8HGGFS97ZZYCET\",\"report\":\"[[reports/2026-11-22-python-store-retention.den]]\",\"reported_by\":\"seat:01M81D591KB07DQNWB29M4H4JZ\",\"summary\":\"Landed Python store retention on harness main at 47cfbe64b7f05eb4198d6bf84d76eba7ba2d1177 and verified its inclusion in signed term main 8213133a75e83ee6b0c445a54b4219c036096bd0. The exact Nextest command passed 20 tests on both the implementation and the published pin. Native and Java TLC matched all 531 models, including both new broken controls. Added a 256 MiB per-session budget and 30-day inactive retention, removed stale temporary writes and duplicate session-path construction. The term candidate passed all checks before a non-fast-forward push, and the new term main already pinned the implementation through its descendant. The report is indexed locally. Its checkpoint returned commit_failed because reports/ is ignored.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-22T13:49:24.805Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"cargo nextest run -p bboxy450-harness -E 'test(store)'\",\"evidence\":[{\"criterion\":\"Session-wide byte budget with atomic refusal and preserved values\",\"reference\":\"crates/bboxy450-harness/src/python_execute/worker.py:489 and src/python_execute/tests.rs:1397. Final pin logs target/store-handoff/verify-main-pin.log and verify-main-pin-junit.xml.\"},{\"criterion\":\"Startup removes stale temporary state writes\",\"reference\":\"crates/bboxy450-harness/src/python_execute/mod.rs:348 and src/python_execute/tests.rs:1377. Final pin startup test passed.\"},{\"criterion\":\"Inactive scratch is reaped after the stated age\",\"reference\":\"crates/bboxy450-harness/src/store.rs:620,635,754 and src/python_execute/mod.rs:1012. Active, recent, expired and resumed cases passed.\"},{\"criterion\":\"Scratch remains session-scoped\",\"reference\":\"crates/bboxy450-harness/src/python_execute/mod.rs:286 builds the state under the existing SessionId root.\"},{\"criterion\":\"Formal model and broken controls\",\"reference\":\"target/store-handoff/harness-formal-evidence.json, SHA-256 ad49ab9c84717a1343cd517927094bbc6b7124fa1f2bc9327e95a1c51d0b9f60. New model 18 states, 68 edges, and both broken controls failed safety on both backends.\"},{\"criterion\":\"Signed term main contains the harness change\",\"reference\":\"target/store-handoff/final-git.log. Term main 8213133a7 pins bd8a855d, a descendant of 47cfbe64. Both worktrees are clean.\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:2cda572a45071348e647cc58ed47182ab5b164cc5625a537713b6b591aa76f1d\",\"frontmatter_digest\":\"sha256:76400b903dcc6b89f188b4815398943e3c2e3b25028b1fab2e79c6ad6c58335d\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"Bz+LBkUlgY48Dkoi+YyreGSKICLJYWBU5+YySgXCZ+uc/OkgbnGuEXYwHofnKkFlhdYR6DedXC9v6iiJoh3YCQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/968\",\"event\":{\"id\":\"01M81R9KQWQZ6BGETRBTBG6QKG\",\"sequence\":968,\"hash\":\"a78204c6c123d3d9d25f8869c0be9dc019a801580046fe558ffe7f21f9fde67e\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

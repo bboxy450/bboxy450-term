@@ -7,7 +7,7 @@ spec Mobile {
   body """
     # Mobile
 
-    Binds [[d1794292861627529-remote-nodes-round-3]] §1, §3 and §4. It builds on [[nodes]] (mesh, `bboxy/gui/3`) and [[seat-keys]] (client grants).
+    Binds [[d1794292861627529-remote-nodes-round-3]] §1 and §3, and [[d1794292861627536-remote-nodes-round-4-mobile-both-platforms]], which amends round 3 §4: iOS and Android are both built, and the order is open. It builds on [[nodes]] (mesh, `bboxy/gui/3`) and [[seat-keys]] (client grants).
 
     **Done means:** with the laptop closed, a seat on a Linux node asks a question. The phone shows a push, the operator answers it in the phone app, the seat continues, and the desktop later shows the answer in the transcript, marked as answered from the phone.
 
@@ -45,6 +45,7 @@ spec Mobile {
     - **The source is the harness log.** The items are `Question{message, schema, answer, by}` and `Approval{subject, options, decision, by}` (`crates/bboxy450-harness/src/protocol/mod.rs:644-662`). The node's logic reads them through its existing per-seat connection (`bbt-mux/src/logic.rs:7051`). Today it knows only that the seat is waiting (`Wait::Question`, `bbt-proto/src/seat_state.rs:323`).
     - **`Answer` becomes the harness op** `AnswerQuestion{question}` or `ResolveApproval{approval, decision}` (`protocol/mod.rs:311-319`), sent with the same `op_id`, so a retry is idempotent (the harness gateway ICD (`crates/bboxy450-harness/.bboxy/interfaces/gateway.md` §1a).
     - **Scope:** `Questions` needs `view`; `Answer` needs `answer`.
+    - **Who answered.** Today `Question.by` and `Approval.by` are `Option<Resolver>`, set only by automation. A human answer leaves them empty (`protocol/mod.rs:644-662`). M1 adds an additive `answered_by: Option<Client>` (a client name and key) to both items. The desktop and the phone fill it in, so the desktop can show "answered from the phone". The field is only added; nothing existing is renamed or removed.
 
     ## 4. First answer wins
 
@@ -52,7 +53,9 @@ spec Mobile {
     - The harness applies the first answer. Every later one gets `already_answered{by}`, and the phone shows who answered.
     - **Unverified:** that the harness refuses a second answer to a resolved item. **Check:** this is the first task of phase M1.
 
-    ## 5. Push: APNs straight from the nodes
+    ## 5. Push: straight from the nodes (APNs on iOS, FCM on Android)
+
+    The design below is written for APNs. On Android, FCM HTTP v1 takes the same place: the node holds a service-account key with the `push` scope, the payload carries no question text, and there is one message per item per token, collapsed by item id. Which platform ships first is open (round 4 §2, §5).
 
     - **Registration.** On connect, the phone registers its APNs token with each node (`RegisterPush{token}`). The node keeps it in its local store. It is not KB data and does not replicate.
     - **Sending.**
@@ -63,14 +66,16 @@ spec Mobile {
     - **Crate.** `bboxy450-push` is the second crate allowed a network library, linked by the node and never by mux ([[invariants/local-first]], narrowed in [[nodes]] §2).
     - **Apple key.** No APNs key is recorded in `~/mydev/void-tarot` or `~/mydev/simorgh-app-v1`. Creating one is a one-time step in Apple Developer → Keys, done in the operator's own Safari session (as void-tarot's `workflows/safari-app-store-connect-computer-use.md` does). The `.p8` never enters Git or the KB.
 
-    ## 6. UI: our own Rust UI on iOS
+    ## 6. UI: our own Rust UI on iOS and Android
 
-    - **Rendering:** bbt-ui and bbt-render on wgpu (Metal), behind winit's iOS backend, for one look on every platform ([[vision]]).
-    - **New work for iOS:**
-      - touch-to-input mapping;
-      - safe areas;
+    - **Rendering:** bbt-ui and bbt-render on wgpu, behind winit's iOS and Android backends, for one look on every platform ([[vision]]). wgpu uses Metal on Apple targets, and Vulkan with a GLES fallback on Android. Text uses CoreText on Apple targets and a portable Rust backend (swash, with a bundled font) everywhere else (round 4 §1).
+    - **The UI kit runs on four platforms:** macOS, Linux, iOS and Android. `cargo check` of `bboxy450-ui-core`, `bboxy450-ui` and `bboxy450-render` for `aarch64-apple-ios`, `aarch64-apple-ios-sim`, `aarch64-linux-android` and `x86_64-unknown-linux-gnu` is a gate in this repository (`make check-ui-targets`), and a headless render of a text fixture on Linux produces a non-empty glyph mask.
+    - **New work for the phone:**
+      - touch-to-input mapping (tap, scroll, long press);
+      - safe areas and system insets;
       - the system keyboard through winit IME;
-      - one portrait layout.
+      - one portrait layout;
+      - the app lifecycle: drop the surface on suspend and recreate it on resume (Android), and redraw on foreground.
     - **Answer forms come from the question's JSON Schema:**
 
       | Schema | Rendered as |
@@ -82,9 +87,24 @@ spec Mobile {
       | approval options | buttons |
       | anything else | "Answer on the desktop", shown read-only |
 
+    - **Repository** (round 4 §3): `bboxy450/bboxy450-term-mobile`, which is public.
+
+      ```text
+      bboxy450-term-mobile/
+        vendor/bboxy450-term/        pinned submodule; make bump-term moves it
+        crates/bboxy450-term-mobile/ the app: screens, touch, lifecycle; lib for iOS (staticlib) and Android (cdylib)
+        apps/ios/                    the smallest shell: Info.plist + a generated Xcode project, or none (xcrun-built .app)
+        apps/android/                the smallest shell: AndroidManifest + NativeActivity, no Java/Kotlin app code
+        Makefile                     help, test, ios-sim, ios-smoke, android-tools, android-apk, android-smoke, bump-term
+      ```
+
+      - `make test` runs the app crate's host tests and a headless render of each screen on the host to PNG. `make ios-smoke` and `make android-smoke` boot, install, launch and screenshot, unattended (round 4 §6).
+      - The repo carries the suite's rules: Respectful Slop license and ATTRIBUTION, signed commits, `AGENTS.md` pointing at `bboxy450-term/AGENTS.md`, a `verification/coverage.toml` entry per crate, and formal models for stateful code.
     - **One client core.** The mesh client, seat keys, protocol and model live in one crate, `bboxy450-client`, which the desktop UI and the phone both use. Today the desktop's client is `bboxy450-term/src/live.rs`. That code moves into the crate rather than being copied.
 
-    ## 6a. Distribution: TestFlight on the existing account
+    ## 6a. Distribution: TestFlight on the existing account (postponed)
+
+    **Postponed** (round 4 §4). Nothing in this section is done until the operator chooses iOS for shipping. Until then, iOS runs only in the simulator, with no signing. The shell below lives in `bboxy450-term-mobile/apps/ios/`.
 
     The Apple developer account already exists and has shipped TestFlight builds.
     - **Team:** `UQB3368A84`, with automatic signing (`~/mydev/void-tarot/VoidTarot.xcodeproj/project.pbxproj:446`).
@@ -120,9 +140,12 @@ spec Mobile {
 
     ## 8. Phases (after [[nodes]] phase 2: mesh and `bboxy/gui/3`)
 
-    1. **M1:** `Questions`, `Answer` and the events on the desktop. The desktop gets an inbox, which proves the protocol and the first-answer rule.
+    M0 and M1 need no mesh and start now, in parallel with [[nodes]] phases 1–2.
+
+    0. **M0:** the UI kit on four platforms (in `bboxy450-term`), plus the `bboxy450-term-mobile` repo with iOS-simulator and Android-emulator shells that render a fixture Inbox through bbt-ui. Verification: `make check-ui-targets` here; `make test`, `make ios-smoke` and `make android-smoke` there.
+    1. **M1:** `Questions`, `Answer` and the events on the desktop, over the local `gui.sock`. The desktop gets an inbox, which proves the protocol and the first-answer rule.
     2. **M2:** the `bboxy450-client` crate, extracted from `live.rs`.
-    3. **M3:** the iOS shell with Inbox only, enrolled by QR code ([[seat-keys]] §5).
+    3. **M3:** the phone Inbox, live over `bboxy/gui/3`, enrolled by QR code ([[seat-keys]] §5). It needs [[nodes]] phase 2 and seat-keys.
     4. **M4:** push from the nodes.
     5. **M5:** Overview and Glance.
 
@@ -130,7 +153,8 @@ spec Mobile {
 
     1. **iOS background limits.** In the background the app holds no sockets, so it reconnects in the foreground in under 2 s per node? Measure this on a device.
     2. **Tailscale on the phone** must be connected (VPN On Demand). When it is not, the app says "tailnet disconnected" by name.
-    3. ~~Apple setup.~~ The account and team exist. The remaining steps and when each is due are the checklist in §6a.
+    3. ~~Apple setup.~~ The account and team exist. The remaining steps and when each is due are the checklist in §6a, postponed by round 4.
+    4. **Platform order.** Android or iOS first is undecided (round 4 §2). It decides the push provider (§5) and the store setup.
 
     ## 10. Acceptance
 
@@ -140,16 +164,17 @@ spec Mobile {
     - [ ] A push payload carries no question text, and one item yields one push per token.
     - [ ] Each schema kind in §6 renders and submits. An unsupported schema shows "Answer on the desktop".
     - [ ] QuestionAnswer and its broken control run under `make test-formal`.
+    - [ ] `make check-ui-targets` passes for the four UI-kit targets. The fixture Inbox screenshot from the iOS simulator and the one from the Android emulator each show the fixture question text, both taken unattended.
     """
 
   managed {
-    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"AkC2Hp2WCfh5UPAedqYDGCBgu03dmXvlfpulQ1Eo+8w=\",\"signer\":\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\"}"
-    created = json"\"2026-11-19T15:07:49.721Z\""
-    created_by = json"\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"nA0AALBlad6ehsKO4+099DT25V+LO3VOyd26xrocVvY=\",\"signer\":\"seat:01M7T65M2S25WYQKF65ZXM5RZ8\"}"
+    created_by = json"\"seat:01M7T65M2S25WYQKF65ZXM5RZ8\""
     id = json"\"01M7T5K0WSED7FCD8JPJAXNVZW\""
     number = json"1794292861627531"
-    updated = json"\"2026-11-19T15:24:47.760Z\""
-    updated_by = json"\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\""
-    provenance = json"{\"digest\":\"sha256:c81fbef6a88000051a5fd3f03cb0c37bc9fec5c0cb5fc7e228c3a390baaf6bb7\",\"frontmatter_digest\":\"sha256:c38d48a5aa0ad2b35c2ab1d8528a7b389a1981059cb71e892a21461d23674caf\",\"signer\":\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\",\"sig\":\"zpo6QDtamaY988744dBqhQn/hbT/uMk4IrK0UvV5zi8/GM4OxlrLYJvVsY6SBwz012e2LdkADRfnvE5jgl4RDQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/83019\",\"event\":{\"id\":\"01M7T6J3AW956K008K29B4JR8A\",\"sequence\":83019,\"hash\":\"eb536b5fbe5e24a9ebf3f6dc16fea50c8afb14e5740ed549151ef0dfdbac422a\"}}"
+    title = json"\"Mobile: a small addition to the desktop cockpit on iOS and Android; see the swarm and answer questions on the move, laptop closed\""
+    updated = json"\"2026-11-19T15:32:38.872Z\""
+    updated_by = json"\"seat:01M7T65M2S25WYQKF65ZXM5RZ8\""
+    provenance = json"{\"digest\":\"sha256:e915abd7015cd9f9cdb7a2b043eae3636439db808dbb0c40078ec49333d53661\",\"frontmatter_digest\":\"sha256:513c4cde1667078fd5679c25daaf2c55a60d83e47abc3e515249bcdff78d04c5\",\"signer\":\"seat:01M7T65M2S25WYQKF65ZXM5RZ8\",\"sig\":\"vhRiXmTVyFvfs5kcp+zlGgHa026IcBogM1D9Su5PUrOWRn4S7FcmeK8qdJVXV75LURKgZuwpfQ03GHttKU78BQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/56\",\"event\":{\"id\":\"01M7T70FE86ZSWBBJFMPP2YDKR\",\"sequence\":56,\"hash\":\"b5b2db828a5d344c8627ab74be5d5df315e3ad102dc648b8337411c1ff5390dd\"}}"
   }
 }

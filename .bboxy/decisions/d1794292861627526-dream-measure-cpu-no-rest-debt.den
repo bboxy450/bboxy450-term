@@ -1,0 +1,46 @@
+module decisions.`d1794292861627526-dream-measure-cpu-no-rest-debt`
+
+decision D1794292861627526DreamMeasureCpuNoRestDebt {
+  title "Dream measures CPU and owes no rest; the deadline, cancel and QoS are the limits"
+  date date"2026-11-18"
+  body """
+    # Dream measures CPU and owes no rest
+
+    Date 2026-11-18. Operator ruling in this seat: "Simplify, then finish" (Dream status question). Supersedes, for term-side Dream (mux C1 consumer, Q1 reads, wake-up consumer validation): the refusal and rest-debt parts of [[decisions/d93377961365086-dream-native-quantum-and-debt]] and the 50 ms refusal of [[decisions/d1794292861627496-dream-c1-measure-not-refuse]]. Governing specs: [[specs/dream-term-c1]], [[specs/dreaming-mcp]], [[specs/dream-term-integration]].
+
+    ## Choice
+
+    - A unit's thread CPU is measured and never refused. Overruns above `OVERRUN` (50 ms) are counted (unit, cleanup, native, reactor, dispatch-guard and authority-monitor counters, `max_unit_cpu_ns`) and reported in the host metrics.
+    - No rest debt: no 9x rest after a span, no per-unit rest, no cleanup extra debt. `WorkDebt` keeps only its exclusive lease and its accounting.
+    - The limits are the 30 s job wall deadline, cancel, the foreground pause, the input, heap, disk and output bounds, and utility QoS on every Dream thread. An unknown clock still refuses.
+    - The consumer no longer rejects a producer completion or a bootstrap probe because a CPU figure exceeds 1, 2 or 3 ms. The figures must be present and consistent.
+    - A ready C1 catalogue waits up to 2 s (`CATALOGUE_BUSY`) for a competing owner instead of busy0. Bootstrap and schema creation stay busy0.
+
+    ## Alternatives
+
+    1. Keep the 1 ms quantum and 9x rest, and split slow phases further. Rejected: reads paid the rest debt on the same lane, so wall time was 300 to 600 times CPU time (Status 1.5 s, page 3 s; [[tasks/2026-11-06-dream-c1-cold-mcp-latency]]), and splitting adds more rest.
+    2. Keep 50 ms refusal (2026-11-12). Rejected: a refusal still turns machine load into a product failure, and the rest debt stayed.
+    3. Chosen: measure, never refuse; let QoS and the deadline govern.
+
+    ## What it gives up
+
+    There is no longer a per-unit guarantee that Dream yields after 1 ms of CPU. Fairness to foreground work now rests on utility QoS and the foreground pause. The harness producer, a separate repository, keeps its own 1 ms and 9x law until its owner changes it; the consumer only measures what it reports.
+
+    ## Evidence
+
+    - Before: `cargo nextest run -p bboxy450-term-mux --lib -E 'test(/dream/)'` took 152 s for 105 tests. After: 17 to 42 s for 119 tests, which includes 14 re-enabled KNOWN-DEFECT tests, 5 of 5 runs green with `--retries 0`.
+    - Formal: the `TermDreamC1SchedulingDutyCycle` and `C1QuantumDebt` model families described the removed law. They are retired with this decision.
+    """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"uUl4WS5j1bF0tJQpDU5hYZUTROiN88c0NM05fuUHEkM=\",\"signer\":\"seat:01M7R9SXYTVTEMY0GA3KDYJ8KA\"}"
+    created = json"\"2026-11-19T00:05:15.584Z\""
+    created_by = json"\"seat:01M7R9SXYTVTEMY0GA3KDYJ8KA\""
+    id = json"\"01M7RHYBSJ0ER8F88NN6NK7P49\""
+    number = json"1794292861627526"
+    updated = json"\"2026-11-19T00:05:15.584Z\""
+    updated_by = json"\"seat:01M7R9SXYTVTEMY0GA3KDYJ8KA\""
+    provenance = json"{\"digest\":\"sha256:c98479cd1207d9dee19f2ac9632f1524bc990c5cd42fc33b35406a1cd28575ea\",\"frontmatter_digest\":\"sha256:94b403a358ce3c36fd2729a621ebdcbf645f3a1a175c7b2b4564a4f2139add88\",\"signer\":\"seat:01M7R9SXYTVTEMY0GA3KDYJ8KA\",\"sig\":\"/mlnxQNSbWEyWdR9joHL/GniO3Vh5l42wLxGBTywFAfTp3LvkNaJWdg+dX/IHFKTULi7xxkEWRglMAbGWi14Bg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/39\",\"event\":{\"id\":\"01M7RHYCJKCYVKZ2E2QNXSTTGG\",\"sequence\":39,\"hash\":\"6ac78dc175b45628106681b59279f9e2bd49c8cd3a10430adbfa95b92f40b2cd\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

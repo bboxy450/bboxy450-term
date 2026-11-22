@@ -1,0 +1,80 @@
+module tasks.`2026-11-22-python-card-status-shapes`
+
+task PythonCardStatusShapes {
+  title "Python cards render without status for cancelled and moved-to-background python_execute replies; make the real-session smoke hermetic"
+  verify $ cargo nextest run -p bboxy450-harness --features acp-agent,embedded --lib -E 'test(python_cell) | test(real_session_smoke) | test(codex_outcome)'
+  paths "crates/bboxy450-harness"
+  brief """
+    Our stand: one parser per shape; fixtures, not live data, decide a gate.
+
+    ## Evidence (Oracle, 2026-11-22)
+    `make test-real-sessions` fails on main `42dac19c3` and on `fe4a3723d`: `SMOKE BAD ~/.bboxy450-harness/sessions/01M7VC8QBWY7P55AVTX648HXKJ.jsonl: python without status: mcp__bboxy__python_execute` (x2), `crates/bboxy450-harness/src/frontends/face_core.rs:1438` "2 cards render wrong". That file is the Oracle seat's own session; its two odd python_execute replies are a run the Oracle cancelled (`python_execution_cancel` while running) and a run the client moved to the background ("moved to the background as task ... it keeps running") that later failed. Log: `~/mydev/bbx-gate-repairs/target/fixture-handoff/watcher-fix/registered-coverage/baseline-real-sessions.log`.
+
+    ## Do
+    1. Extract the two reply shapes from that session (redacted, minimal) into fixtures beside `face_core.rs` tests; teach `python_cell` to give them a status (`cancelled`; `running`/handle-only -> `running` until a later `python_execution_get` resolves it), reusing the existing status mapping.
+    2. Make the gate hermetic: `test-real-sessions` stays an opt-in smoke over live logs, but the fixtures, not live data, decide CI; the real-session smoke must not be part of `make test-parity`'s pass/fail unless pointed at a fixture directory.
+    Land through harness main, `make bump-harness`, `make land`. Long commands detached.
+    ## Oracle amendment, 2026-11-22 03:10
+    - Granted `scripts/ci-local.sh` (it calls `test-real-sessions` unconditionally at `:117`) and `Cargo.lock` for the harness bump. Keep `make test-real-sessions` as the opt-in live-log smoke; CI calls it only with an explicit `SESSIONS_DIR` (the fixture directory). Shapes confirmed by the executor: a missing-result placeholder after cancellation, and a client text notice for a background task.
+
+
+    ## Report from seat:01M7ZVK9YFPRSBR7EJF6DPC5E1
+
+    Landed Python card statuses and fixture-only default CI at signed term 8213133a75e83ee6b0c445a54b4219c036096bd0, pinned to signed harness bd8a855d6bac17b578de0b93d951ea08f31e69e0. The requested Nextest command exited 0 with 6 tests. Explicit test-real-sessions passed 2 tests and replayed one fixture file with two cards and no errors. Both make land commands exited 0 and standalone native/TLC parity matched 531 models. Removed unconditional session replay, ambient replay input, and the duplicate missing-result literal. The follow-up uses a typed string view for both embedded and published image assets.
+
+    ```json
+    {
+      "op_id": "01M81QGJHAHHH4TPVDDBHQ20KT",
+      "commit": "8213133a75e83ee6b0c445a54b4219c036096bd0",
+      "report": "[[reports/2026-11-22-python-card-status-shapes-landed.den]]",
+      "verify_result": {
+        "command": "cargo nextest run -p bboxy450-harness --features acp-agent,embedded --lib -E 'test(python_cell) | test(real_session_smoke) | test(codex_outcome)'",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Six focused tests passed against the landed harness source",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/python-card-status/focused.log"
+          },
+          {
+            "criterion": "Opt-in Make smoke with SESSIONS_DIR=/Users/feral/mydev/bbx-gate-repairs/crates/bboxy450-harness/src/frontends/fixtures passed",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/python-card-status/fixture-make.log:23"
+          },
+          {
+            "criterion": "Unset and empty directories skipped and an explicit directory invoked replay once",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/python-card-status/final-ci-replay-control.log"
+          },
+          {
+            "criterion": "Harness main push and 531-model formal parity",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/python-card-status/harness-land.log"
+          },
+          {
+            "criterion": "Term main push on the exact fixture-smoke source",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/python-card-status/term-land.log:153"
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    allowed_paths = json"[\"crates/bboxy450-harness\",\"scripts/ci-local.sh\",\"Cargo.lock\"]"
+    assignee = json"\"seat:01M7ZVK9YFPRSBR7EJF6DPC5E1\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    closed = json"{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"op_id\":\"01M81QGYHQ7ZNNMPEAH7EP7S6V\"}"
+    created = json"\"2026-11-22T10:38:22.756Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M81DBKXN139D1MW7M9ET35JD\""
+    number = json"1794292861627734"
+    report = json"{\"commit\":\"8213133a75e83ee6b0c445a54b4219c036096bd0\",\"op_id\":\"01M81QGJHAHHH4TPVDDBHQ20KT\",\"report\":\"[[reports/2026-11-22-python-card-status-shapes-landed.den]]\",\"reported_by\":\"seat:01M7ZVK9YFPRSBR7EJF6DPC5E1\",\"summary\":\"Landed Python card statuses and fixture-only default CI at signed term 8213133a75e83ee6b0c445a54b4219c036096bd0, pinned to signed harness bd8a855d6bac17b578de0b93d951ea08f31e69e0. The requested Nextest command exited 0 with 6 tests. Explicit test-real-sessions passed 2 tests and replayed one fixture file with two cards and no errors. Both make land commands exited 0 and standalone native/TLC parity matched 531 models. Removed unconditional session replay, ambient replay input, and the duplicate missing-result literal. The follow-up uses a typed string view for both embedded and published image assets.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-22T13:36:04.731Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"cargo nextest run -p bboxy450-harness --features acp-agent,embedded --lib -E 'test(python_cell) | test(real_session_smoke) | test(codex_outcome)'\",\"evidence\":[{\"criterion\":\"Six focused tests passed against the landed harness source\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/python-card-status/focused.log\"},{\"criterion\":\"Opt-in Make smoke with SESSIONS_DIR=/Users/feral/mydev/bbx-gate-repairs/crates/bboxy450-harness/src/frontends/fixtures passed\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/python-card-status/fixture-make.log:23\"},{\"criterion\":\"Unset and empty directories skipped and an explicit directory invoked replay once\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/python-card-status/final-ci-replay-control.log\"},{\"criterion\":\"Harness main push and 531-model formal parity\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/python-card-status/harness-land.log\"},{\"criterion\":\"Term main push on the exact fixture-smoke source\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/python-card-status/term-land.log:153\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:1eb157c21f288a4e76589b85c876511070becaded2415ee15f0d6946b9eb914d\",\"frontmatter_digest\":\"sha256:118ffa953aa24d5ba29ac19cdecf6fca4ec3508112df1f08407b4a4a617c2d49\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"YJ7dJLE7LG8njobRSnQtOvMP9WLgWlRyLHqvq5iWTVEOA5As8PbX0TxDH99/3EOmyaU/VcI2OoK3gl5KV9C5Cw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/953\",\"event\":{\"id\":\"01M81QH687ABZR116FNA8E8TMS\",\"sequence\":953,\"hash\":\"a9d26522b4d98e757d0975c0f223596ccef598b3ece0d22826d0d4fd4f2f425e\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

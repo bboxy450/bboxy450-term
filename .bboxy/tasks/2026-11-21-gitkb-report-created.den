@@ -1,0 +1,96 @@
+module tasks.`2026-11-21-gitkb-report-created`
+
+task GitkbReportCreated {
+  title "GH #98: task_accept refuses every GitKB-stored report because `created` is stripped on write and never derived"
+  verify $ cargo nextest run -p bboxy450-term-mux -E 'test(report) | test(accept)' && cargo nextest run -p bboxy450-term-data_source-gitkb
+  paths "crates/bbt-mux/src/plugins", "crates/bbt-mux/src/knowledge", "crates/bbt-mux/tests", "crates/bboxy450-term-data_source-gitkb", "crates/bbt-doc/src/reports.rs"
+  brief """
+    Our stand: one home per fact; fix the source, not the symptom. Issue: https://github.com/bboxy450/bboxy450-term/issues/98 (2026-11-21, TWIG swarm; three verified tasks refused).
+
+    ## Evidence (Oracle-read on origin/main a05e43aef)
+    - `crates/bbt-doc/src/reports.rs:~112`: acceptance requires `metadata["created"]` non-empty.
+    - `crates/bbt-mux/src/plugins/lowering.rs:28-36`: `created` is in `DERIVED` (stripped by the signed write; the provider must derive it). A writer-supplied `created` is dropped (`den_lossy`).
+    - The native bboxy provider derives it (`crates/bbt-mux/src/knowledge/bboxy.rs:764`, `["updated","created"]`; fallback at `:405`). The GitKB provider never does: a fetched GitKB report has no `created`.
+
+    ## Do
+    Make the GitKB provider derive `created` (and `updated`) from the record's first/last stored version in its document log, exactly as the bboxy provider does, so every provider returns the same derived fields. Do not relax the acceptance check and do not let writers supply `created`.
+
+    ## Verify
+    - Regression test through the real path: GitKB root -> `knowledge_write` a report for a delegated task -> `task_report` -> `task_accept` accepts. Broken control: without derivation the same test is refused with the #98 message.
+    - The verify command above; then `make land`. Close #98 with the commit SHA (a `gh issue close 98 --comment` is authorized after landing).
+    ## Oracle amendment, 2026-11-21 10:40: start
+    - Worktree `/Users/feral/mydev/bbx-gitkb`, branch `exec/gitkb-created`, from origin/main `12680bf7f`.
+    - Start with `python_execute_orient`; work from `python_execute` programs.
+    - **Never run a long command in the foreground** (Codex seats die inside multi-minute tool calls): start nextest, `make test-formal` and `make land` detached, e.g. `nohup sh -c 'make land > target/gitkb-handoff/land.log 2>&1; echo $? > target/gitkb-handoff/land.exit' >/dev/null 2>&1 &`, then poll briefly.
+    - Report with the task's own verify command as `verify_result.command` (acceptance compares it exactly), plus the `make land` result as evidence.
+
+    ## Oracle amendment, 2026-11-21 10:50: provider path
+    - The GitKB provider lives at `plugins/gitkb/` (Cargo.toml:25), not `crates/bboxy450-term-data_source-gitkb`. Allowed path replaced. Project the native creation time that `plugins/gitkb` methods already resolve into the record's derived `created`/`updated`, the same derived fields the bboxy provider returns.
+
+
+    ## Report from seat:01M7ZNNYSP84SEZPDF4YTP8C9F
+
+    GitKB now accepts linked reports using creation and modification times derived from its stored versions. The private lifecycle passed, and the same regression reproduced the missing creation timestamp with the old adapter. Nextest passed 39 mux and 28 provider tests, all 973 formal comparisons matched, and make land put the signed fix on main. Removed the creation-only helper and the fixture's duplicate identity configuration. GitHub closed #98 with the landed SHA.
+
+    ```json
+    {
+      "op_id": "01M7ZVGWMT5G0MKYAHSGQN7FSG",
+      "commit": "21e8baacde143e5d1e69ddb962312d3b98ec2878",
+      "report": "[[reports/2026-11-21-gitkb-report-created.den]]",
+      "verify_result": {
+        "command": "cargo nextest run -p bboxy450-term-mux -E 'test(report) | test(accept)' && cargo nextest run --manifest-path plugins/gitkb/Cargo.toml",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Private GitKB linked report acceptance and provider-owned timestamps",
+            "reference": "/Users/feral/mydev/bbx-gitkb/target/gitkb-handoff/fixed-source.log"
+          },
+          {
+            "criterion": "Broken control reproduces the #98 refusal",
+            "reference": "/Users/feral/mydev/bbx-gitkb/target/gitkb-handoff/broken-final.log"
+          },
+          {
+            "criterion": "Exact Nextest verification",
+            "reference": "/Users/feral/mydev/bbx-gitkb/target/gitkb-handoff/verify.log"
+          },
+          {
+            "criterion": "Formal verification on the landed source",
+            "reference": "/Users/feral/mydev/bbx-gitkb/target/gitkb-handoff/formal.log"
+          },
+          {
+            "criterion": "Canonical landing",
+            "reference": "/Users/feral/mydev/bbx-gitkb/target/gitkb-handoff/land.log"
+          },
+          {
+            "criterion": "GitHub issue closed with landed SHA",
+            "reference": "https://github.com/bboxy450/bboxy450-term/issues/98#issuecomment-7068508119"
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    allowed_paths = json"[\"crates/bbt-mux/src/plugins\",\"crates/bbt-mux/src/knowledge\",\"crates/bbt-mux/tests\",\"crates/bbt-doc/src/reports.rs\",\"plugins/gitkb\"]"
+    assignee = json"\"seat:01M7ZNNYSP84SEZPDF4YTP8C9F\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    closed = json"{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"op_id\":\"01M7ZVHBHS26C4YBTD3X5G80E1\"}"
+    created = json"\"2026-11-21T15:42:32.198Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7ZCBZYAEB885JASPTWZ8G00\""
+    number = json"1794292861627687"
+    report = json"{\"commit\":\"21e8baacde143e5d1e69ddb962312d3b98ec2878\",\"op_id\":\"01M7ZVGWMT5G0MKYAHSGQN7FSG\",\"report\":\"[[reports/2026-11-21-gitkb-report-created.den]]\",\"reported_by\":\"seat:01M7ZNNYSP84SEZPDF4YTP8C9F\",\"summary\":\"GitKB now accepts linked reports using creation and modification times derived from its stored versions. The private lifecycle passed, and the same regression reproduced the missing creation timestamp with the old adapter. Nextest passed 39 mux and 28 provider tests, all 973 formal comparisons matched, and make land put the signed fix on main. Removed the creation-only helper and the fixture's duplicate identity configuration. GitHub closed #98 with the landed SHA.\",\"verify_revision\":1}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-21T20:07:47.504Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify = json"\"cargo nextest run -p bboxy450-term-mux -E 'test(report) | test(accept)' && cargo nextest run --manifest-path plugins/gitkb/Cargo.toml\""
+    verify_result = json"{\"command\":\"cargo nextest run -p bboxy450-term-mux -E 'test(report) | test(accept)' && cargo nextest run --manifest-path plugins/gitkb/Cargo.toml\",\"evidence\":[{\"criterion\":\"Private GitKB linked report acceptance and provider-owned timestamps\",\"reference\":\"/Users/feral/mydev/bbx-gitkb/target/gitkb-handoff/fixed-source.log\"},{\"criterion\":\"Broken control reproduces the #98 refusal\",\"reference\":\"/Users/feral/mydev/bbx-gitkb/target/gitkb-handoff/broken-final.log\"},{\"criterion\":\"Exact Nextest verification\",\"reference\":\"/Users/feral/mydev/bbx-gitkb/target/gitkb-handoff/verify.log\"},{\"criterion\":\"Formal verification on the landed source\",\"reference\":\"/Users/feral/mydev/bbx-gitkb/target/gitkb-handoff/formal.log\"},{\"criterion\":\"Canonical landing\",\"reference\":\"/Users/feral/mydev/bbx-gitkb/target/gitkb-handoff/land.log\"},{\"criterion\":\"GitHub issue closed with landed SHA\",\"reference\":\"https://github.com/bboxy450/bboxy450-term/issues/98#issuecomment-7068508119\"}],\"exit_code\":0}"
+    verify_revision = json"1"
+    provenance = json"{\"digest\":\"sha256:ba2bde10b2d9b332ec803c9f3049cb974c3eb437f9ab28e1fbb50a2e45f5d2e2\",\"frontmatter_digest\":\"sha256:32db4a0599e7bdbd1a5357214e80d0975b174b414a1193465ee347d3f95c9d4d\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"EmlN0sa4g4dbKpQE7f9Qh+NoLnzYlsFCWNlMdPRyFKnPDbCiW/FNHNNMEPYWwNP3Z44Yn/dbQhTictx0ZQ52Dg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/738\",\"event\":{\"id\":\"01M7ZVHQ7TGJPK7BJHFEKA0FC9\",\"sequence\":738,\"hash\":\"96d6d7c8c5813b99f7d02fdf5edfc2ea51f8217823401b8c8237421b0cb0994d\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

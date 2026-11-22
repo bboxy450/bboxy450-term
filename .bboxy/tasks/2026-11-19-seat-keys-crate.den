@@ -1,0 +1,116 @@
+module tasks.`2026-11-19-seat-keys-crate`
+
+task SeatKeysCrate {
+  title "Nodes phase 2: bboxy450-seat-keys crate (Grant, Revoke, Rotate, verify) and the SeatKeyChain model"
+  verify $ cargo nextest run -p bboxy450-seat-keys && make test-formal
+  paths "crates/bboxy450-seat-keys", "Cargo.toml", "Cargo.lock", "verification", "Makefile", "ATTRIBUTION.md"
+  brief """
+    Our stand (verbatim, `specs/philosophy.md`): Find every abstraction, dependency, framework, and layer that exists only to compensate for the complexity introduced by another layer. Question every inherited architectural decision. Don't make my software more like Linux. Make it more like DOS. Everything should be inspectable, understandable, and modifiable. Subtract before you add. Minimize concepts, not lines of code. Report what you removed.
+
+    ## Goal
+    Implement [[specs/seat-keys]] §1, §2, §3 and §8 as a new pure crate, `crates/bboxy450-seat-keys`: no I/O, no secrets in the verify path. Wiring it into the mesh, GUI and messaging is later work. Do not touch `bbt-mux/src/identity/` in this task.
+
+    ## Steps
+    1. **Types.** `Grant`, `Revoke`, `Rotate`, `Signed<T>`, `RootSet`, `Revocations`, `Authority` and `Refusal`, exactly as §2 and §3 give them.
+       - Signing input: `UTF8("bboxy450/<type>/v1\0") || JCS(record)`, with Ed25519, raw 32-byte keys and unpadded base64url signatures.
+       - Reuse the JCS and Ed25519 code that `bbt-mux` identity already uses, through the same dependency crates. Do not add a second JCS implementation; if the existing one is private to mux, report where it is and use the same crate.
+    2. **`verify`.** Chains are at most 3 links. Scopes must be a subset of the parent's, `expires_at` no later than the parent's, and the issuer equal to the parent's subject. Apply revoke-by-epoch and accept rotations. `Refusal` names the first failing link.
+    3. **Issuing helpers.** Add `issue` and `sign` behind a `Signer` trait, so callers keep custody of the key.
+    4. **Tests.** One test for every refusal named in §9 line 1, plus the happy paths root → node → seat and root → client.
+    5. **Formal model.** Write SeatKeyChain under `verification/` as §8 describes, with both broken controls. Register it in `contracts.toml` and `coverage.toml`, and add the crate to the workspace with a version.
+
+    ## Acceptance
+    - [ ] Every §9 line-1 refusal is tested and passes.
+    - [ ] SeatKeyChain and both broken controls run under `make test-formal`.
+    - [ ] The crate has no I/O dependencies; show its dependency list in the report.
+
+    ## Rules
+    - Read first: [[specs/mobile]], [[d1794292861627536-remote-nodes-round-4-mobile-both-platforms]], [[epics/autonomous-nodes-and-mobile]], and the repository `AGENTS.md` and `LAND.md`.
+    - Work only in your worktree and the allowed paths. Use signed commits as Boxy <bboxy450@gmail.com>. Run one build or test at a time, and only targeted tests while you iterate (CPU is shared).
+    - Land through `make land` yourself when verification is green (autonomous landing is authorized). Then write the report at `reports/2026-11-19-<slug>.den` and send `task_report` with the commit SHA and each command with its real exit status.
+    - Unattended only: no operator clicks or prompts, and no desktop capture.
+    - Latitude: you choose internal structure, names and test layout. Stop and message the Oracle only if an invariant or spec line would have to break.
+
+
+    ## Oracle amendment, 2026-11-19 15:05 (Vesper Greywind, seat 01M7TZN6JR4PC59P45MZ14S4Q9)
+    - **Worktree (supersedes the managed checkout):** `/Users/feral/mydev/bbx-seat-keys`, branch `exec/seat-keys`, from `origin/main` (rebased to a48d7d478 at 18:30). Nothing was started before.
+    - **Build slot.** At most 2 compiling executors run machine-wide. Your seat is started only when a slot is free; run one cargo command at a time.
+
+    ## Oracle amendment, 2026-11-19 18:30 (Vesper Greywind, seat 01M7VC8EK2C7DQXBNCE9V0J0MH)
+    - New delegating Oracle seat; the brief is otherwise unchanged.
+    - **One landing gate machine-wide.** Before `make land` or `make test-formal`, run `pgrep -fl 'land-fast|ci-local|scripts/formal.py|land.sh'`. If one is running, wait for it to exit (poll every 5 min with a sleep loop in your shell, not a message), then rebase and land.
+
+    ## Oracle amendment, 2026-11-19 18:50 (Vesper Greywind): new-crate registrations
+    - **Granted paths:** `scripts/layering.sh` (add the crate to `ORDER`), `crates/bboxy450-term/tests/formal_contracts/models.rs` (SeatKeyChain exporter hook), `.bboxy/specs/licensing.md` (the crate's licensing row and its layer-table entry).
+    - Edit `licensing.md` in your worktree and land it in the same signed commit as the crate, so the licence check and the crate land together. No separate KB write is needed.
+
+    ## Oracle amendment, 2026-11-19 20:40 (Vesper Greywind): harness pin for the Clippy gate
+    - **Cause:** main's harness pin `ae2cb09` predates the harness lint fixes `fe742a3` (d0.rs, inspect.rs) and `82cfde1`; your Cargo.toml change widens Clippy to the harness.
+    - **Do:** in your worktree, `make bump-harness REV=ac9afae` (harness origin/main ancestor: fe742a3, 82cfde1, ac9afae; it stops **before** `d63534e` preserve_order, which is under investigation in ui-kit). Commit it on its own, signed: `Rust 1.100 lint: bboxy450-harness pin ae2cb09 -> ac9afae`. Then rerun `make land` (one gate machine-wide). `crates/bboxy450-harness` (the gitlink) is now an allowed path; do not edit harness sources.
+    - If the harness lib tests at ac9afae fail in the land, report the failing test names and stop.
+
+    ## Oracle amendment, 2026-11-19 21:00 (Vesper Greywind): wait for ui-kit's pin
+    - **Finding:** no harness pin is green on its own. `ac9afae` fails `python_execute::tests::default_result_is_lean_and_detail_keeps_the_full_record` (needs insertion order); `d63534e`+ adds `preserve_order`, which breaks 10 mux tests. The ui-kit task owns that fix (mux side) and lands harness `7717bcc`+.
+    - **Do:** drop your pin commit `7f9bf0245` (keep `a39feb66a`). Stop and stay idle; do not poll. When ui-kit lands, the Oracle amends this brief again; then rebase on origin/main and `make land`.
+
+    ## Oracle amendment, 2026-11-20 10:30 (Vesper Greywind): land now
+    - ui-kit landed: origin/main `f17cc5295` pins harness `7717bcc` (preserve_order), with the mux fix and the doctest `--no-tests` repair.
+    - **Do:** drop your pin commit `7f9bf0245` if still present, keep `a39feb66a`, `git rebase origin/main`, then `make land` (one gate machine-wide; nothing else is landing now). Write the report and send `task_report`.
+
+    ## Oracle amendment, 2026-11-20 11:05 (Vesper Greywind): corpus links fixed on main
+    - `716aefbee` on origin/main turns the five `[[tasks/2026-11-13-*]]` links in `epics/autonomous-nodes-and-mobile.den` into plain historical references (they never existed in this KB). Do not edit the epic.
+    - **Do:** `git rebase origin/main`, then `make land` (one gate machine-wide), report.
+
+
+    ## Report from seat:01M7VCES93YSCXFJKKQFM1BE5Z
+
+    [[Verified]] Landed signed `9fde68866f659b7ac47bb00b5271c185b09dae1f` on `origin/main`. The offline crate adds signed grants, monotone revocations, root rotation and named chain refusals. The crate suite exited 0 with 17/17, the initial `make test-formal` and final `make test-formal FORMAL_REUSE=1` exited 0 with 967 matched native/TLC models, and final `make land` exited 0. Both SeatKeyChain controls reached their named safety violations. Removed the temporary harness-pin commit and replaced the licensing and layering entries. The diff removed zero lines from mux identity. The worktree is clean. The linked report records the dependencies, previous gate failures and current-source receipt.
+
+    ```json
+    {
+      "op_id": "01M7X6A3CAWGQGQM68JBC3VNYB",
+      "commit": "9fde68866f659b7ac47bb00b5271c185b09dae1f",
+      "report": "[[reports/2026-11-19-seat-keys-crate.den]]",
+      "verify_result": {
+        "command": "cargo nextest run -p bboxy450-seat-keys && make test-formal",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Every §9 line-1 refusal is tested and passes.",
+            "reference": "crates/bboxy450-seat-keys/tests/seat_keys.rs:136,150,171,201,228,265,274 and target/seat-keys-land.log:45 (17 passed)"
+          },
+          {
+            "criterion": "SeatKeyChain and both broken controls run under `make test-formal`.",
+            "reference": "verification/contracts.toml:2011 and current-source receipt 75f20aa757e92629fb4b39cef30a6b15efb3960bc5b24b38f8727cea3044c70c (target/seat-keys-land.log:3187)"
+          },
+          {
+            "criterion": "The crate has no I/O dependencies; show its dependency list in the report.",
+            "reference": "crates/bboxy450-seat-keys/Cargo.toml:11 and cargo tree --locked -p bboxy450-seat-keys -e normal --depth 1 in reports/2026-11-19-seat-keys-crate.den"
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    allowed_paths = json"[\"crates/bboxy450-seat-keys\",\"Cargo.toml\",\"Cargo.lock\",\"verification\",\"Makefile\",\"ATTRIBUTION.md\",\"scripts/layering.sh\",\"crates/bboxy450-term/tests/formal_contracts/models.rs\",\".bboxy/specs/licensing.md\",\"crates/bboxy450-harness\"]"
+    assignee = json"\"seat:01M7VCES93YSCXFJKKQFM1BE5Z\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    closed = json"{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"op_id\":\"01M7X6AQVW50F5XDFJ3NYBJ174\"}"
+    created = json"\"2026-11-19T15:34:44.931Z\""
+    created_by = json"\"seat:01M7T65M2S25WYQKF65ZXM5RZ8\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7T74934B6HXY7X01Y5F2ZJT\""
+    number = json"1794292861627540"
+    report = json"{\"commit\":\"9fde68866f659b7ac47bb00b5271c185b09dae1f\",\"op_id\":\"01M7X6A3CAWGQGQM68JBC3VNYB\",\"report\":\"[[reports/2026-11-19-seat-keys-crate.den]]\",\"reported_by\":\"seat:01M7VCES93YSCXFJKKQFM1BE5Z\",\"summary\":\"[[Verified]] Landed signed `9fde68866f659b7ac47bb00b5271c185b09dae1f` on `origin/main`. The offline crate adds signed grants, monotone revocations, root rotation and named chain refusals. The crate suite exited 0 with 17/17, the initial `make test-formal` and final `make test-formal FORMAL_REUSE=1` exited 0 with 967 matched native/TLC models, and final `make land` exited 0. Both SeatKeyChain controls reached their named safety violations. Removed the temporary harness-pin commit and replaced the licensing and layering entries. The diff removed zero lines from mux identity. The worktree is clean. The linked report records the dependencies, previous gate failures and current-source receipt.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-20T19:18:32.658Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"cargo nextest run -p bboxy450-seat-keys && make test-formal\",\"evidence\":[{\"criterion\":\"Every §9 line-1 refusal is tested and passes.\",\"reference\":\"crates/bboxy450-seat-keys/tests/seat_keys.rs:136,150,171,201,228,265,274 and target/seat-keys-land.log:45 (17 passed)\"},{\"criterion\":\"SeatKeyChain and both broken controls run under `make test-formal`.\",\"reference\":\"verification/contracts.toml:2011 and current-source receipt 75f20aa757e92629fb4b39cef30a6b15efb3960bc5b24b38f8727cea3044c70c (target/seat-keys-land.log:3187)\"},{\"criterion\":\"The crate has no I/O dependencies; show its dependency list in the report.\",\"reference\":\"crates/bboxy450-seat-keys/Cargo.toml:11 and cargo tree --locked -p bboxy450-seat-keys -e normal --depth 1 in reports/2026-11-19-seat-keys-crate.den\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:59089272d654ad07b505b9f3d58242634480f6e14653c7925fe83d774e5c1c0d\",\"frontmatter_digest\":\"sha256:242c5bfdb8c9e2a9e74f704efd880867a05c648efb0a3bfc79eb07ef221b84aa\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"7hXKxaBfEfPXVy/tvRo4REzVbciimH0pj/PzHXJ2EgK2n1L6slMrfiuEag/y1Xzvg+u484zpdY2/P9bR/RulDQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/431\",\"event\":{\"id\":\"01M7X6ATN21Y8VVP2T11ADW90K\",\"sequence\":431,\"hash\":\"4cc47b75007acf48dc40c248ed3e57246e318d4b6bb99ec01f6a30a90cc36fb1\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

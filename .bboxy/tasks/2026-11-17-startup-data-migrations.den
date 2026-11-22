@@ -1,0 +1,64 @@
+module tasks.`2026-11-17-startup-data-migrations`
+
+task StartupDataMigrations {
+  title "Preserve legacy runtime records through versioned startup migrations"
+  verify $ make test-data-migrations && make test-data-migration-models
+  paths "/Users/feral/mydev/bboxy450-term-migrations"
+  brief """
+    ROLE: solo. Direct operator request: read /tmp/bboxy-incident1.md, preserve ongoing work on other laptops, repair serialization compatibility, add reliable versioned migrate() calls at startup, verify only affected behavior and land on main promptly. Worktree /Users/feral/mydev/bboxy450-term-migrations, branch fix/startup-data-migrations. Scope: mux SQLite/event format and metadata signatures; parent JSON feature guard; focused Rust/process/formal tests, model inventory, Make targets and attribution. Accept: original sorted/insertion ordered signed events unchanged after upgrade, append and restart; transactional ordered migrations, failure rollback/resume and future-schema refusal; live PTY survives logic restart; scoped native/TLC models and broken controls pass. No runtime deletion, operator prompt, live restart, install or release.
+
+    ## Report from seat:01M7P1V6TMT1VV6ZWS0831Z6ED
+
+    Landed on origin/main. Startup now applies ordered SQLite migrations in place and preserves both historical JSON orders. Verified 196 retained event byte sequences, hashes and signatures, rollback and retry, and the same live PTY across logic restart. Removed the separate checkpoint schema probe and reliance on harness feature unification. The focused tests and landing gate exited 0, with native/TLC parity across 964 models.
+
+    ```json
+    {
+      "commit": "abf9809c4745c8c0f6de530530ab5cfc4ddc014e",
+      "op_id": "01M7P7ZWDY16PS3VYVM1YSD4TT",
+      "report": "[[reports/2026-11-17-startup-data-migrations.den]]",
+      "verify_result": {
+        "command": "make test-data-migrations && make test-data-migration-models",
+        "evidence": [
+          {
+            "criterion": "Original sorted/insertion ordered signed events unchanged after upgrade, append and restart",
+            "reference": "crates/bbt-mux/src/store/events.rs:696; native old-writer tests and 196 private retained samples passed"
+          },
+          {
+            "criterion": "Transactional ordered migrations, failure rollback/resume and future-schema refusal",
+            "reference": "crates/bbt-mux/src/store/sqlite.rs:305 and :372; 37 focused mux unit tests passed"
+          },
+          {
+            "criterion": "Live PTY survives logic restart",
+            "reference": "crates/bbt-mux/tests/logic.rs:143; 14 integration tests passed including same-child/exact-screen witness"
+          },
+          {
+            "criterion": "Scoped native/TLC models and broken controls pass",
+            "reference": "target/data-migration/evidence.json; four identical graphs, two expected safety refusals; clean-source landing receipt 2eff24e5c864a60a1abc27a1ba1272a46d2158b972722bf8a632b29904ff9dca"
+          }
+        ],
+        "exit_code": 0
+      }
+    }
+    ```
+    """
+
+  managed {
+    assignee = json"\"seat:01M7P1V6TMT1VV6ZWS0831Z6ED\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"OOIYmGQTFLZkToRJMeiQmqc7xl1cHpvlFBZ6zZOq1bE=\",\"signer\":\"seat:01M7P1V6TMT1VV6ZWS0831Z6ED\"}"
+    closed = json"{\"by\":\"seat:01M7P1V6TMT1VV6ZWS0831Z6ED\",\"op_id\":\"01M7P80GSXZP39CYDH1YGT7QFT\"}"
+    created = json"\"2026-11-18T00:28:52.233Z\""
+    created_by = json"\"seat:01M7P06G8TSCSZFY1T3607DB20\""
+    delegated_by = json"\"seat:01M7P1V6TMT1VV6ZWS0831Z6ED\""
+    id = json"\"01M7P0WVFV8K8KCHQRXCXW0GTY\""
+    number = json"1794292861627520"
+    provenance = json"{\"digest\":\"sha256:05bb2cc50782d4bb931529ac86cb20914f429428084029a083e1fb7eddc8ba5f\",\"event\":{\"hash\":\"b0615f64c8838cdb88e65e93fbe71dc40218dabe16a263d86c938cf837342f7e\",\"id\":\"01M7P80P5HMZVZDESJ9AGD072S\",\"sequence\":15},\"frontmatter_digest\":\"sha256:c12f0308b0b4a2b1288135ddeb3fba8fca584f9a898cdba1e506049c6fd4a4e4\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/15\",\"sig\":\"v0mr4VqKffLYGZuIiLorCoWqR2K9ooKBPUyBsijjSU5/eNwB53FgwFzSVbKqtuP/jClIFDclmrCmIiXUex0wDg==\",\"signer\":\"seat:01M7P1V6TMT1VV6ZWS0831Z6ED\"}"
+    report = json"{\"commit\":\"abf9809c4745c8c0f6de530530ab5cfc4ddc014e\",\"op_id\":\"01M7P7ZWDY16PS3VYVM1YSD4TT\",\"report\":\"[[reports/2026-11-17-startup-data-migrations.den]]\",\"reported_by\":\"seat:01M7P1V6TMT1VV6ZWS0831Z6ED\",\"summary\":\"Landed on origin/main. Startup now applies ordered SQLite migrations in place and preserves both historical JSON orders. Verified 196 retained event byte sequences, hashes and signatures, rollback and retry, and the same live PTY across logic restart. Removed the separate checkpoint schema probe and reliance on harness feature unification. The focused tests and landing gate exited 0, with native/TLC parity across 964 models.\",\"verify_revision\":0}"
+    role = json"\"solo\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-18T02:33:16.589Z\""
+    updated_by = json"\"seat:01M7P1V6TMT1VV6ZWS0831Z6ED\""
+    verify_result = json"{\"command\":\"make test-data-migrations && make test-data-migration-models\",\"evidence\":[{\"criterion\":\"Original sorted/insertion ordered signed events unchanged after upgrade, append and restart\",\"reference\":\"crates/bbt-mux/src/store/events.rs:696; native old-writer tests and 196 private retained samples passed\"},{\"criterion\":\"Transactional ordered migrations, failure rollback/resume and future-schema refusal\",\"reference\":\"crates/bbt-mux/src/store/sqlite.rs:305 and :372; 37 focused mux unit tests passed\"},{\"criterion\":\"Live PTY survives logic restart\",\"reference\":\"crates/bbt-mux/tests/logic.rs:143; 14 integration tests passed including same-child/exact-screen witness\"},{\"criterion\":\"Scoped native/TLC models and broken controls pass\",\"reference\":\"target/data-migration/evidence.json; four identical graphs, two expected safety refusals; clean-source landing receipt 2eff24e5c864a60a1abc27a1ba1272a46d2158b972722bf8a632b29904ff9dca\"}],\"exit_code\":0}"
+    body_tail = json"\"\\n\""
+  }
+}

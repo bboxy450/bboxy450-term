@@ -1,0 +1,80 @@
+module tasks.`2026-11-20-python-store-scope-investigation`
+
+task PythonStoreScopeInvestigation {
+  title "Investigate: how Run Python store['key'] works, and whether a swarm-shared state (swarm['key']) should exist"
+  verify $ test -f .bboxy/reports/2026-11-20-python-store-scope.den
+  paths ".bboxy/reports"
+  brief """
+    Our stand: question every inherited decision; subtract before you add. **Investigation only: no code change.** Operator: "Shared state? SCARY - investigate".
+
+    ## Known
+    `store` is per-session today: harness `src/python_execute/worker.py:677` `store = Store(_launch["state"])`, one JSON file per key (key 1-128 chars, size cap at `worker.py:482`); usage text in `src/python_execute/mod.rs:956`; results list `stored: [{key, bytes}]`.
+
+    ## Answer, with file:line evidence
+    1. Exact scope and lifetime: per seat? per harness session? per process generation? Does it survive restart, seat close, resume? Who can read the directory (other seats, other users, the GUI)? Is it ever cleaned up (disk growth)?
+    2. Concurrency: two concurrent python_execute runs in one session writing the same key: atomic replace, last-writer-wins, or torn file?
+    3. What a `swarm['key']` would need: identity/authority (which seats may read/write; capability, not role name), concurrency (CAS revisions vs last-writer-wins), durability and history, size limits, visibility in the GUI, and how it differs from what already exists: KB records (`knowledge_write`), channels/messages, artifacts (`artifact_claim`, and the planned Blobs-backed artifact store in specs/python-charts.den). Prefer reusing one of these.
+    4. Risks named concretely: covert channel between seats bypassing message audit, prompt-injection persistence, cross-task data leakage, unbounded growth, lost updates.
+    5. Recommendation: **no new concept**, extend an existing primitive, or a new primitive, with the one-paragraph design and the TLA+ state variables/invariants it would need. Include an A -> B -> A and a lost-update scenario.
+
+    Write the report with `knowledge_write` at `reports/2026-11-20-python-store-scope.den` and send `task_report`. Read-only: no builds needed beyond reading source.
+
+    ## Report from seat:01M7XMFT73YNXYB570VXPHZMBW
+
+    [[Investigate]] Keep Run Python `store` as harness-session scratch and reuse KB records, audited messages and planned artifact pins for shared data. [[Observed]] The live path is session-scoped, source shows same-session resume reuses it, and same-key assignment is an atomic replace with last-writer-wins semantics. There is no aggregate retention limit or CAS. The full report covers same-UID access and GUI visibility, risks, and the revision and authority invariants with A→B→A and lost-update controls. The source grep, source diff and report-existence checks exited 0. The KB readback matched the task and report digest. The optional local checkpoint exited 1 because reports are Git-ignored by policy. The signed report remains readable and machine-local. No source files were added or removed and no source commit was created.
+
+    ```json
+    {
+      "op_id": "01M7XMQJ1AN5QCNG7V0TB2A5XT",
+      "commit": null,
+      "report": "[[reports/2026-11-20-python-store-scope.den]]",
+      "verify_result": {
+        "command": "test -f .bboxy/reports/2026-11-20-python-store-scope.den",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Exact scope, lifetime, access and cleanup",
+            "reference": "reports/2026-11-20-python-store-scope.den § Scope, lifetime and access"
+          },
+          {
+            "criterion": "Same-session concurrent writes",
+            "reference": "reports/2026-11-20-python-store-scope.den § Concurrency"
+          },
+          {
+            "criterion": "Shared-state requirements and existing primitives",
+            "reference": "reports/2026-11-20-python-store-scope.den § Reuse and risks and § Recommendation and model"
+          },
+          {
+            "criterion": "Concrete risks",
+            "reference": "reports/2026-11-20-python-store-scope.den § Reuse and risks"
+          },
+          {
+            "criterion": "Recommendation, TLA+ state and invariants, ABA and lost update",
+            "reference": "reports/2026-11-20-python-store-scope.den § Recommendation and model"
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    assignee = json"\"seat:01M7XMFT73YNXYB570VXPHZMBW\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    closed = json"{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"op_id\":\"01M7XMRXBGG98JV507FYRJ8M9B\"}"
+    created = json"\"2026-11-20T23:25:43.394Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7XMFD1NJC9VQP51QNBNDYDM\""
+    number = json"1794292861627644"
+    report = json"{\"commit\":null,\"op_id\":\"01M7XMQJ1AN5QCNG7V0TB2A5XT\",\"report\":\"[[reports/2026-11-20-python-store-scope.den]]\",\"reported_by\":\"seat:01M7XMFT73YNXYB570VXPHZMBW\",\"summary\":\"[[Investigate]] Keep Run Python `store` as harness-session scratch and reuse KB records, audited messages and planned artifact pins for shared data. [[Observed]] The live path is session-scoped, source shows same-session resume reuses it, and same-key assignment is an atomic replace with last-writer-wins semantics. There is no aggregate retention limit or CAS. The full report covers same-UID access and GUI visibility, risks, and the revision and authority invariants with A→B→A and lost-update controls. The source grep, source diff and report-existence checks exited 0. The KB readback matched the task and report digest. The optional local checkpoint exited 1 because reports are Git-ignored by policy. The signed report remains readable and machine-local. No source files were added or removed and no source commit was created.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-20T23:31:12.309Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"test -f .bboxy/reports/2026-11-20-python-store-scope.den\",\"evidence\":[{\"criterion\":\"Exact scope, lifetime, access and cleanup\",\"reference\":\"reports/2026-11-20-python-store-scope.den § Scope, lifetime and access\"},{\"criterion\":\"Same-session concurrent writes\",\"reference\":\"reports/2026-11-20-python-store-scope.den § Concurrency\"},{\"criterion\":\"Shared-state requirements and existing primitives\",\"reference\":\"reports/2026-11-20-python-store-scope.den § Reuse and risks and § Recommendation and model\"},{\"criterion\":\"Concrete risks\",\"reference\":\"reports/2026-11-20-python-store-scope.den § Reuse and risks\"},{\"criterion\":\"Recommendation, TLA+ state and invariants, ABA and lost update\",\"reference\":\"reports/2026-11-20-python-store-scope.den § Recommendation and model\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:b5dbbc52b6e9dc90694f8d46c411c19f3637cda22b3810b039a58cd2b29f9242\",\"frontmatter_digest\":\"sha256:30ba0724eeca8c1d4359deaa2f6a0c19ea6d67165f669dc1d74f151bc64e648b\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"lo0zWLCeTxPDbnXQSCGHR+WsHr6tqv17Hp+1e9FGSQAP9ruI5vJTgRaxjeSftiZExMUaE2BL5dKqz9kZ/axYAw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/514\",\"event\":{\"id\":\"01M7XMSF1NXK4YT40WES0AF87T\",\"sequence\":514,\"hash\":\"b3e81160a589ae96889659ddf2b1373bc9e0c3b4acce492ca1f80a2d19c8021a\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

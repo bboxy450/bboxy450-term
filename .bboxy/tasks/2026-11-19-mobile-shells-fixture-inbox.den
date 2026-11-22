@@ -1,0 +1,159 @@
+module tasks.`2026-11-19-mobile-shells-fixture-inbox`
+
+task MobileShellsFixtureInbox {
+  title "M0b: bboxy450-term-mobile repo; iOS simulator and Android emulator shells render a fixture Inbox, unattended"
+  verify $ cd /Users/feral/mydev/bboxy450-term-mobile && make test && make ios-smoke && make android-smoke
+  paths "/Users/feral/mydev/bboxy450-term-mobile"
+  brief """
+    Our stand (verbatim, `specs/philosophy.md`): Find every abstraction, dependency, framework, and layer that exists only to compensate for the complexity introduced by another layer. Question every inherited architectural decision. Don't make my software more like Linux. Make it more like DOS. Everything should be inspectable, understandable, and modifiable. Subtract before you add. Minimize concepts, not lines of code. Report what you removed.
+
+    ## Goal
+    The public repo `bboxy450/bboxy450-term-mobile` (checked out at `/Users/feral/mydev/bboxy450-term-mobile`, seeded by the Oracle) builds one Rust app crate for iOS and Android. That app draws a fixture **Inbox** screen (mobile §1, §6) with the bboxy450-term UI kit, in the iOS simulator and on a headless Android emulator. Both are captured unattended. There is no network yet: the fixture is in-process data in the shape of the `Questions` reply (mobile §3).
+
+    ## Steps
+    1. **Submodule.** Add `vendor/bboxy450-term` as a git submodule of `https://github.com/bboxy450/bboxy450-term`. Add `make bump-term [REV=sha]`, modelled on bboxy450-term's `make bump-harness`.
+       - Cargo path dependencies point into `vendor/bboxy450-term/crates/...` for `bboxy450-ui-core`, `bboxy450-ui` and `bboxy450-render`.
+       - Give this repo its own `rust-toolchain.toml` (stable, with the iOS and Android targets).
+    2. **App crate** `crates/bboxy450-term-mobile`:
+       - one portrait layout;
+       - Inbox rows (seat name, role, swarm, node, question text);
+       - an answer form drawn from the question's JSON Schema, using the table in mobile §6 (enum → buttons, boolean → yes/no, string → text field, number → number field, approval options → buttons, anything else → "Answer on the desktop");
+       - tap and scroll mapped from winit touch events;
+       - safe-area insets;
+       - suspend and resume handling that drops the wgpu surface and recreates it.
+       On a tap, an answer is recorded in the fixture and the row shows "answered". The crate builds as a `staticlib` for iOS and a `cdylib` for Android, and as an rlib for host tests.
+    3. **Host test.** `make test` runs `cargo nextest` for the app, plus a headless render of the Inbox to PNG on the host, using `bbt-render`'s headless device. It asserts the fixture question text, measured through the UI kit's layout, and that the frame is non-blank.
+    4. **iOS.**
+       - `make ios-sim` builds `aarch64-apple-ios-sim` and packages a `.app` (Info.plist plus the binary) under `apps/ios/`. Prefer no Xcode project; use one only if unavoidable, and say why.
+       - `make ios-smoke` creates or boots a simulator by name (`bboxy450-smoke`, headless with `xcrun simctl`), installs, launches, waits, and saves a screenshot with `xcrun simctl io <udid> screenshot` to `target/smoke/ios.png`. It asserts the image is not blank. The app logs a READY line the script waits for (`simctl launch --console`).
+       - No signing or Apple account (round 4 §4). The simulator is the only target.
+    5. **Android.**
+       - `make android-tools` installs the JDK (Homebrew `openjdk@17`), the Android command-line tools, platform-tools, one platform, the NDK, the emulator and one arm64 system image under `$ANDROID_HOME` (`/Users/feral/Android/Sdk`). It accepts licences non-interactively, is idempotent, and prints the disk it used. Check `df -h /` first and stop below 20 GB free.
+       - `make android-apk` builds a debug APK through NativeActivity with `android-activity` (winit's Android backend). Use `cargo-ndk` or `xbuild`, installed by `make android-tools`. There is no Kotlin or Java app code.
+       - `make android-smoke` runs `emulator -no-window -no-audio` on its own AVD (`bboxy450-smoke`), installs, launches, waits for a READY logcat line, and runs `adb exec-out screencap -p` to `target/smoke/android.png`, asserting it is not blank. It kills only the emulator PID it started.
+    6. **Repo hygiene.**
+       - `Makefile` with `help`;
+       - source headers per bboxy450-term `ATTRIBUTION.md`;
+       - `verification/coverage.toml` listing the crate and what is checked only by tests (the fixture app has no stateful protocol yet);
+       - README sections for each make target.
+       Push to `origin/main` with signed commits; this repo has no `make land`, so pushing directly is the landing.
+
+    ## Dependency
+    Task [[tasks/2026-11-19-ui-kit-four-platforms]] is landing at the same time in bboxy450-term. It is what lets the kit draw text on iOS and Android. Build the shells, lifecycle and wgpu surface first, using solid shapes. When that task lands on bboxy450-term `main`, run `make bump-term` and add the text. If you finish before it lands, report [[Partial]] with exactly what is missing, and do not patch `vendor/`.
+
+    ## Acceptance
+    - [ ] `make test` exits 0 and asserts the question text in the host render.
+    - [ ] `make ios-smoke` exits 0 and saves a non-blank screenshot showing the fixture Inbox.
+    - [ ] `make android-smoke` exits 0 and saves a non-blank screenshot showing the fixture Inbox.
+    - [ ] No step needs an operator. `make android-tools` is idempotent.
+    - [ ] The report includes the disk used by the Android toolchain and image, and the screenshot paths. Look at the screenshots yourself and describe them.
+
+    ## Rules
+    - Read first: [[specs/mobile]], [[d1794292861627536-remote-nodes-round-4-mobile-both-platforms]], [[epics/autonomous-nodes-and-mobile]], and the repository `AGENTS.md` and `LAND.md`.
+    - Work only in your worktree and the allowed paths. Use signed commits as Boxy <bboxy450@gmail.com>. Run one build or test at a time, and only targeted tests while you iterate (CPU is shared).
+    - Land through `make land` yourself when verification is green (autonomous landing is authorized). Then write the report at `reports/2026-11-19-<slug>.den` and send `task_report` with the commit SHA and each command with its real exit status.
+    - Unattended only: no operator clicks or prompts, and no desktop capture.
+    - Latitude: you choose internal structure, names and test layout. Stop and message the Oracle only if an invariant or spec line would have to break.
+
+
+    ## Report from seat:01M7T75WSA67AN4NQW1X1P1KP8
+
+    Both mobile shells built and captured non-blank Inbox cards unattended. Android preserved the tapped answer through surface recreation. make test exited 0 with 3/3 and exact Yarn/TLC parity. Both mobile smoke targets exited 2 at their text gate. The four-platform kit is still absent from term origin/main. Added native shells, fixture forms and unattended gates, and removed the seed README's live-swarm description and the cosmetic simulator status override. The signed commit is local on a clean worktree. Next, land the shared kit, bump the pin and rerun the gate.
+
+    ```json
+    {
+      "op_id": "01M7T8Z73JGPFNWTYS7G9G7CFZ",
+      "commit": "bc87f841bdfc5179810c45a777a1f5b6c79c62b6",
+      "report": "[[reports/2026-11-19-mobile-shells-fixture-inbox.den]]",
+      "verify_result": {
+        "command": "cd /Users/feral/mydev/bboxy450-term-mobile && make test && make ios-smoke && make android-smoke",
+        "exit_code": 2,
+        "evidence": [
+          {
+            "criterion": "host fixture question and formal check",
+            "reference": "target/evidence/assigned-gate.log and target/formal/evidence.json"
+          },
+          {
+            "criterion": "iOS and Android captures; mobile text blocked by upstream pin",
+            "reference": "target/smoke/{ios,android,android-answered}.png and target/evidence/{assigned-gate,android-signed}.log"
+          },
+          {
+            "criterion": "unattended idempotent Android setup and disk use",
+            "reference": "target/evidence/android-tools-first.log and target/evidence/android-tools-repeat.log"
+          }
+        ]
+      }
+    }
+    ```
+
+
+    ## Amendment (Oracle, 2026-11-19)
+    **Interim push authorized.** Push signed `bc87f841bdfc5179810c45a777a1f5b6c79c62b6` to `bboxy450-term-mobile` `origin/main` now, although `make ios-smoke` and `make android-smoke` exit 2 at their text check. That red result is the expected missing dependency, not a defect. The task stays open: it is complete only when the full verify exits 0, after [[tasks/2026-11-19-ui-kit-four-platforms]] lands and `make bump-term` moves the pin. After the push, stay idle until the Oracle tells you ui-kit has landed.
+
+
+    ## Oracle amendment, 2026-11-20 10:30 (Vesper Greywind, seat 01M7VC8EK2C7DQXBNCE9V0J0MH): ui-kit has landed
+    - term origin/main `f17cc5295` carries the four-platform kit (`61d601100 Render UI text on macOS, iOS, Linux and Android`).
+    - **Worktree:** `/Users/feral/mydev/bboxy450-term-mobile`, branch `main` at `bc87f84` (= origin/main, clean).
+    - **Do:** `make bump-term REV=f17cc5295` -> fix only what the new pin needs (never patch `vendor/`) -> `make test && make ios-smoke && make android-smoke` -> signed commit -> push to `origin/main` (authorized) -> report at `reports/2026-11-20-mobile-shells-fixture-inbox.den` and `task_report` with each command's real exit status.
+    - One heavy build at a time; a term landing (seat-keys) may run concurrently, so keep cargo jobs at the Makefile defaults.
+
+
+    ## Report from seat:01M7X273J7X5KZJ1KFBZS2NPVR
+
+    [[Implement]] The fixture Inbox renders readable question text on both mobile shells. [[Passed]] make test, make ios-smoke and make android-smoke each exited 0 unattended. The host verified the exact question and Yarn/TLC parity. Android retained the tapped answer through surface recreation. Pinned the shared four-platform renderer, made screenshot ink checks mandatory and removed the shapes-only fallback, probe and smoke bypasses. Both make android-tools runs exited 0, with no packages installed on the repeat. The SDK uses 8.3 GiB including the 3.8 GiB image, plus 305 MiB for OpenJDK. Signed 950f6fd is on origin/main and the worktree is clean. The full report is indexed locally under the repository's reports ignore rule.
+
+    ```json
+    {
+      "op_id": "01M7X2NB806TK1R8W8BE635703",
+      "commit": "950f6fd8aa54928e437a81cd9165f608873cb6de",
+      "report": "[[reports/2026-11-20-mobile-shells-fixture-inbox.den]]",
+      "verify_result": {
+        "command": "cd /Users/feral/mydev/bboxy450-term-mobile && make test && make ios-smoke && make android-smoke",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Host exact question text and formal lifecycle checks",
+            "reference": "target/evidence/2026-11-20-test.log; target/formal/evidence.json; target/smoke/host.png"
+          },
+          {
+            "criterion": "Unattended iOS fixture question capture",
+            "reference": "target/evidence/2026-11-20-ios-smoke.log; target/smoke/ios.png"
+          },
+          {
+            "criterion": "Unattended Android fixture question and retained tapped answer",
+            "reference": "target/evidence/2026-11-20-android-smoke-current-tools.log; target/smoke/android.png; target/smoke/android-answered.png; target/smoke/android.log"
+          },
+          {
+            "criterion": "Idempotent unattended tooling and SDK/image disk use",
+            "reference": "target/evidence/2026-11-20-android-tools.log; target/evidence/2026-11-20-android-tools-repeat.log"
+          },
+          {
+            "criterion": "Signed commit matches remote main and worktree is clean",
+            "reference": "target/evidence/2026-11-20-land.log"
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    assignee = json"\"seat:01M7X273J7X5KZJ1KFBZS2NPVR\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    closed = json"{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"op_id\":\"01M7X2PGK739V5HXQG0EEJFCK7\"}"
+    created = json"\"2026-11-19T15:34:40.884Z\""
+    created_by = json"\"seat:01M7T65M2S25WYQKF65ZXM5RZ8\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7T73ZVJD193GS64PQEGY6CR\""
+    number = json"1794292861627538"
+    report = json"{\"commit\":\"950f6fd8aa54928e437a81cd9165f608873cb6de\",\"op_id\":\"01M7X2NB806TK1R8W8BE635703\",\"report\":\"[[reports/2026-11-20-mobile-shells-fixture-inbox.den]]\",\"reported_by\":\"seat:01M7X273J7X5KZJ1KFBZS2NPVR\",\"summary\":\"[[Implement]] The fixture Inbox renders readable question text on both mobile shells. [[Passed]] make test, make ios-smoke and make android-smoke each exited 0 unattended. The host verified the exact question and Yarn/TLC parity. Android retained the tapped answer through surface recreation. Pinned the shared four-platform renderer, made screenshot ink checks mandatory and removed the shapes-only fallback, probe and smoke bypasses. Both make android-tools runs exited 0, with no packages installed on the repeat. The SDK uses 8.3 GiB including the 3.8 GiB image, plus 305 MiB for OpenJDK. Signed 950f6fd is on origin/main and the worktree is clean. The full report is indexed locally under the repository's reports ignore rule.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-20T18:15:06.697Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"cd /Users/feral/mydev/bboxy450-term-mobile && make test && make ios-smoke && make android-smoke\",\"evidence\":[{\"criterion\":\"Host exact question text and formal lifecycle checks\",\"reference\":\"target/evidence/2026-11-20-test.log; target/formal/evidence.json; target/smoke/host.png\"},{\"criterion\":\"Unattended iOS fixture question capture\",\"reference\":\"target/evidence/2026-11-20-ios-smoke.log; target/smoke/ios.png\"},{\"criterion\":\"Unattended Android fixture question and retained tapped answer\",\"reference\":\"target/evidence/2026-11-20-android-smoke-current-tools.log; target/smoke/android.png; target/smoke/android-answered.png; target/smoke/android.log\"},{\"criterion\":\"Idempotent unattended tooling and SDK/image disk use\",\"reference\":\"target/evidence/2026-11-20-android-tools.log; target/evidence/2026-11-20-android-tools-repeat.log\"},{\"criterion\":\"Signed commit matches remote main and worktree is clean\",\"reference\":\"target/evidence/2026-11-20-land.log\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:d5099960fe99d9fd99c5f65ac76f53f1c2e7a0eba01ab8c5a825050077922dae\",\"frontmatter_digest\":\"sha256:761bce6253afccdb3582889f6069412be6aa6938e5257be753ad8787425d0dfd\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"qWCKNEpVAav1TeaftiUEeg7dH9QlXf/ZL18pxUXvcRmeXnhATHiWDSp1d1pKn08uNtZ7A0Wi66EN1fQIGw+0Aw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/395\",\"event\":{\"id\":\"01M7X2PNT4H1Z45G6FV91643B9\",\"sequence\":395,\"hash\":\"b8af5a304f7a453e19e68e94f8efd9ebe8f804443975636be7ae549ea3fcaf2d\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

@@ -1,0 +1,83 @@
+module tasks.`2026-11-20-android-glyph-weight`
+
+task AndroidGlyphWeight {
+  title "Android: thin i/l glyphs inside bold text, and a monospace face where iOS uses proportional"
+  verify $ cd /Users/feral/mydev/bboxy450-term-mobile && make android-smoke
+  paths "crates/bbt-render", "crates/bbt-ui"
+  brief """
+    Our stand: subtract before you add; report what you removed.
+
+    ## Evidence
+    `~/mydev/bboxy450-term-mobile/target/smoke/android-answered.png` (mobile `950f6fd`, term pin `f17cc5295`): in "iris", "scribe" and "Decline" the `i`/`l` glyphs render thin and light while neighbouring glyphs are bold, so a face or weight fallback goes per glyph. All Android text is monospace; iOS (`target/smoke/ios.png`) draws the same Inbox proportional.
+
+    ## Do
+    Find why the Android font chain picks a different face for those glyphs and why the proportional face is missing; fix it in the shared kit, not the mobile shell. Add an ink/width check to the smoke for a bold `i` so the regression is caught. Land in term, then `make bump-term` in mobile.
+    ## Oracle amendment, 2026-11-22 06:20: start
+    - Term worktree `/Users/feral/mydev/bbx-glyph`, branch `exec/android-glyph`, from origin/main `8213133a7`. Mobile repo `/Users/feral/mydev/bboxy450-term-mobile` (main `950f6fd`, pin `f17cc5295`; its `target/` was deleted, so the first build is cold). Fix in term, land, then `make bump-term` in mobile and push (authorized), then rerun `make android-smoke` there.
+    - Start with `python_execute_orient`. Long commands (builds, emulator smoke, `make land`) detached (`nohup ... &`, exit codes under `target/glyph-handoff/`); one gate machine-wide.
+    - Report with the task's verify command and attach the before/after `android-answered.png` paths.
+
+    ## Oracle amendment, 2026-11-22 07:20: inventory repair
+    - Main `8213133a7` pins harness `bd8a855` (includes `47cfbe64` store retention) but term `verification/coverage.toml` lacks the `HarnessPythonStoreRetention` row; the store-retention term commit never landed (non-fast-forward). Granted `verification/coverage.toml`: add exactly that inventory row, in the same form as the neighbouring harness rows, as its **own** signed commit `Inventory the harness Python store retention model`, before your glyph commit. Then `make test-formal` and `make land` as planned.
+
+
+    ## Report from seat:01M81RC1HYENHRG0YDBGSCHTE1
+
+    Android Inbox now renders bold proportional Roboto using real font weights. The shared renderer removes the unconditional monospace face and synthetic outline bold for Android proportional chrome. The new smoke check rejected the baseline and passed after the signed kit bump and mobile push. Bold i ink rose from 25 to 189 pixels and i-to-i distance fell from 60 to 32 px. Term landing passed 92 renderer tests and exact-source native/TLC parity for 995 models.
+
+    ```json
+    {
+      "op_id": "01M821VD5TNZ8KG8J3KZP71DDJ",
+      "commit": "647d97ab85ae5c7a435c47598626298e9f59bd88",
+      "report": "[[reports/2026-11-22-android-glyph-weight.den]]",
+      "verify_result": {
+        "command": "cd /Users/feral/mydev/bboxy450-term-mobile && make android-smoke",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Before capture and negative glyph control",
+            "reference": "/Users/feral/mydev/bboxy450-term-mobile/target/glyph-handoff/android-answered-before.png"
+          },
+          {
+            "criterion": "Post-push answer, surface recreation, bold i ink and proportional spacing",
+            "reference": "/Users/feral/mydev/bboxy450-term-mobile/target/glyph-handoff/android-answered-after.png"
+          },
+          {
+            "criterion": "Exact verification command exit and emitted pixel measurements",
+            "reference": "/Users/feral/mydev/bboxy450-term-mobile/target/glyph-handoff/android-after.log"
+          },
+          {
+            "criterion": "Term landing, signed commit and formal receipt",
+            "reference": "/Users/feral/mydev/bboxy450-term-mobile/target/glyph-handoff/term-land.log"
+          },
+          {
+            "criterion": "Mobile main push of the pinned kit and smoke assertion",
+            "reference": "/Users/feral/mydev/bboxy450-term-mobile/target/glyph-handoff/mobile-push.log"
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    allowed_paths = json"[\"crates/bbt-render\",\"crates/bbt-ui\",\"crates/bbt-ui-model\",\"Cargo.lock\",\"verification/coverage.toml\"]"
+    assignee = json"\"seat:01M81RC1HYENHRG0YDBGSCHTE1\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    closed = json"{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"op_id\":\"01M821VZCYQ152P8K6M2NPCPFG\"}"
+    created = json"\"2026-11-20T18:16:16.375Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7X2RSDTTN9DZGGS90NG15HK\""
+    number = json"1794292861627620"
+    report = json"{\"commit\":\"647d97ab85ae5c7a435c47598626298e9f59bd88\",\"op_id\":\"01M821VD5TNZ8KG8J3KZP71DDJ\",\"report\":\"[[reports/2026-11-22-android-glyph-weight.den]]\",\"reported_by\":\"seat:01M81RC1HYENHRG0YDBGSCHTE1\",\"summary\":\"Android Inbox now renders bold proportional Roboto using real font weights. The shared renderer removes the unconditional monospace face and synthetic outline bold for Android proportional chrome. The new smoke check rejected the baseline and passed after the signed kit bump and mobile push. Bold i ink rose from 25 to 189 pixels and i-to-i distance fell from 60 to 32 px. Term landing passed 92 renderer tests and exact-source native/TLC parity for 995 models.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-22T16:36:52.688Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"cd /Users/feral/mydev/bboxy450-term-mobile && make android-smoke\",\"evidence\":[{\"criterion\":\"Before capture and negative glyph control\",\"reference\":\"/Users/feral/mydev/bboxy450-term-mobile/target/glyph-handoff/android-answered-before.png\"},{\"criterion\":\"Post-push answer, surface recreation, bold i ink and proportional spacing\",\"reference\":\"/Users/feral/mydev/bboxy450-term-mobile/target/glyph-handoff/android-answered-after.png\"},{\"criterion\":\"Exact verification command exit and emitted pixel measurements\",\"reference\":\"/Users/feral/mydev/bboxy450-term-mobile/target/glyph-handoff/android-after.log\"},{\"criterion\":\"Term landing, signed commit and formal receipt\",\"reference\":\"/Users/feral/mydev/bboxy450-term-mobile/target/glyph-handoff/term-land.log\"},{\"criterion\":\"Mobile main push of the pinned kit and smoke assertion\",\"reference\":\"/Users/feral/mydev/bboxy450-term-mobile/target/glyph-handoff/mobile-push.log\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:f8f7006fbb946228654eb1035557f3c3e8a9ac02be7138550c01d318ea741889\",\"frontmatter_digest\":\"sha256:e18c261d8a0db3de820b4c1e848349ff9d11e09ee6992c8f487bb8a8dad003e6\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"ClF7Bt/U7m+ReVAKtPU8JcxZWTVM4bm3fbMMY3xcx+yvpFOasNES3KRX7Ved9a8fHUVioHNOUcq8k+AdB/bBCg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1013\",\"event\":{\"id\":\"01M821W7Y8EZS7GF18CEV78JR8\",\"sequence\":1013,\"hash\":\"d1675b38e626950e772ca0be9a88eba5073e71af7d62e2d870b701db5c0bbfc3\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

@@ -1,0 +1,114 @@
+module tasks.`2026-11-19-full-gate-repairs`
+
+task FullGateRepairs {
+  title "Repair the three full-suite failures: land-script fixture tests, restoring-workspaces parity tree, Yarn diagnostic snapshots on Rust 1.100.0"
+  verify $ make test-parity
+  paths "scripts", "tests", "verification", "crates/bbt-yarn", "crates/bbt-yarn-macros", "crates/bboxy450-term/tests", "Makefile"
+  brief """
+    Our stand: subtract before you add. Fix the cause, and do not loosen the checks.
+
+    ## Goal
+    `make test-parity` is green on `origin/main`. Three failures exist on base `d215b3a2c`, found by [[tasks/2026-11-19-ui-kit-four-platforms]] (see that worktree's `target/ci-local.log`):
+    1. The land-script fixtures: `GateReceiptTests.test_real_ci_entrypoint_binds_success_and_does_not_certify_failure` fails, and `HarnessBumpTests.test_explicit_wide_gate_retains_term_coverage_without_harness_integration` errors. The executor reports that a CI fixture is missing `test-harness-source`.
+    2. The restoring-workspaces parity tree does not match.
+    3. The Yarn diagnostic snapshots differ on Rust 1.100.0: the compiler's output changed.
+
+    ## Steps
+    1. Reproduce each failure on a clean `origin/main`.
+    2. Find each cause. A snapshot that changed with the compiler is regenerated only after you confirm the difference is purely compiler wording; say so for each file.
+    3. Land with `make land` and report the cause of each failure.
+
+    ## Rules
+    Work only in your worktree. Use signed commits. Run one build at a time. Write the report at `reports/2026-11-19-full-gate-repairs.den`, then send `task_report`.
+
+
+    ## Amendment (Oracle, 2026-11-19)
+    `lab/web/startup.js` is added to the allowed paths. At `:48` the reference web startup shows 'Waiting for this operation to finish' for a zero-total operation, where native startup leaves the detail empty. Make the web reference match native; do not loosen the tree comparator.
+
+
+    ## Amendment (Oracle, 2026-11-19): blanket authority for compiler lints
+    - **Authorized:** fix any Rust 1.100 lint or compiler-drift finding the gates report, in any crate. Each fix must be minimal and behaviour-preserving: no `#[allow]` and no change to an assertion. Put the fixes in separate signed commits titled `Rust 1.100 lint: <crate>`. That includes `crates/bbt-ui/src/text_selection.rs:213`. The ui-kit seat has the same fix pending (`4dfdec6`); whichever lands second rebases and drops its duplicate.
+    - Land your parity and fixture repairs through `make land` now, once they are green. Do not hold them for the full suite. Report what remains red by name.
+
+
+    ## Oracle amendment, 2026-11-19 15:05 (Vesper Greywind, seat 01M7TZN6JR4PC59P45MZ14S4Q9)
+    - **Worktree (supersedes the managed checkout):** `/Users/feral/mydev/bbx-gate-repairs`, branch `exec/gate-repairs`, at your 49df32fa3. Its parity/fixture/Yarn repairs are already on main (a63ee2a1a): rebase and keep only what is still missing.
+    - **Add:** a negative control for `scripts/test-dream-c1.py` (c0411341e) proving that a Cargo 1.100 `build/<crate>/<hash>/{fingerprint,out}` layout with no unique SHA match still fails.
+    - **Build slot.** At most 2 compiling executors run machine-wide. Your seat is started only when a slot is free; run one cargo command at a time.
+
+    ## Oracle amendment, 2026-11-21 07:45: two more inherited landing-fixture failures
+    - Full `make test` on origin/main `a05e43aef` fails two landing fixtures: a stage-claim count assertion (`4 != 3`) and a QoS priority assertion (`20`). Evidence: `~/mydev/bbx-svg/target/svg-handoff/chart-ci-base-control.log` (exact base) and `chart-ci-candidate-control.log`. Repair them here, with the Dream C1 negative control already in this brief.
+
+    ## Oracle amendment, 2026-11-21 12:15: current scope (supersedes the goal list above)
+    - The original three failures were fixed on main (`a63ee2a1a`); your old harness-pin lint commit is superseded by main's pin and was dropped. Worktree `/Users/feral/mydev/bbx-gate-repairs`, branch `exec/gate-repairs`, now = origin/main `21e8baacd`, clean.
+    - **Scope now:**
+      1. The two inherited full-`make test` landing-fixture failures: stage-claim count `4 != 3` and QoS priority `20` (exact-base evidence `~/mydev/bbx-svg/target/svg-handoff/chart-ci-base-control.log`). Reproduce on origin/main, find each cause, fix the cause (fixture or code), no assertion loosening.
+      2. The Dream C1 negative control for the Cargo 1.100 build-dir layout (amendment above).
+    - **Verify:** `make test` (full CI) green except failures you prove are unrelated and name. Then `make land`.
+    - **Never run a long command in the foreground** (Codex seats die inside multi-minute tool calls): `nohup sh -c 'make test > target/gate-handoff/test.log 2>&1; echo $? > target/gate-handoff/test.exit' >/dev/null 2>&1 &`, poll briefly. Check `pgrep -fl ci-local.sh` first; start a full `make test` only when no other full gate runs.
+    - Report with the task's own verify command in `verify_result.command`.
+
+    ## Oracle amendment, 2026-11-21 15:00: overlap with SVG Phase C
+    - svg-b landed `fbd0a1c0d` "Repair full-gate parity and QoS witnesses" (scripts/qos.sh, scripts/test-dream-c1.py +30, scripts/test-landing.py) inside Phase C (`57cc8e4e7`). **Rebase onto origin/main first**, rerun the two fixture checks, and only fix what is still red. If your local commits duplicate `fbd0a1c0d`, drop them. If the Dream C1 negative control is already in `scripts/test-dream-c1.py`, say so and do not add a second one.
+
+
+    ## Report from seat:01M7ZVK9YFPRSBR7EJF6DPC5E1
+
+    Both landing fixtures and the Cargo 1.100 Dream C1 controls passed on rebased main 57cc8e4e7. Signed repair fbd0a1c0d landed with make land exit 0. It replaced the stale three-claim assumption with a checked parity stage, moved the question-answer formal target to default QoS, and added zero/two-match refusals beside the unique-SHA control. The full make test-parity run at fbd0a1c0d exited 2 on the C1 wire-order mismatch reproduced on clean base 21e8baacd. Formal verification matched 973 models at fbd0a1c0d. The old-pin harness continuation was interrupted for the amendment after observing a separate ACP stop-reason failure. KB checkpointing failed because reports is Git-ignored. The full report exists as a draft.
+
+    ```json
+    {
+      "op_id": "01M805A8552QFGYMXJBTV8JQBM",
+      "commit": "fbd0a1c0df00ac72b2ef16eeba287cb2b6893dca",
+      "report": "[[reports/2026-11-19-full-gate-repairs.den]]",
+      "verify_result": {
+        "command": "make test-parity",
+        "exit_code": 2,
+        "evidence": [
+          {
+            "criterion": "Both amended landing fixture checks passed on rebased main 57cc8e4e7",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/gate-handoff/rebased-fixtures.log"
+          },
+          {
+            "criterion": "Cargo 1.100 admits exactly one SHA match and refuses zero or two",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/gate-handoff/rebased-dream-c1-receipt.json"
+          },
+          {
+            "criterion": "Full candidate run and reproduced unrelated Dream C1 wire mismatch",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/ci-local.log:1416"
+          },
+          {
+            "criterion": "Exact clean base reproduced the same wire mismatch (exit 100)",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/gate-handoff/base-proto-driver.log"
+          },
+          {
+            "criterion": "Signed repair was landed (exit 0)",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/gate-handoff/land.log:9"
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    allowed_paths = json"[\"Makefile\",\"crates\",\"crates/bboxy450-term/tests\",\"crates/bbt-yarn\",\"crates/bbt-yarn-macros\",\"lab/web/startup.js\",\"scripts\",\"tests\",\"verification\"]"
+    assignee = json"\"seat:01M7ZVK9YFPRSBR7EJF6DPC5E1\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    created = json"\"2026-11-19T17:31:26.017Z\""
+    created_by = json"\"seat:01M7T65M2S25WYQKF65ZXM5RZ8\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7TDSM3ZPZP2KRSVP348NS1V\""
+    number = json"1794292861627564"
+    reconciliation = json"[{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"disposition\":\"implemented\",\"evidence\":[\"origin/main fbd0a1c0d Repair full-gate parity and QoS witnesses; make land exit 0 (~/mydev/bbx-gate-repairs/target/gate-handoff/land.log)\",\"254/254 landing fixtures; formal 973 models / 298 contracts / 41 crates, receipt 2fd963f8...; timed mux 8/8\",\"make test-parity exit 2: 2884/2885, sole failure dream_c1 public_controls_and_pages_conform_to_pinned_producer_schema_and_bytes, reproduced on clean 21e8baacd\",\"report .bboxy/reports/2026-11-19-full-gate-repairs.den\"],\"fresh_accepted\":false,\"kind\":\"historical\",\"op_id\":\"01M805BEWH8WWF7NQ8GV3ANXZ1\",\"previous_status\":\"reported\",\"reason\":\"Scope (two inherited landing fixtures + Dream C1 Cargo 1.100 controls) landed in fbd0a1c0d; full make test-parity still red on two named failures that reproduce on the clean base, moved to a follow-up task.\"}]"
+    report = json"{\"commit\":\"fbd0a1c0df00ac72b2ef16eeba287cb2b6893dca\",\"op_id\":\"01M805A8552QFGYMXJBTV8JQBM\",\"report\":\"[[reports/2026-11-19-full-gate-repairs.den]]\",\"reported_by\":\"seat:01M7ZVK9YFPRSBR7EJF6DPC5E1\",\"summary\":\"Both landing fixtures and the Cargo 1.100 Dream C1 controls passed on rebased main 57cc8e4e7. Signed repair fbd0a1c0d landed with make land exit 0. It replaced the stale three-claim assumption with a checked parity stage, moved the question-answer formal target to default QoS, and added zero/two-match refusals beside the unique-SHA control. The full make test-parity run at fbd0a1c0d exited 2 on the C1 wire-order mismatch reproduced on clean base 21e8baacd. Formal verification matched 973 models at fbd0a1c0d. The old-pin harness continuation was interrupted for the amendment after observing a separate ACP stop-reason failure. KB checkpointing failed because reports is Git-ignored. The full report exists as a draft.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-21T22:59:12.125Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"make test-parity\",\"evidence\":[{\"criterion\":\"Both amended landing fixture checks passed on rebased main 57cc8e4e7\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/gate-handoff/rebased-fixtures.log\"},{\"criterion\":\"Cargo 1.100 admits exactly one SHA match and refuses zero or two\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/gate-handoff/rebased-dream-c1-receipt.json\"},{\"criterion\":\"Full candidate run and reproduced unrelated Dream C1 wire mismatch\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/ci-local.log:1416\"},{\"criterion\":\"Exact clean base reproduced the same wire mismatch (exit 100)\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/gate-handoff/base-proto-driver.log\"},{\"criterion\":\"Signed repair was landed (exit 0)\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/gate-handoff/land.log:9\"}],\"exit_code\":2}"
+    provenance = json"{\"digest\":\"sha256:275a388f3334c0c65c4e1c210f62099a9e937373ffa778b58907093fed30cf54\",\"frontmatter_digest\":\"sha256:9f50dcd82e088849809f17cbcb7f99cf430abd4000d337ffde74ae1599fa5cdd\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"T1itMVl/dXMTyFxzWZZjjIjdF4RRk3Yc5jtx3i/u6shhZhIXmy3pU8SvoHixTwtauJh9F6GUqLomeIl58ZiMAw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/780\",\"event\":{\"id\":\"01M805BJR76CKFRBFK49G5H22J\",\"sequence\":780,\"hash\":\"b5109ddd1aa311375d1ff5893fd83786e13116669c7cd1ba9736cb8f37893876\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

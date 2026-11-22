@@ -1,0 +1,87 @@
+module tasks.`2026-11-20-transcript-inline-images`
+
+task TranscriptInlineImages {
+  title "Inline images in harness transcripts: one off-thread image-preparation hook, fed by the existing document PNG resolver"
+  verify $ cargo nextest run -p bboxy450-harness -E 'test(image)' && cargo nextest run -p bboxy450-term -E 'test(images)'
+  paths "crates/bboxy450-harness", "crates/bboxy450-term/src/documents", "crates/bbt-doc", "Cargo.lock"
+  brief """
+    Our stand: subtract before you add; reuse before you build; no second decoder. Operator (2026-11-20): "render inline images in bboxy harness ... smallest set of changes".
+
+    ## Design (from the approved spec text `specs/python-charts.den` "Image resolver, transcript and canvas", on `origin/handoff/nyx-svg-artifacts-20261120`)
+    - Today: `bbt-doc` parses `![alt](target)` into `Inline::Image { target, alt, asset: None }` (`crates/bbt-doc/src/markdown/parse.rs:350`); layout draws `Piece::Image(asset)` only when `asset` is `Some` and otherwise prints `[image: alt] (target)` (`layout.rs:1080`). Nobody sets `asset` for transcripts.
+    - Documents already resolve images: `crates/bboxy450-term/src/documents/images.rs:60-102` (flat names in `.bboxy/images`, PNG, bounded: 16 MiB encoded, each side 1..2047, <=16 distinct targets per document, <=4,000,000 decoded pixels total; symlink/escape refusals).
+    - **Add one narrow host image-preparation hook** in the harness transcript path before fragment layout (`src/frontends/gui/rich.rs:549-623`, `transcript_body_element` ~602), on the existing off-thread path. The term host implements it with the **same** `images::load`; limits apply per message. Standalone harness hosts without an authorized root show the alt-text placeholder (no file probing).
+    - Invalidate a prepared block when its image result changes even if the message text is unchanged (needed later for artifact updates).
+    - This hook is the one Phase C extends with `artifact:ID[:N]` and SVG ([[tasks/2026-11-20-svg-renderer-artifacts]]); shape it so that branch is one match arm.
+
+    ## Verify
+    - Unit: a message with a `.bboxy/images` PNG gets an asset; missing, oversize, 17th target, symlink, path traversal -> placeholder, rest of the message intact.
+    - Native GUI capture via the app's `--capture` on a private fixture account showing an inline PNG in a transcript reply.
+    - `make land` (one gate machine-wide). Harness change lands through the harness first, then `make bump-harness`.
+    ## Oracle amendment, 2026-11-20 18:20: term host wiring paths
+    - Granted: `crates/bboxy450-term/src/rich_faces.rs` (seat-bound pane connection, :136), `crates/bboxy450-term/src/rich_pane.rs` (off-thread preparation and texture publication, :325), and `crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs` for the private `--capture` witness. Keep the hook narrow: the pane passes its authorized root to the same `documents::images` resolver; no second decoder or store.
+
+    ## Oracle amendment, 2026-11-20 19:00: headless capture path
+    - Granted `crates/bboxy450-term/src/headless.rs`: the headless `--capture` (`headless.rs:522`) uploads pane snapshot textures through the existing `install_document_images`, mirroring the window path at `main.rs:8369`. Reuse that call; no headless-only image path.
+
+
+    ## Report from seat:01M7XBGWB3P8Y1NQD75NPPHT6Y
+
+    [[Done]] Native transcripts paint workspace Markdown PNGs at their natural size. The landed private capture found 6,048 probe pixels in the 96 × 64 image between two reply lines. Nine harness and seven term image tests passed. All 2,456 gallery renders and comparison rows matched the base. Removed full-column stretching and the post-decode pixel check. The signed term and harness commits are on main, with exact-source native/TLC receipts linked in the report.
+
+    ```json
+    {
+      "op_id": "01M7YDX847XWDZ324D3PKSQ6BX",
+      "commit": "dbc521bcec1f08939cb54bbd3f6038cff555a3de",
+      "report": "[[reports/2026-11-20-transcript-inline-images.den]]",
+      "verify_result": {
+        "command": "cargo nextest run -p bboxy450-harness -E 'test(image)' && cargo nextest run -p bboxy450-term -E 'test(images)'",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Harness callback, bitmap bounds and root fencing",
+            "reference": "target/svg-handoff/transcript-images-harness.log"
+          },
+          {
+            "criterion": "Term image admission",
+            "reference": "target/svg-handoff/transcript-images-term-final.log"
+          },
+          {
+            "criterion": "Native capture between text rows",
+            "reference": "target/svg-handoff/transcript-images-landed-capture.log"
+          },
+          {
+            "criterion": "Gallery differential",
+            "reference": "target/svg-handoff/transcript-images-gallery-qualification.json"
+          },
+          {
+            "criterion": "Landed native and TLC parity",
+            "reference": "target/svg-handoff/transcript-images-landed-formal.log"
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    allowed_paths = json"[\"crates/bboxy450-harness\",\"crates/bboxy450-term/src/documents\",\"crates/bbt-doc\",\"Cargo.lock\",\"crates/bboxy450-term/src/rich_faces.rs\",\"crates/bboxy450-term/src/rich_pane.rs\",\"crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs\",\"crates/bboxy450-term/src/headless.rs\"]"
+    assignee = json"\"seat:01M7XBGWB3P8Y1NQD75NPPHT6Y\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    closed = json"{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"op_id\":\"01M7YDXVZJJP0ETFFWR50PV6NZ\"}"
+    created = json"\"2026-11-21T00:14:56.309Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7XQ9GRKHQXPQWJ0NPX1RSB1\""
+    number = json"1794292861627649"
+    report = json"{\"commit\":\"dbc521bcec1f08939cb54bbd3f6038cff555a3de\",\"op_id\":\"01M7YDX847XWDZ324D3PKSQ6BX\",\"report\":\"[[reports/2026-11-20-transcript-inline-images.den]]\",\"reported_by\":\"seat:01M7XBGWB3P8Y1NQD75NPPHT6Y\",\"summary\":\"[[Done]] Native transcripts paint workspace Markdown PNGs at their natural size. The landed private capture found 6,048 probe pixels in the 96 × 64 image between two reply lines. Nine harness and seven term image tests passed. All 2,456 gallery renders and comparison rows matched the base. Removed full-column stretching and the post-decode pixel check. The signed term and harness commits are on main, with exact-source native/TLC receipts linked in the report.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-21T06:50:39.783Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"cargo nextest run -p bboxy450-harness -E 'test(image)' && cargo nextest run -p bboxy450-term -E 'test(images)'\",\"evidence\":[{\"criterion\":\"Harness callback, bitmap bounds and root fencing\",\"reference\":\"target/svg-handoff/transcript-images-harness.log\"},{\"criterion\":\"Term image admission\",\"reference\":\"target/svg-handoff/transcript-images-term-final.log\"},{\"criterion\":\"Native capture between text rows\",\"reference\":\"target/svg-handoff/transcript-images-landed-capture.log\"},{\"criterion\":\"Gallery differential\",\"reference\":\"target/svg-handoff/transcript-images-gallery-qualification.json\"},{\"criterion\":\"Landed native and TLC parity\",\"reference\":\"target/svg-handoff/transcript-images-landed-formal.log\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:bb50f2cf916b295f123542fbe252882c51b078c29633271711fae8223e78b211\",\"frontmatter_digest\":\"sha256:35063694dae740395febe3ee6bc9abb6bac8044fcef765a150ab6ff8233f2fc9\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"PExVHHVPiC891ssCYbaOdkdti3LFaX0AWLtrNlLDKgg8KGFpbJb2/j6tsKZAdOHS1YxXpXGjSY7vZLLtBxmrAQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/610\",\"event\":{\"id\":\"01M7YDY4F58JP51VT1WZWZD7VP\",\"sequence\":610,\"hash\":\"814f6ee4d29345d20e69b2aa112dd89077e8891290c1b24c09e6d4de596ff7da\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

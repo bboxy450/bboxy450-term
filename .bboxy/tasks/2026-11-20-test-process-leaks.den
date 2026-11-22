@@ -1,0 +1,120 @@
+module tasks.`2026-11-20-test-process-leaks`
+
+task TestProcessLeaks {
+  title "Tests leak processes: orphaned supervisor/logic pairs, a Codex app-server daemon and landing-fixture cargo runs outlive their tests"
+  verify $ make test-boundaries
+  paths "crates/bboxy450-term", "crates/bbt-mux", "crates/bbt-supervisor", "scripts"
+  brief """
+    Our stand: subtract before you add; report what you removed.
+
+    ## Evidence (2026-11-20, all ppid 1, killed by the Oracle by exact PID)
+    - `target/debug/bboxy450-term supervisor` + `logic` from the ui-kit managed checkout, `HOME=$TMPDIR/.tmpOBex1e/home` (deleted), alive 15.5 h; they blocked `workspace_release` of the checkout.
+    - `codex app-server daemon` + child from `/tmp/bbt-shared-codex-npclj1_4/home/.codex/...` (v0.166), alive 20 days.
+    - Two `python … landing-fixture-*/.git/fixture-state/bin/cargo test -p c` runs, alive 25 days, fixture dirs deleted.
+
+    ## Do
+    Find each spawning test (real-process boundary tests, the shared-codex fixture, `scripts/test-landing.py` fixtures). Make each test own its children: process group plus kill-on-drop (or the existing test guard if one exists), so a panic or timeout cannot leave them behind. Add one broken control: a test that panics mid-run, followed by an assertion that no process carrying its temp HOME survives. Do not add a new reaper daemon.
+    ## Root cause found for the `dq1-` leaks (Oracle, 2026-11-20 20:40)
+    - Test: `crates/bboxy450-term/tests/dream_read.rs:57` (`tempfile` prefix `dq1-`) starts `--headless --ctl --unattended --test-account ... --run-dir <tmp>/run`. Its `Drop for Process` (`:120-141`) runs `ctl app stop` and kills only the app child; the detached supervisor survives whenever `app stop` does not reach it, reparents to PID 1 and outlives the deleted temp home. Six seen so far (5 from deleted worktrees, 1 from the inbox landing at 19:39, PID 14044).
+    - **Fix direction:** the test owns the supervisor too: after `app stop`, read the supervisor PID from the private run dir (or ask `ctl app status`) and stop exactly that PID, then assert no process with the temp HOME remains. Prefer one shared test helper used by every real-process app test (dream_read, live, headless suites) rather than per-test copies.
+
+
+    ## Report from seat:01M7ZVK9YFPRSBR7EJF6DPC5E1
+
+    [[Verified]] make test-boundaries passed all 39 tests and both Dream Read process witnesses passed. The panic witness removed the private ctl endpoint, observed the live app and backend owners, then found zero processes carrying the fixture HOME. Shared Codex cleanup passed 10 tests and the landing deadline and FIFO controls passed three. The signed change removes frontend-only teardown, duplicate raw PID cleanup and the indefinite fake Cargo pause.
+
+    ```json
+    {
+      "op_id": "01M80NAC48W8W64D7QCJ7E7GTN",
+      "commit": "3dc592c78cde8a1a271026290a08cd0708ec2199",
+      "report": "[[reports/2026-11-21-test-process-leaks.den]]",
+      "verify_result": {
+        "command": "make test-boundaries",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Process boundary gate passes",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/boundaries.log:67"
+          },
+          {
+            "criterion": "A real panic with ctl unavailable leaves no process with the private HOME",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/private-app-final.log:5"
+          },
+          {
+            "criterion": "Shared daemon group and unrelated-owner control",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/shared-codex-cleanup.log:6"
+          },
+          {
+            "criterion": "Paused fake Cargo exits on fixture closure and broken worker-group control still fails as intended",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/landing-cleanup.log:16"
+          }
+        ]
+      }
+    }
+    ```
+
+    ## Oracle amendment, 2026-11-21 19:50: land the leak fix on its own now
+    - The report names `3dc592c78` but it is **not on origin/main** (local in `/Users/feral/mydev/bbx-gate-repairs`, under `8a0d6423b` for the flakes task). A report is accepted only once its commit is on main.
+    - **Do:** land `3dc592c78` alone first: `git switch -c leak-land 3dc592c78`, rebase onto origin/main, `make land` (detached, one gate machine-wide), then return to `exec/gate-repairs`, rebase `8a0d6423b` on the new main and continue the flakes task (the leak fix may remove one flake; measure before changing more).
+    - Then `task_report` again with the landed SHA and `make test-boundaries` as `verify_result.command`.
+
+
+    ## Report from seat:01M7ZVK9YFPRSBR7EJF6DPC5E1
+
+    [[Verified]] The leak-only commit 42dac19c3 landed on origin/main, with 203 integration tests and all 39 exact-source boundary tests passing. Both Dream Read cases passed through their existing registration. The change removes frontend-only cleanup, duplicated raw PID fallbacks and indefinite fake Cargo pauses.
+
+    ```json
+    {
+      "op_id": "01M80RX5J6DCK6R1CQ35RB5XXA",
+      "commit": "42dac19c30db5e64c47e6df453fcaac2f22cc148",
+      "report": "[[reports/2026-11-21-test-process-leaks-landed.den]]",
+      "verify_result": {
+        "command": "make test-boundaries",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "The signed leak-only change is on origin/main",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/leak-land.log:29"
+          },
+          {
+            "criterion": "The exact landed source passed make test-boundaries",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/landed-boundaries.log:65"
+          },
+          {
+            "criterion": "Both Dream Read cases passed under the original single registration",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/leak-land.junit.xml:79"
+          },
+          {
+            "criterion": "The owned daemon group and its child exit and a foreign owner survives",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/shared-codex-cleanup.log:19"
+          },
+          {
+            "criterion": "Paused Cargo exits on closing the fixture writer and the broken control still detects a surviving child",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/landing-cleanup.log:15"
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    assignee = json"\"seat:01M7ZVK9YFPRSBR7EJF6DPC5E1\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    closed = json"{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"op_id\":\"01M80RXQ1JDS334FHJQMV13M5F\"}"
+    created = json"\"2026-11-20T18:27:31.125Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7X3DAHZASK3AQNMGXG0NN3Q\""
+    number = json"1794292861627623"
+    report = json"{\"commit\":\"42dac19c30db5e64c47e6df453fcaac2f22cc148\",\"op_id\":\"01M80RX5J6DCK6R1CQ35RB5XXA\",\"report\":\"[[reports/2026-11-21-test-process-leaks-landed.den]]\",\"reported_by\":\"seat:01M7ZVK9YFPRSBR7EJF6DPC5E1\",\"summary\":\"[[Verified]] The leak-only commit 42dac19c3 landed on origin/main, with 203 integration tests and all 39 exact-source boundary tests passing. Both Dream Read cases passed through their existing registration. The change removes frontend-only cleanup, duplicated raw PID fallbacks and indefinite fake Cargo pauses.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-22T04:41:13.371Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"make test-boundaries\",\"evidence\":[{\"criterion\":\"The signed leak-only change is on origin/main\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/leak-land.log:29\"},{\"criterion\":\"The exact landed source passed make test-boundaries\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/landed-boundaries.log:65\"},{\"criterion\":\"Both Dream Read cases passed under the original single registration\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/leak-land.junit.xml:79\"},{\"criterion\":\"The owned daemon group and its child exit and a foreign owner survives\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/shared-codex-cleanup.log:19\"},{\"criterion\":\"Paused Cargo exits on closing the fixture writer and the broken control still detects a surviving child\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/fixture-handoff/landing-cleanup.log:15\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:e7d75e04cf8e1d9839e7de9cbbb647fd79922f962dfc1d9bd955f40b15d1d9a6\",\"frontmatter_digest\":\"sha256:1027da5e7df204989a353d3032b6ee264dda43d9cef7025a257dfcf23e44ee02\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"SC6IK3gF+7EXQzqeHtsQX5HbLGaejPI11GObVB7j63DOMC6LCm0fDS7Z3BIlJPkCcJBYw17poRunuWh5seNgDg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/864\",\"event\":{\"id\":\"01M80RXV2HZ6W5R6BCNT9HXNN4\",\"sequence\":864,\"hash\":\"83f81656d2434240d13d4a01520890440abf22e19495c4d5c87d9ff0aa1e8c9e\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

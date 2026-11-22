@@ -1,0 +1,105 @@
+module tasks.`2026-11-20-den-readable-counterexamples-statechart`
+
+task DenReadableCounterexamplesStatechart {
+  title "Take from handoff formal-talk 0f06597b6: Den counterexamples in the spec's words, and the statechart view / den_statechart tool"
+  verify $ cargo nextest run -p bboxy450-den -p bboxy450-code && make test-formal
+  paths "crates/bboxy450-den", "crates/bboxy450-code", "scripts/test-formal.py", "verification/README.md", "ATTRIBUTION.md"
+  brief """
+    Our stand: subtract before you add; minimize concepts; report what you removed.
+
+    ## Source
+    `origin/handoff/formal-talk-20261120` commit `0f06597b6` (2026-11-17, base `e513642b0`). It cherry-picks cleanly onto `origin/main` `f17cc5295` (Oracle checked; nothing of it is on main).
+
+    ## Take
+    - `crates/bboxy450-den` checker/render/lib/tests: X601 counterexamples name the claim's own sentence and each step's event, case and changed fields; X651 loops the same; the repair hint no longer suggests weakening the property. The old one-line trace format goes (replaced, not kept beside).
+    - `bboxy450_den::statechart` (Mermaid reachable graph, false-invariant states marked, up to 16 states in a lowered spec's Views) and `bboxy450-code` `den_statechart` with its query tests.
+    - The matching `scripts/test-formal.py` lines, and only the `verification/README.md` lines describing the two items above.
+    - Keep the commit's "Inspired by" credit (Lauren Tan, pstack, no code copied) in the commit message and ATTRIBUTION.md if the repository records inspirations there.
+
+    ## Drop (Oracle ruling)
+    - `crates/bbt-mux/src/adapters/skills/bboxy450/SKILL.md` step 3: it adds ~15 lines to every seat's launch prompt and repeats the mandate that `AGENTS.md`/`verification/README.md` already hold (say it once).
+    - `scripts/formal-drift.py` and the `make formal-drift` target: advisory, and `make land` already selects checks from the diff.
+
+    ## Steps
+    Worktree: the Oracle names it when a build slot is free. `git cherry-pick -n 0f06597b6`, restore the dropped paths, one signed commit, the verify, `make land` (one gate machine-wide), report.
+    ## Oracle amendment, 2026-11-20 19:50: worktree
+    - Worktree `/Users/feral/mydev/bbx-den`, branch `exec/den-statechart`, from origin/main `b0dbefa4c`. Start with `python_execute_orient` and do the cherry-pick, restore and checks from one `python_execute` program.
+    - Write each long command's output and exit code under `target/den-handoff/` (`<step>.log`, `<step>.exit`) so the Oracle can resume from evidence if your session ends. One gate machine-wide.
+
+    ## Oracle ruling, 2026-11-20 19:58: credit beside the code, not ATTRIBUTION.md
+    - Do **not** edit `ATTRIBUTION.md` or its 38 crate mirrors (no `make sync-licenses` for this task).
+    - Put the credit where the policy wants it, beside the distinctive implementation: a compact comment at the `statechart` module/function in `crates/bboxy450-den` ("Inspired by Lauren Tan, \"All Code Is Slop (Except Mine)\", pstack statechart skill, https://github.com/cursor/plugins/tree/main/pstack; ideas only, no code copied. Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md"), and the same line in the commit message. `make test-licenses` stays green unchanged.
+
+    ## Operator ruling, 2026-11-20 20:45: no external inspiration credit (supersedes the two credit instructions above)
+    Operator: "we were doing TLA+ and LEAN before that talk, we are doing our own thing!"
+    - Do **not** add any "Inspired by" credit, comment or commit-message line for Lauren Tan, the talk or pstack. Remove it if already written; the source commit `0f06597b6`'s message text about it is not carried over.
+    - Our own formal work (TLA+/TLC, Yarn, Den, Lean) predates it; credit nothing external for this change. No ATTRIBUTION.md edit.
+
+    ## Operator ruling, 2026-11-20 20:50: FINAL credit wording (supersedes every credit instruction above)
+    Operator chose: credit the talk as inspiration.
+    - Exactly one short line, in the commit message and as a comment beside the `statechart` code in `crates/bboxy450-den`: `Inspired by Lauren Tan's talk "All Code Is Slop (Except Mine)".`
+    - Nothing more: no pstack link, no "ideas only/no code copied" phrasing, no claim about where our TLA+/Lean work came from, no ATTRIBUTION.md edit.
+
+    ## Oracle amendment, 2026-11-20 22:10: licence baseline fixed on main
+    - `e3253bb96` on origin/main gives `crates/bbt-mux/tests/fixtures/inbox_harness.py` the standard owned-source notice (`make test-licenses` exit 0). Rebase onto origin/main and continue; do not edit the fixture.
+
+
+    ## Report from seat:01M7Y5ACT1TFKXQ1KPXG3ZENQ7
+
+    [[Done]] Landed Den’s claim-level X601 and X651 traces and Mermaid statecharts on `origin/main` in signed commit `adff0bd14eabe88fab05d2025c2fae10e79295e4`. The focused suites passed 74 tests, the Views boundary drew 16 states and counted 17, and the landing gate passed with a 970-model formal receipt. The landed license check passed. Replaced event-only traces and the weakening hint, and dropped the handoff’s prompt step and formal-drift tooling.
+
+    ```json
+    {
+      "op_id": "01M7YEQV476YJ51GP53FA08X6C",
+      "commit": "adff0bd14eabe88fab05d2025c2fae10e79295e4",
+      "report": "[[reports/2026-11-20-den-readable-counterexamples-statechart.den]]",
+      "verify_result": {
+        "command": "cargo nextest run -p bboxy450-den -p bboxy450-code && make test-formal",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "X601 and X651 name the claim, event, case and changed fields",
+            "reference": "crates/bboxy450-den/src/checker.rs:430 and :468, with fixtures in crates/bboxy450-den/src/tests.rs and tests/design.rs. target/den-handoff/verify-nextest-final.log records 74 passing tests."
+          },
+          {
+            "criterion": "Reachable statechart marks false-invariant states and is exposed through MCP",
+            "reference": "crates/bboxy450-den/src/checker.rs:757 and crates/bboxy450-code/tests/queries.rs:479. target/den-handoff/land.log records 12 passing query tests."
+          },
+          {
+            "criterion": "Lowered Views cap is 16 reachable states",
+            "reference": "crates/bboxy450-den/src/render.rs:480 and target/den-handoff/view-bound.log. The witness assertions checked both sides of the limit."
+          },
+          {
+            "criterion": "Keep scope and exact one-line talk credit",
+            "reference": "git show adff0bd14eabe88fab05d2025c2fae10e79295e4 and crates/bboxy450-den/src/checker.rs:756. The prompt, formal-drift and attribution-file hunks are absent."
+          },
+          {
+            "criterion": "Formal verification and license checks pass on the integrated change",
+            "reference": "target/den-handoff/verify-formal-reuse.exit, licenses-landed.exit and land.exit are 0. Landed formal evidence digest cfa675fb8e6c7934cd297929fe0b0b5365df9d11f6253afc9fbf134deebf3654."
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    assignee = json"\"seat:01M7Y5ACT1TFKXQ1KPXG3ZENQ7\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    closed = json"{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"op_id\":\"01M7YERB4XYZJP4MRW0ET89T3Z\"}"
+    created = json"\"2026-11-20T18:30:42.706Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7X3K6X6V11R5VC103RXWJNF\""
+    number = json"1794292861627624"
+    report = json"{\"commit\":\"adff0bd14eabe88fab05d2025c2fae10e79295e4\",\"op_id\":\"01M7YEQV476YJ51GP53FA08X6C\",\"report\":\"[[reports/2026-11-20-den-readable-counterexamples-statechart.den]]\",\"reported_by\":\"seat:01M7Y5ACT1TFKXQ1KPXG3ZENQ7\",\"summary\":\"[[Done]] Landed Den’s claim-level X601 and X651 traces and Mermaid statecharts on `origin/main` in signed commit `adff0bd14eabe88fab05d2025c2fae10e79295e4`. The focused suites passed 74 tests, the Views boundary drew 16 states and counted 17, and the landing gate passed with a 970-model formal receipt. The landed license check passed. Replaced event-only traces and the weakening hint, and dropped the handoff’s prompt step and formal-drift tooling.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-21T07:05:07.877Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"cargo nextest run -p bboxy450-den -p bboxy450-code && make test-formal\",\"evidence\":[{\"criterion\":\"X601 and X651 name the claim, event, case and changed fields\",\"reference\":\"crates/bboxy450-den/src/checker.rs:430 and :468, with fixtures in crates/bboxy450-den/src/tests.rs and tests/design.rs. target/den-handoff/verify-nextest-final.log records 74 passing tests.\"},{\"criterion\":\"Reachable statechart marks false-invariant states and is exposed through MCP\",\"reference\":\"crates/bboxy450-den/src/checker.rs:757 and crates/bboxy450-code/tests/queries.rs:479. target/den-handoff/land.log records 12 passing query tests.\"},{\"criterion\":\"Lowered Views cap is 16 reachable states\",\"reference\":\"crates/bboxy450-den/src/render.rs:480 and target/den-handoff/view-bound.log. The witness assertions checked both sides of the limit.\"},{\"criterion\":\"Keep scope and exact one-line talk credit\",\"reference\":\"git show adff0bd14eabe88fab05d2025c2fae10e79295e4 and crates/bboxy450-den/src/checker.rs:756. The prompt, formal-drift and attribution-file hunks are absent.\"},{\"criterion\":\"Formal verification and license checks pass on the integrated change\",\"reference\":\"target/den-handoff/verify-formal-reuse.exit, licenses-landed.exit and land.exit are 0. Landed formal evidence digest cfa675fb8e6c7934cd297929fe0b0b5365df9d11f6253afc9fbf134deebf3654.\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:eb3bacef163e2c847df1177dabd9f0dae622e757102a7b1db5758c60908526fe\",\"frontmatter_digest\":\"sha256:6c25f7bc52f21b4290c76812778907bfe87c861411eadd5df04336cdb58c6395\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"YnGP0baMMOR7QX/gECywCR8d+hiDBckvq+evEjaCIcc7SBj84zbIEPER38VmHv7G55yzYFmMLVDPYYFbDIthCw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/618\",\"event\":{\"id\":\"01M7YERM6H9ABB3DSR9YAYYG1N\",\"sequence\":618,\"hash\":\"66a92f9b4f0154f3fe300743a28cf280a2d59d653625c1db877fec27a84fed20\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

@@ -1,0 +1,40 @@
+module tasks.`2026-11-22-task-close-purged-seats`
+
+task TaskClosePurgedSeats {
+  title "task_close/amend refuse forever once a task seat is purged or its Oracle is dead"
+  verify $ cargo nextest run -p bbt-mux
+  paths "crates/bbt-mux", "verification", "Cargo.lock"
+  brief """
+    Our stand: subtract before you add; report what you removed. ROLE: EXECUTOR.
+
+    ## Defect (Oracle, observed 2026-11-22)
+    `task_close` on 79 accepted tasks (e.g. `.bboxy/tasks/2026-10-29-crate-naming-classification.den`) is refused with `task seat unavailable`.
+    Cause: `crates/bbt-mux/src/mcp/work_items.rs:1254-1257` `authorize()` calls `registry.get(id)` for the assignee and delegator. Seats purged from the registry make it fail, so a task whose seats are gone can never be closed, reconciled or amended.
+    A second form: after an app restart a new Oracle seat in the same swarm cannot amend or close open tasks delegated by the previous, now-dead Oracle seat (`knowledge_write` refuses `task_field_protected: only the delegating Oracle seat may amend this task`, e.g. `tasks/2026-11-20-codex-seat-exits-mid-gate`, delegated_by seat:01M7VC8EK2C7DQXBNCE9V0J0MH).
+
+    ## Do
+    1. In `authorize()`: when a referenced seat is missing from the registry, take scope from the task's own `swarm` frontmatter field and require it to equal the caller's swarm. Refuse when neither a live seat nor `swarm` establishes it. A present seat in another swarm still refuses.
+    2. Oracle succession: an Oracle-class seat in the task's swarm may amend brief/verify/allowed_paths, and run lifecycle calls, on a nonterminal task whose delegating seat is closed or missing from the registry. It records itself as `delegated_by` on that write. A live delegating Oracle keeps exclusive amendment.
+    3. Tests: purged assignee, purged delegator, a foreign-swarm seat still refused, a dead-Oracle amendment by a successor, and a live-Oracle amendment still refused for another Oracle. Update the relevant formal model/contract in `verification/` with a broken control if the task lifecycle model covers ownership.
+
+    ## Land
+    Run long commands detached with the exit code written to a file. `make land`. Report with `knowledge_write` at reports/2026-11-22-task-close-purged-seats.den, then `task_report`.
+    """
+
+  managed {
+    assignee = json"\"seat:01M828J8VVZJAY5VAWA5MQJRDQ\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"+Z+SffD6ma7+9tH7HcO8nu+L88bfZ9A4Xu1v6WL7C48=\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\"}"
+    created = json"\"2026-11-22T18:33:21.064Z\""
+    created_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    delegated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    id = json"\"01M828HFH1GTPA3Z6QY9NA1MW4\""
+    number = json"1794292861627753"
+    role = json"\"executor\""
+    status = Claimed
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-22T18:33:48.850Z\""
+    updated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    provenance = json"{\"digest\":\"sha256:ae0c7687e51c166e074b82276838a9d0d8860251e859cac82f1226732ea26b7b\",\"frontmatter_digest\":\"sha256:1ce58702ad8e75ccf7d3f539b7f10010e7c46d47851efd114249cca46bd88653\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"NkfmfpE3+xsJNjWsENOHcOT/0Ep5o0Xj1F4qWPDLu27zWUo/NZcwS+tD0d/J4HzJ+ml88gY6JqECltS5NtAHDQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1019\",\"event\":{\"id\":\"01M828JBNNKFVZJ98G3E4HVY11\",\"sequence\":1019,\"hash\":\"4c405a82b33b88cca6f9227292a27e5f3d08b43d8266710b269d3c329d257cca\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

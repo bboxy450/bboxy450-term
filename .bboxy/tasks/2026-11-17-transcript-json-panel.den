@@ -1,0 +1,56 @@
+module tasks.`2026-11-17-transcript-json-panel`
+
+task TranscriptJsonPanel {
+  title "Polish the transcript JSON panel"
+  verify $ cargo nextest run --locked -p bboxy450-doc --test layout --test inline_code
+  paths "/Users/feral/mydev/bboxy450-term-json-panel"
+  brief """
+    Direct operator request. Match the provided native transcript screenshot with a compact JSON panel and aligned border. Reuse existing document code styles, preserve literal JSON and horizontal overflow, and leave reading-view fences alone. Verify the focused layout and inline-code suite, then land the signed change on main with CI skipped. No installation or live restart.
+
+    ## Report from seat:01M7P1V6TMT1VV6ZWS0831Z6ED
+
+    Landed the compact transcript JSON panel on main with CI skipped. A single rounded stroke replaces the detached dashed edges and corner marks. All 21 focused tests passed, including narrow/dark and wide/light geometry, overflow, and literal output.
+
+    ```json
+    {
+      "commit": "e69889c96df8d89902d14f8081a52ce281a909c8",
+      "op_id": "01M7P9AEJHXBKY5KT6D36EQB3S",
+      "report": "[[reports/2026-11-17-transcript-json-panel.den]]",
+      "verify_result": {
+        "command": "cargo nextest run --locked -p bboxy450-doc --test layout --test inline_code",
+        "evidence": [
+          {
+            "criterion": "Compact aligned JSON panel with literal output and horizontal overflow",
+            "reference": "crates/bbt-doc/tests/layout.rs:740, 21 nextest tests passed; e82131e2-96ab-48ea-9cc3-520c285f2651"
+          },
+          {
+            "criterion": "Signed landing on main with CI skipped",
+            "reference": "git verify-commit HEAD and git ls-remote --exit-code origin refs/heads/main exited 0 for e69889c96df8d89902d14f8081a52ce281a909c8"
+          }
+        ],
+        "exit_code": 0
+      }
+    }
+    ```
+    """
+
+  managed {
+    assignee = json"\"seat:01M7P1V6TMT1VV6ZWS0831Z6ED\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"OOIYmGQTFLZkToRJMeiQmqc7xl1cHpvlFBZ6zZOq1bE=\",\"signer\":\"seat:01M7P1V6TMT1VV6ZWS0831Z6ED\"}"
+    closed = json"{\"by\":\"seat:01M7P1V6TMT1VV6ZWS0831Z6ED\",\"op_id\":\"01M7P9AP6TS814ZNHNG8ZT5P7T\"}"
+    created = json"\"2026-11-18T02:53:53.486Z\""
+    created_by = json"\"seat:01M7P1V6TMT1VV6ZWS0831Z6ED\""
+    delegated_by = json"\"seat:01M7P1V6TMT1VV6ZWS0831Z6ED\""
+    id = json"\"01M7P96D036V3K1714SHFR0XJZ\""
+    number = json"1794292861627522"
+    provenance = json"{\"digest\":\"sha256:3222b6bc40376ebf461e966d97a2e78714b4de9a72f29abf76f797afa06a8b69\",\"event\":{\"hash\":\"a20650c484d6ae0570d36abcff109f22153d630d417397fbd211b2eeaa7949b4\",\"id\":\"01M7P9ARZ1S7G0V8TD431HVTV0\",\"sequence\":27},\"frontmatter_digest\":\"sha256:04f40626af4f6de881193c55fea4a7e0670041d27cee53e8bc1c992e950c816d\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/27\",\"sig\":\"fnlo6wehYy31Xv2/eVEU7g5ztymT3eVZdujuzinxIGYt5VBiGeBtut+ZEmUEjwim/bUBfoTXOuEAvy17xsjRAw==\",\"signer\":\"seat:01M7P1V6TMT1VV6ZWS0831Z6ED\"}"
+    report = json"{\"commit\":\"e69889c96df8d89902d14f8081a52ce281a909c8\",\"op_id\":\"01M7P9AEJHXBKY5KT6D36EQB3S\",\"report\":\"[[reports/2026-11-17-transcript-json-panel.den]]\",\"reported_by\":\"seat:01M7P1V6TMT1VV6ZWS0831Z6ED\",\"summary\":\"Landed the compact transcript JSON panel on main with CI skipped. A single rounded stroke replaces the detached dashed edges and corner marks. All 21 focused tests passed, including narrow/dark and wide/light geometry, overflow, and literal output.\",\"verify_revision\":0}"
+    role = json"\"solo\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-18T02:56:15.731Z\""
+    updated_by = json"\"seat:01M7P1V6TMT1VV6ZWS0831Z6ED\""
+    verify_result = json"{\"command\":\"cargo nextest run --locked -p bboxy450-doc --test layout --test inline_code\",\"evidence\":[{\"criterion\":\"Compact aligned JSON panel with literal output and horizontal overflow\",\"reference\":\"crates/bbt-doc/tests/layout.rs:740, 21 nextest tests passed; e82131e2-96ab-48ea-9cc3-520c285f2651\"},{\"criterion\":\"Signed landing on main with CI skipped\",\"reference\":\"git verify-commit HEAD and git ls-remote --exit-code origin refs/heads/main exited 0 for e69889c96df8d89902d14f8081a52ce281a909c8\"}],\"exit_code\":0}"
+    body_tail = json"\"\\n\""
+  }
+}

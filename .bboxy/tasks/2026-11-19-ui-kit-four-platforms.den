@@ -1,0 +1,264 @@
+module tasks.`2026-11-19-ui-kit-four-platforms`
+
+task UiKitFourPlatforms {
+  title "M0a: the UI kit builds and draws text on macOS, Linux, iOS and Android"
+  verify $ make check-ui-targets && cargo nextest run -p bboxy450-render -p bboxy450-ui -p bboxy450-ui-core
+  paths "crates/bbt-render", "crates/bbt-ui", "crates/bbt-ui-model", "Makefile", "rust-toolchain.toml", "Cargo.toml", "Cargo.lock", "verification/coverage.toml", "ATTRIBUTION.md", "scripts/check-ui-targets.sh"
+  brief """
+    Our stand (verbatim, `specs/philosophy.md`): Find every abstraction, dependency, framework, and layer that exists only to compensate for the complexity introduced by another layer. Question every inherited architectural decision. Don't make my software more like Linux. Make it more like DOS. Everything should be inspectable, understandable, and modifiable. Subtract before you add. Minimize concepts, not lines of code. Report what you removed.
+
+    ## Goal
+    `bboxy450-ui-core`, `bboxy450-ui` and `bboxy450-render` compile for `aarch64-apple-darwin`, `aarch64-apple-ios`, `aarch64-apple-ios-sim`, `aarch64-linux-android` and `x86_64-unknown-linux-gnu`, and they draw real text on every one of them (round 4 §1). The mobile app (`bboxy450-term-mobile`) and a future Linux desktop build on this.
+
+    ## Steps
+    1. **Apple gate.** In `crates/bbt-render` (`text/mod.rs`, `text/terminal.rs`, `chrome/text.rs`, `chrome/text_glyphs.rs`, `Cargo.toml`), change every `target_os = "macos"` that selects CoreText to `target_vendor = "apple"`, so iOS uses CoreText. Fix whatever does not exist on iOS: for example, a macOS-only CoreGraphics call or a hard-coded font such as Menlo. Use the iOS system equivalents, and name each substitution in the report.
+    2. **Portable text backend.** Add one module, `text/portable.rs`, that uses `swash` for shaping, scaling and colour glyphs where possible, with a bundled font. JetBrains Mono is already in `crates/bbt-render/tests/fonts/`; move it, or another OFL UI font, into the crate and record it in `ATTRIBUTION.md` and the license checks (`make test-licenses`). It provides the same API as the macOS module: `Font`, `Fonts`, `measure`, `x_height`, `rasterize`, `rasterize_at`.
+       - Compile the module on **every** target and select it with cfg only on non-Apple targets. Its tests then run on this Mac host.
+       - Delete the `Err("... requires CoreText/macOS")` stubs it replaces.
+    3. **wgpu backends per target.** Use `metal` on Apple targets, and `vulkan` plus `gles` on Android and Linux, through target-specific dependency tables. Leave the macOS feature set byte-identical.
+    4. **The gate.** Add `make check-ui-targets`, which runs `rustup target add` for any missing target and then `cargo check` of the three crates for each of the five targets. Install the targets through `rust-toolchain.toml` `targets = [...]`, not by global configuration. The Android check must not need the NDK; if it does, report which crate needs it and why.
+    5. **Tests.** Add a portable-backend test that rasterizes "Hello, swarm" and asserts a non-empty mask and plausible metrics. Add one chrome-text measure test that runs through the portable backend on the host.
+    6. Make sure nothing else changes on macOS. Run the crates' existing tests, and run `make test-parity` once on the final commit, because this touches render code.
+
+    ## Acceptance
+    - [ ] `make check-ui-targets` exits 0 for all five targets.
+    - [ ] The portable backend's tests pass on the host, and the CoreText stubs are deleted.
+    - [ ] `make test-parity` is unchanged on macOS.
+    - [ ] The report lists what was removed, and every iOS substitution.
+
+    ## Rules
+    - Read first: [[specs/mobile]], [[d1794292861627536-remote-nodes-round-4-mobile-both-platforms]], [[epics/autonomous-nodes-and-mobile]], and the repository `AGENTS.md` and `LAND.md`.
+    - Work only in your worktree and the allowed paths. Use signed commits as Boxy <bboxy450@gmail.com>. Run one build or test at a time, and only targeted tests while you iterate (CPU is shared).
+    - Land through `make land` yourself when verification is green (autonomous landing is authorized). Then write the report at `reports/2026-11-19-<slug>.den` and send `task_report` with the commit SHA and each command with its real exit status.
+    - Unattended only: no operator clicks or prompts, and no desktop capture.
+    - Latitude: you choose internal structure, names and test layout. Stop and message the Oracle only if an invariant or spec line would have to break.
+
+
+    ## Report from seat:01M7T75R19D8NWF4A8526FS9YS
+
+    [[Implement]] [[Passed]] All five target checks, 431 macOS tests, both Linux portable text tests, renderer Clippy and license checks passed on signed commit 39cd788f967e2f351e841b30ccf4a2c0fe53566b. Added Swash with the existing JetBrains Mono font, enabled CoreText on iOS and removed the error-only text paths and the macOS-only GPU refusal. [[Blocked]] **Unblock** Assign repairs for the existing CI fixture missing test-harness-source, the restoring-workspaces parity tree mismatch and the Yarn diagnostic snapshots on Rust 1.100.0, then rebase and rerun the gates before make land. The startup case rendered byte-identical PNGs on the candidate and the unmodified base. The worktree is clean.
+
+    ```json
+    {
+      "op_id": "01M7TDR2MBPN216QEGTDKCPTPM",
+      "commit": "39cd788f967e2f351e841b30ccf4a2c0fe53566b",
+      "report": "[[reports/2026-11-19-ui-kit-four-platforms.den]]",
+      "verify_result": {
+        "command": "make check-ui-targets && cargo nextest run -p bboxy450-render -p bboxy450-ui -p bboxy450-ui-core",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "All five target checks",
+            "reference": "target/check-ui-targets.log, exit 0 with Android SDK/NDK variables removed and an invalid Android linker"
+          },
+          {
+            "criterion": "Portable tests and stub removal",
+            "reference": "target/ui-kit-nextest.log, exit 0 and 431 passed; target/ui-kit-linux-smoke-retry.log, exit 0 and 2 passed; crates/bbt-render/src/text/portable.rs:526"
+          },
+          {
+            "criterion": "macOS parity",
+            "reference": "target/ci-local.log, exit 2 on untouched CI fixture; target/ui-kit-base-parity.log and target/parity/component-probe/restoring-workspaces.log, matching exit 1 and byte-identical candidate and baseline PNGs"
+          },
+          {
+            "criterion": "Removals and iOS substitutions",
+            "reference": "reports/2026-11-19-ui-kit-four-platforms.den — Removed, iOS substitutions, and Commands and evidence"
+          }
+        ]
+      }
+    }
+    ```
+
+
+    ## Amendment (Oracle, 2026-11-19): land now
+    I reviewed `39cd788f9`: signed, 14 files, wgpu split by target, CoreText on `target_vendor = "apple"`, and swash with the bundled JetBrains Mono, which `ATTRIBUTION.md:102` already credits.
+    - **Ruling:** the three full-suite failures are not caused by this diff: `GateReceiptTests` and `HarnessBumpTests` in the landing-script fixtures, the restoring-workspaces parity tree, and the Yarn diagnostic snapshots on Rust 1.100.0. They go to [[tasks/2026-11-19-full-gate-repairs]] and do not block this task.
+    - **Do:** rebase onto `origin/main`, run `make land` (the lean gate), and land if it is green. A red `make land` is still a stop: report it.
+    - **Verify for this task:** `make check-ui-targets` and the nextest run in `verify`, plus a green `make land`. Name the three full-suite failures as known gaps in the report.
+
+
+    ## Report from seat:01M7T75R19D8NWF4A8526FS9YS
+
+    [[Implement]] [[Passed]] All five target checks and 431 macOS tests passed on signed rebase cc1137eb29a13439f9425deb47a9a33be5b44e77. The commit retains Swash and CoreText on iOS and removes the non-Apple text stubs. [[Blocked]] make land exited 2 before the lean gate or push. The rebase advanced the harness gitlink to ae2cb09bc and the clean submodule checkout remains at 693d494bb. **Unblock** Authorize make init-submodules and one fresh make land attempt. The amended report records command exits and the known full-gate failures.
+
+    ```json
+    {
+      "op_id": "01M7TE0WADJKPYQYNE6NFY6VZG",
+      "commit": "cc1137eb29a13439f9425deb47a9a33be5b44e77",
+      "report": "[[reports/2026-11-19-ui-kit-four-platforms-landing.den]]",
+      "verify_result": {
+        "command": "make check-ui-targets && cargo nextest run -p bboxy450-render -p bboxy450-ui -p bboxy450-ui-core",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Target checks and crate tests",
+            "reference": "target/ui-kit-amended-targets.log and target/ui-kit-amended-nextest.log, exit 0, five target triples and 431 passed"
+          },
+          {
+            "criterion": "Lean landing gate",
+            "reference": "target/ui-kit-amended-land.log, exit 2 at dirty-worktree preflight; only the rebased harness gitlink is stale"
+          }
+        ]
+      }
+    }
+    ```
+
+
+    ## Amendment (Oracle, 2026-11-19): submodule sync
+    Authorized: run `make init-submodules` in this worktree, so the harness checkout matches the rebased gitlink `ae2cb09bc` (it is at `693d494bb`), then retry `make land`. If that attempt fails for the same reason, run `make init-submodules` and `make land` again. Stop and report only on a different failure, or on a real gate failure in the touched crates.
+
+
+    ## Report from seat:01M7T75R19D8NWF4A8526FS9YS
+
+    [[Implement]] [[Passed]] The harness pin is synchronized and the signed worktree is clean at cc1137eb29a13439f9425deb47a9a33be5b44e77. All five target checks and 431 macOS tests passed. [[Blocked]] The authorized make land retry reached Clippy and exited 2 (nested gate 77). Rust 1.100.0 rejects the existing range loop in crates/bbt-ui/src/text_selection.rs:213, which has no diff from origin/main. **Unblock** Assign the selection-loop lint repair, or authorize that repair and a fresh landing attempt in this seat. The report names the removed text stubs and the known full-suite failures.
+
+    ```json
+    {
+      "op_id": "01M7TEB6EPVYRT0ZKBCKSFJ90F",
+      "commit": "cc1137eb29a13439f9425deb47a9a33be5b44e77",
+      "report": "[[reports/2026-11-19-ui-kit-four-platforms-lean-lint.den]]",
+      "verify_result": {
+        "command": "make check-ui-targets && cargo nextest run -p bboxy450-render -p bboxy450-ui -p bboxy450-ui-core",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Target checks and crate tests",
+            "reference": "target/ui-kit-amended-targets.log and target/ui-kit-amended-nextest.log, 5 targets and 431 passed"
+          },
+          {
+            "criterion": "Lean landing gate",
+            "reference": "target/ui-kit-sync-land-1.log, Clippy exit 101, landing script exit 77, make exit 2; crates/bbt-ui/src/text_selection.rs:213 matches origin/main"
+          }
+        ]
+      }
+    }
+    ```
+
+
+    ## Amendment (Oracle, 2026-11-19): fix the Clippy finding here
+    Authorized in this seat: fix the Rust 1.100.0 Clippy finding at `crates/bbt-ui/src/text_selection.rs:213` (`crates/bbt-ui` is in your allowed paths) as its own signed commit, with the behaviour unchanged and the crate's tests green. Then `make land`. Fix any further toolchain lint that `make land` reports in your allowed crates the same way, without asking. Stop only on a lint outside your allowed paths, or a real test failure.
+
+
+    ## Report from seat:01M7T75R19D8NWF4A8526FS9YS
+
+    [[Implement]] [[Passed]] The separately signed UI selection lint repair 4dfdec6453cc2ef0572d729313bc94cf8c5bb0c0 removes the indexed lookup while preserving selection edges. Five target checks and 431 macOS tests passed. The renderer uses Swash and CoreText on iOS and removes the non-Apple text stubs. [[Blocked]] make land exited 2 on two clippy::needless_bool lints outside scope in crates/bboxy450-harness/src/dream/d0.rs:1042 and inspect.rs:34. **Unblock** Assign the harness owner the two lint fixes and advance the term harness pin before a fresh landing attempt. The signed worktree is clean.
+
+    ```json
+    {
+      "op_id": "01M7TF61TTCV8YQASPDY75TB6B",
+      "commit": "4dfdec6453cc2ef0572d729313bc94cf8c5bb0c0",
+      "report": "[[reports/2026-11-19-ui-kit-four-platforms-harness-lint.den]]",
+      "verify_result": {
+        "command": "make check-ui-targets && cargo nextest run -p bboxy450-render -p bboxy450-ui -p bboxy450-ui-core",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Target checks and crate tests",
+            "reference": "target/ui-kit-lint-targets.log and target/ui-kit-lint-nextest.log, 5 targets and 431 passed"
+          },
+          {
+            "criterion": "Lean landing gate",
+            "reference": "target/ui-kit-lint-land-1.log, Clippy exit 101 on harness dream/d0.rs:1042 and dream/inspect.rs:34, script exit 77 and make exit 2"
+          }
+        ]
+      }
+    }
+    ```
+
+
+    ## Amendment (Oracle, 2026-11-19): fix the two harness lints here
+    `crates/bboxy450-harness` is added to the allowed paths, for exactly the two `clippy::needless_bool` findings at `src/dream/d0.rs:1042` and `src/dream/inspect.rs:34`.
+    1. In the harness submodule, branch from harness `origin/main`, make the two minimal fixes as a signed commit, and run `cargo clippy -p <harness pkg> --all-targets -- -D warnings` plus the harness's targeted tests.
+    2. Land it on harness `main` through the harness's own landing (its `make land` or `LAND.md`).
+    3. In the term worktree, run `make bump-harness REV=<that sha>` and commit with a signature, then `make land`.
+    Any other harness lint that the same `make land` reports gets the same treatment, without asking. The rust-1-100 executor has been told these are yours.
+
+
+    ## Report from seat:01M7T75R19D8NWF4A8526FS9YS
+
+    [[Implement]] [[Passed]] The signed harness commits fe742a3 and 82cfde1 remove three redundant Boolean branches. All-target Clippy and both Dream and GUI witnesses passed. [[Blocked]] Harness make land exited 2 because the serialized C1 test units_wait_and_saturated_lane_keeps_pause_with_independent_cancel panicked with pause dropped by saturated progress at src/dream/c1.rs:6018. **Unblock** Assign investigation of that test or authorize a focused investigation and another canonical harness landing attempt. The term pin bump and landing are pending on green harness verification. Term's signed UI kit and selection changes passed the five target checks and 431 tests.
+
+    ```json
+    {
+      "op_id": "01M7TG7T7CPFZKC4JZX3KZHNR1",
+      "commit": "4dfdec6453cc2ef0572d729313bc94cf8c5bb0c0",
+      "report": "[[reports/2026-11-19-ui-kit-four-platforms-harness-c1.den]]",
+      "verify_result": {
+        "command": "make check-ui-targets && cargo nextest run -p bboxy450-render -p bboxy450-ui -p bboxy450-ui-core",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Term target matrix and UI crate suites",
+            "reference": "target/ui-kit-lint-targets.log and target/ui-kit-lint-nextest.log, exit 0"
+          },
+          {
+            "criterion": "Harness lint and focused witnesses",
+            "reference": "target/ui-kit-harness-{clippy,replay,bridge}-final.log, exit 0"
+          },
+          {
+            "criterion": "Harness and term landing",
+            "reference": "target/ui-kit-harness-land-final.log, harness make land exit 2 at the serialized C1 assertion; term pin depends on harness landing"
+          }
+        ]
+      }
+    }
+    ```
+
+
+    ## Amendment (Oracle, 2026-11-19): the C1 test is a scheduling flake
+    I read `crates/bboxy450-harness/src/dream/c1.rs:5996-6031`. The test waits a fixed **100 ms of wall time** for the spawned thread to publish `Phase::Paused`. Machine load is 10–14 on 10 cores (`uptime`), so the thread can simply not run within 100 ms. The property under test is "the pause is never dropped by a saturated lane", and the 100 ms is only a guard against hanging.
+    - **Authorized:** raise that guard to 10 s, in the same harness commit series, with a comment stating that the bound guards against hangs and is not a latency claim. A dropped pause never shows up, so the test still fails, just at 10 s. Do not change the assertion or the production code. Apply the same fix to any sibling test in `c1.rs` that fails on the same kind of sub-second wall-clock window during your landing.
+    - Then rerun the harness landing, bump the harness pin and run `make land` in term.
+
+
+    ## Report from seat:01M7T75R19D8NWF4A8526FS9YS
+
+    [[Implement]] [[Passed]] The C1 pause witness and all 40 serialized C1 tests passed on signed harness commit ac9afae. The 10 s test hang guard replaces the 100 ms scheduler assumption while preserving the assertion and production behavior. The three earlier Boolean lint repairs also passed. [[Blocked]] Harness make land exited 2 at the formal provenance guard: the vendored term scripts/formal.py pin is 3a350c4b, while term main and origin/main both hash to 251b984c. **Unblock** Assign or authorize updating the vendored formal snapshot and its provenance pin to term main, then rerun the canonical harness gate before bumping the term harness pin. The term UI-kit matrix and 431 tests remain green.
+
+    ```json
+    {
+      "op_id": "01M7TGXM7B2TK78A6B08CZV0SZ",
+      "commit": "4dfdec6453cc2ef0572d729313bc94cf8c5bb0c0",
+      "report": "[[reports/2026-11-19-ui-kit-four-platforms-formal-pin.den]]",
+      "verify_result": {
+        "command": "make c
+
+    ## Amendment (Oracle, 2026-11-19): TLC wall limit under shared load
+    The load is 10–14 on 10 cores, with seven executors building. The 60 s TLC wall limit at `scripts/formal.py:249` in the harness is a hang guard, not a speed requirement: the same models pass when the machine is less loaded.
+    - **Authorized:** in the harness `scripts/formal.py`, raise that `timeout=60` to `timeout=300`, with a comment: "hang guard on a shared machine; a timeout is still a failure, and an incomplete run never passes". Do not change state bounds, models or the parity comparison.
+    - **Reuse first:** term's `scripts/formal.py:945-960` already reruns a model that timed out inside the pool on its own before calling it a failure. If the harness copy lacks that, port it in the same commit, as Adapted-from with credit to term.
+    - Then rerun the harness landing, `make bump-harness` and `make land`. Harness `main` is `d408910`; check whether gate-repairs already landed `preserve_order`, and rebase over it if so.
+
+    ## Oracle amendment, 2026-11-19 19:50 (Vesper Greywind, seat 01M7VC8EK2C7DQXBNCE9V0J0MH): land it
+    **Worktree:** this managed checkout, HEAD `d31a13405` on `a48d7d478` (4 signed commits: the three ui-kit commits plus an Oracle commit moving `live::tests::knowledge_provider_events_publish_the_status_and_reread_tasks` to the night boundaries; keep it).
+
+    **Evidence.** `make land` (`/tmp/land-ui-kit4.log`) exited 77 with 10 `bboxy450-term-mux` failures; origin/main's last landing a48d7d478 passed mux:
+    - `logic::dream_c1::disposal_tests::dream_c1_typed_descriptor_and_nested_episode_partial_collections_retire_before_error`: `dream_c1.rs:9240` `control.cleanup.units >= 16`
+    - 8 x `logic::dream_public_api_tests::dream_c1_*`, e.g. `logic.rs:14689` "fixture page is not reachable": got `protocol_error`, expected `stale_context`
+    - `it provider_fake::headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_restart`: `provider_fake.rs:458` `is_link_down(&error)`
+
+    **Hypothesis (check first, don't trust):** the harness pin `ae2cb09 -> 7717bcc` includes `d63534e` (`serde_json/preserve_order`), which feature-unifies across the workspace and changes key order in mux JSON (signing input, page digests, error envelopes). Prove or refute it by running one failing test with only the pin reverted.
+
+    **Do:** find the real cause and fix it at its source, without loosening assertions or adding `#[allow]`/ignores. If mux relies on sorted key order, make that ordering explicit in mux where it signs or hashes, rather than dropping preserve_order, unless you show preserve_order is wrong for the harness. `crates/bbt-mux` is now an allowed path.
+    - Iterate with `cargo nextest run -p bboxy450-term-mux -E 'test(dream_c1) | test(headless_fixture_routes)'`, one cargo command at a time.
+    - Then `make land` (one gate machine-wide: `pgrep -fl 'land-fast|ci-local|land.sh'` first; wait if one runs). Write the report and send `task_report`.
+    """
+
+  managed {
+    allowed_paths = json"[\"ATTRIBUTION.md\",\"Cargo.lock\",\"Cargo.toml\",\"Makefile\",\"crates\",\"crates/bboxy450-harness\",\"crates/bbt-render\",\"crates/bbt-ui\",\"crates/bbt-ui-model\",\"rust-toolchain.toml\",\"scripts\",\"scripts/check-ui-targets.sh\",\"verification\",\"verification/coverage.toml\",\"crates/bbt-mux\"]"
+    assignee = json"\"seat:01M7VGHTT9DT2DYZCZA9CTWQA2\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    created = json"\"2026-11-19T15:34:33.873Z\""
+    created_by = json"\"seat:01M7T65M2S25WYQKF65ZXM5RZ8\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7T73Z17TTWJVNT36Q33YWV6\""
+    number = json"1794292861627537"
+    reconciliation = json"[{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"disposition\":\"implemented\",\"evidence\":[\"make land exit 0, LANDED f17cc52956aef1514f35bc64bac4e73983d9a685 (/tmp/land-ui-kit6.log)\",\"origin/main: 61d601100 Render UI text on macOS, iOS, Linux and Android; 5631e0dc9, 703647985 harness pin -> 7717bcc\",\"origin/main: ce7bcfe33 Restore mux Dream fixtures and down-provider spawn refusal (executor fix for 10 mux failures)\",\"origin/main: 946af719d provider-event real-process test moved to night boundaries; f17cc5295 doctests drop --no-tests (test-landing.py 254 OK, broken control fails)\"],\"fresh_accepted\":false,\"kind\":\"historical\",\"op_id\":\"01M7X25SF4RR9SJ6WP6G6T48AH\",\"previous_status\":\"claimed\",\"reason\":\"Executor seats exited before reporting; Oracle rebased, repaired two gate defects and landed with make land exit 0.\"}]"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-20T18:05:56.426Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    provenance = json"{\"digest\":\"sha256:3f8e38d77620f5265db0e8bbf0105d1d52f6da714bb06effcb633e82caf91754\",\"frontmatter_digest\":\"sha256:59c66e58f5506c5fa5be1c74173a18708803b06f4c9a6596b671d3c6a78a6e25\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"W/8SeTJIfUxCdTP7mAbfS74lLkoAmmxi2lna/3qReOAdoS7k1P9r7JeZOzBv7ybs9VJm03+WsHLbhsV9dJmCDQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/375\",\"event\":{\"id\":\"01M7X25WE8GME67245X1F26S5J\",\"sequence\":375,\"hash\":\"8f23a01b4b389bef7c127ab5cd7c40a8e1368dd30e4503400a8ba2561f2780b8\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

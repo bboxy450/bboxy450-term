@@ -1,0 +1,33 @@
+module tasks.`2026-11-21-inbox-race-test-stall`
+
+task InboxRaceTestStall {
+  title "Flake: gui_inbox_question_race_and_retry_cross_real_sockets stalls past its 20 s window in the full mux run (0.2-0.6 s alone)"
+  verify $ for i in 1 2 3 4 5; do cargo nextest run -p bboxy450-term-mux --test it -E 'test(gui_inbox)' || exit 1; done
+  paths "crates/bbt-mux"
+  brief """
+    Our stand: find the cause; do not widen the window or retry it away.
+
+    ## Evidence (Oracle, 2026-11-21 06:20)
+    - `make land` of rust-1-100 (`0ff6caba8`, which does not touch this test): 817/818 passed; `gui_endpoint::gui_inbox_question_race_and_retry_cross_real_sockets` failed twice (`TRY 2 FAIL [21.390s]`), panicking at `crates/bbt-mux/tests/gui_endpoint.rs:358` "missing GUI inbox event: Elapsed(())" (20 s `until` window, `:338`). Log: `~/mydev/bbx-rust-1-100/target/oracle-land.log:862`.
+    - Alone on the same source: 3/3 passed in 0.29 s, 0.62 s, 0.19 s. Load ~6.7 with another executor building.
+    - The test uses `tempfile::tempdir_in("/tmp")` and real sockets; check for socket-path or fixture-name collisions with concurrently running tests, an event subscription racing the first QuestionOpened (subscribe-then-page ordering), and a lost wake on the event lane.
+
+    ## Do
+    Reproduce under the full parallel run (or with a parallel stress loop), find the stall, fix the cause (ordering, unique paths), keep the 20 s hang guard. Add the failing interleaving as a deterministic test if it is an ordering bug.
+  """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    created = json"\"2026-11-21T14:29:26.552Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7Z8651CHXTWGA8RC1W4Z9NJ\""
+    number = json"1794292861627681"
+    reconciliation = json"[{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"disposition\":\"implemented\",\"evidence\":[\"origin/main 12680bf7f Keep status discovery from consuming the inbox approver fixture (crates/bbt-mux/tests/fixtures/inbox_harness.py accept_approver)\",\"status-first control exit 1 -> 0; parallel stress 16/16 with retries disabled; make land exit 0 LANDED 12680bf7f (818 mux tests)\"],\"fresh_accepted\":false,\"kind\":\"historical\",\"op_id\":\"01M7ZNN2RC5700338Z0Z9EP4XE\",\"previous_status\":\"open\",\"reason\":\"Root cause found by the rust-1-100 executor: the inbox fixture accepted one connection and the native status follower could win it.\"}]"
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-21T18:24:47.356Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    provenance = json"{\"digest\":\"sha256:70d8d90441a510e4c349d37b217f2bc5a6e1250a2fc22ae86ebc175243c60dbf\",\"frontmatter_digest\":\"sha256:8559c8781d46a23aa084c1758039b5f454b9e335be59980e72db02c4c179d63a\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"cLvyIP6McpGIPs62rf7zWRn568LP95CkVZerVEDxbkJ7whLF+m2n/cDON+tSB+93MB2IAVv4Gphqb/fODvbZBA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/713\",\"event\":{\"id\":\"01M7ZNN3VM9KZEFHHDZMJDYVQ5\",\"sequence\":713,\"hash\":\"49f0459dafe6507a4b40665ae864e3e99a48915992184f270f46628515e902fa\"}}"
+  }
+}

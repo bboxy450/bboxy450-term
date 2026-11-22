@@ -1,0 +1,53 @@
+module decisions.`d1794292861627536-remote-nodes-round-4-mobile-both-platforms`
+
+import `d1794292861627529-remote-nodes-round-3`
+
+decision D1794292861627536RemoteNodesRound4MobileBothPlatforms {
+  title "Nodes, round 4: one UI kit on macOS, Linux, iOS and Android; the mobile app in its own public repo; platform order and Apple setup postponed"
+  status Decided
+  amends `d1794292861627529-remote-nodes-round-3`
+  body """
+    # Nodes, round 4
+
+    The operator, 2026-11-19:
+
+    > "postpone setting up apple dev id and account, there is a chance we will go with android first, havent decided yet, our UI kit should work on linux/macos/android/ios and that way we will be building our mobile app and desktop app!"
+
+    > "create separate public repo bboxy450-term-mobile that will handle both android and ios builds"
+
+    ## Decided
+
+    1. **One UI kit on four platforms.** `bbt-ui-model`, `bbt-ui` and `bbt-render` build and render on macOS, Linux, iOS and Android. The desktop app and the mobile app are both built from it.
+       - **GPU:** wgpu with Metal on Apple targets and Vulkan on Android and Linux, with GLES as Android's fallback.
+       - **Text:** CoreText remains the backend on Apple targets, gated on `target_vendor = "apple"` instead of `target_os = "macos"`, so iOS gets it for free. Non-Apple targets get one portable backend that shapes and rasterizes in Rust (swash) with a bundled font. Today they return `Err("CoreText requires macOS")` (`crates/bbt-render/src/text/mod.rs:66`, `chrome/text.rs:68`).
+       - **Not decided yet:** whether the portable backend later replaces CoreText on Apple as well, which would leave one text concept. That needs the existing visual parity gate to pass with the portable backend on macOS, and is a separate decision.
+    2. **Platform order is open.** Both iOS and Android stay buildable and smoke-tested from the start. This amends round 3 §4 ("iOS first; Android rejected").
+    3. **The mobile app lives in its own public repository, `bboxy450/bboxy450-term-mobile`.** It holds the phone app crate (Inbox, Overview, Glance, Nodes), the iOS and Android shells, and their Make targets.
+       - Shared code stays in `bboxy450-term`: the UI kit, the protocol, and later the `bboxy450-client` crate. The mobile repo consumes `bboxy450-term` as a pinned git submodule moved by `make bump-term`, the same way this repo consumes the harness (`make bump-harness`).
+       - Rejected: a crate inside `bboxy450-term` (the operator asked for a separate repo), and Cargo git dependencies (the submodule keeps the source on disk, where it can be inspected and edited).
+    4. **Apple and Google account work is postponed.** Until the platform order is decided, the mobile repo builds and tests only what needs no account:
+       - iOS: the simulator (`aarch64-apple-ios-sim`, no signing);
+       - Android: a debug APK on a headless emulator.
+       Device signing, TestFlight, Play, and the APNs and FCM keys wait. [[specs/mobile]] §6a stays as the checklist for when iOS is chosen.
+    5. **Push is per platform, still sent straight from the nodes.** APNs is used on iOS. If Android goes first, FCM HTTP v1 takes the same place in `bboxy450-push`. The FCM details are decided along with the platform order.
+    6. **Mobile smoke tests run unattended**, with no operator present:
+       - iOS: a headless `xcrun simctl` boot → install → launch, with screenshots taken through `xcrun simctl io <udid> screenshot`;
+       - Android: `emulator -no-window` with screenshots through `adb exec-out screencap`.
+       Both capture the simulator or emulator only, never the operator's desktop. The Android SDK, NDK and JDK are installed by a self-service `make android-tools` target under `$ANDROID_HOME`.
+    """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"nA0AALBlad6ehsKO4+099DT25V+LO3VOyd26xrocVvY=\",\"signer\":\"seat:01M7T65M2S25WYQKF65ZXM5RZ8\"}"
+    created = json"\"2026-11-19T15:31:40.985Z\""
+    created_by = json"\"seat:01M7T65M2S25WYQKF65ZXM5RZ8\""
+    decided = json"\"2026-11-19\""
+    id = json"\"01M7T6YPATHFP38Z2523DNJ13A\""
+    links = json"[{\"rel\":\"amends\",\"to\":\"[[d1794292861627529-remote-nodes-round-3]]\"},{\"rel\":\"constrains\",\"to\":\"[[specs/mobile]]\"}]"
+    number = json"1794292861627536"
+    status = json"\"Decided\""
+    updated = json"\"2026-11-19T15:31:40.985Z\""
+    updated_by = json"\"seat:01M7T65M2S25WYQKF65ZXM5RZ8\""
+    provenance = json"{\"digest\":\"sha256:003c62cb296c60940508dc7b8b4489fc6e0c1fe154ef78ffc8c2fac9522629ac\",\"frontmatter_digest\":\"sha256:ccd5daabf4dd9ecc76651e97849def6a9c978d1d5adc70783a1c1c238c18f14e\",\"signer\":\"seat:01M7T65M2S25WYQKF65ZXM5RZ8\",\"sig\":\"EgERtZaY6WyGrRaTe1/3NZjxtMITb2f0oaYEFT9gWa3SE4d3v3lF6L17lkfQVNUaL1mniD9WwbMeRC72oQiQDw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/54\",\"event\":{\"id\":\"01M7T6YPXVGMFP57YZKBGBDTCA\",\"sequence\":54,\"hash\":\"d66ab1d48958894292066aab0da209536905c8cd85ccbd9fd6dc497cd141603e\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

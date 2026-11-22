@@ -1,0 +1,79 @@
+module tasks.`2026-11-21-app-memory-reclaim`
+
+task AppMemoryReclaim {
+  title "App memory: reclaim parked/closed transcript layouts and cap solved Markdown; drop the PanePreparer's unused 16 MiB icon atlas"
+  verify $ cargo nextest run -p bboxy450-term -E 'test(memory) | test(parked) | test(rich)' && make test-boundaries
+  paths "crates/bboxy450-term/src", "crates/bboxy450-term/tests", "crates/bboxy450-harness", "crates/bbt-render/src/chrome", "verification"
+  brief """
+    Our stand: subtract before you add; one owner per cache; bounded by construction. Source: [[reports/2026-11-21-app-memory-footprint]] (accepted). No true leak (16/16 `leaks` scans zero); unbounded **retention**.
+
+    ## Fix 1: transcript layout retention
+    - Owners: harness completed layouts by item `src/frontends/gui/view.rs:3733,3998`, prepared blocks/images `rich.rs:445-447`, model `model.rs:49-59`; term `rich_pane.rs:130-140,380-381` packs view+transcript+rows into `Parked`; `rich_faces.rs:160,195`; `App.rich_drafts` (`main.rs:2294`) has no removal on the closed-retained transition.
+    - Do: release heavy Parked state on the authoritative closed_retained edge (keep the live/undo handoff and durable transcript replay); cap solved Markdown layout by bytes for open seats (evict least recently painted, re-solve on scroll; aggregate ceiling 64 MiB across four busy panes).
+    - Budget/witness: 12 new-seat churn cycles with expired close grace; in the 192-reply fixture recover >= 75% of added live malloc after grace; broken control (no release) must fail; exact reopen and draft checks unchanged.
+
+    ## Fix 2: PanePreparer icon atlas
+    - `crates/bbt-render/src/chrome/icons.rs:163-169`, `chrome/mod.rs:108-119`, `crates/bboxy450-term/src/model.rs:1711,1901`: the worker builds a full ChromeRenderer with a 2048x2048 CPU+GPU icon atlas it never uses. Give it the group-composite path without the atlas. Budget: >= 16 MiB less baseline CPU malloc, no worker icon-atlas GPU allocation; native pane raster and dimming parity unchanged.
+
+    ## Rules
+    Reuse your fixture/measure.py/audit.py from `~/mydev/bbx-memory/target/memory-handoff` as the witness (move what tests need into the crate's tests; raw evidence stays out of Git). Long commands detached; one gate machine-wide; harness changes land through harness main then `make bump-harness`. Report with the task's verify command and the before/after curve.
+
+    ## Report from seat:01M80PFYWQ0G27WP2J9A5196ZG
+
+    [[Implement]] Landed the closed-seat reclamation, the 16 MiB per-pane solved-layout cache, and removal of the pane worker’s icon atlas. The 192-reply fixture recovered 82.3% of added live malloc after close grace, compared with 3.7% in the no-release control. Live malloc settled at 56.6 MiB after twelve more expired seats. The worker’s 16,793,600-byte icon-atlas stack disappeared. The assigned verification, native rendering checks, and both landing gates exited 0. The terminal gate checked 991 native/TLC model results, including the failing no-release control.
+
+    ```json
+    {
+      "op_id": "01M81A3AH9BR1H02WR7XVHX3NJ",
+      "commit": "400f246401455d7acfdf4f0926b4cfc742989848",
+      "report": "[[reports/2026-11-21-app-memory-reclaim.den]]",
+      "verify_result": {
+        "command": "cargo nextest run -p bboxy450-term -E 'test(memory) | test(parked) | test(rich)' && make test-boundaries",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "The four-pane fixture recovers at least 75% of added live malloc after the final close, including a no-release negative and 12 further expirations.",
+            "reference": "/Users/feral/mydev/bbx-memory/target/memory-reclaim/fixed/receipt.json and /Users/feral/mydev/bbx-memory/target/memory-reclaim/control/receipt.json"
+          },
+          {
+            "criterion": "Open-pane layout eviction preserves scroll geometry and durable content on demand. Exact draft and reopen checks pass.",
+            "reference": "/Users/feral/mydev/bbx-memory/target/memory-reclaim/harness-rich.junit.xml and /Users/feral/mydev/bbx-memory/target/memory-reclaim/scoped-nextest.junit.xml"
+          },
+          {
+            "criterion": "PanePreparer loses at least 16 MiB of startup malloc and allocates no icon atlas. Native raster and dimming pass.",
+            "reference": "/Users/feral/mydev/bbx-memory/target/memory-reclaim/atlas-after/receipt.json, /Users/feral/mydev/bbx-memory/target/memory-reclaim/pane-raster-2.log, and /Users/feral/mydev/bbx-memory/target/memory-reclaim/rich-native-parity.log"
+          },
+          {
+            "criterion": "Native/TLC agree on the closed-owner contract and its safety-failing control. The signed harness and terminal commits are on main.",
+            "reference": "/Users/feral/mydev/bbx-memory/target/memory-reclaim/term-land.log and /Users/feral/mydev/bbx-memory/target/memory-reclaim/final-check.log"
+          },
+          {
+            "criterion": "The task's exact verify command succeeds.",
+            "reference": "/Users/feral/mydev/bbx-memory/target/memory-reclaim/verify.log and /Users/feral/mydev/bbx-memory/target/memory-reclaim/verify.exit"
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    assignee = json"\"seat:01M80PFYWQ0G27WP2J9A5196ZG\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    closed = json"{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"op_id\":\"01M81A3T3ZPQRCAXDB0D3G33FV\"}"
+    created = json"\"2026-11-22T04:45:52.586Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M80S69YGVWRT09W6S6F8D7XW\""
+    number = json"1794292861627724"
+    report = json"{\"commit\":\"400f246401455d7acfdf4f0926b4cfc742989848\",\"op_id\":\"01M81A3AH9BR1H02WR7XVHX3NJ\",\"report\":\"[[reports/2026-11-21-app-memory-reclaim.den]]\",\"reported_by\":\"seat:01M80PFYWQ0G27WP2J9A5196ZG\",\"summary\":\"[[Implement]] Landed the closed-seat reclamation, the 16 MiB per-pane solved-layout cache, and removal of the pane worker’s icon atlas. The 192-reply fixture recovered 82.3% of added live malloc after close grace, compared with 3.7% in the no-release control. Live malloc settled at 56.6 MiB after twelve more expired seats. The worker’s 16,793,600-byte icon-atlas stack disappeared. The assigned verification, native rendering checks, and both landing gates exited 0. The terminal gate checked 991 native/TLC model results, including the failing no-release control.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-22T09:41:37.473Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"cargo nextest run -p bboxy450-term -E 'test(memory) | test(parked) | test(rich)' && make test-boundaries\",\"evidence\":[{\"criterion\":\"The four-pane fixture recovers at least 75% of added live malloc after the final close, including a no-release negative and 12 further expirations.\",\"reference\":\"/Users/feral/mydev/bbx-memory/target/memory-reclaim/fixed/receipt.json and /Users/feral/mydev/bbx-memory/target/memory-reclaim/control/receipt.json\"},{\"criterion\":\"Open-pane layout eviction preserves scroll geometry and durable content on demand. Exact draft and reopen checks pass.\",\"reference\":\"/Users/feral/mydev/bbx-memory/target/memory-reclaim/harness-rich.junit.xml and /Users/feral/mydev/bbx-memory/target/memory-reclaim/scoped-nextest.junit.xml\"},{\"criterion\":\"PanePreparer loses at least 16 MiB of startup malloc and allocates no icon atlas. Native raster and dimming pass.\",\"reference\":\"/Users/feral/mydev/bbx-memory/target/memory-reclaim/atlas-after/receipt.json, /Users/feral/mydev/bbx-memory/target/memory-reclaim/pane-raster-2.log, and /Users/feral/mydev/bbx-memory/target/memory-reclaim/rich-native-parity.log\"},{\"criterion\":\"Native/TLC agree on the closed-owner contract and its safety-failing control. The signed harness and terminal commits are on main.\",\"reference\":\"/Users/feral/mydev/bbx-memory/target/memory-reclaim/term-land.log and /Users/feral/mydev/bbx-memory/target/memory-reclaim/final-check.log\"},{\"criterion\":\"The task's exact verify command succeeds.\",\"reference\":\"/Users/feral/mydev/bbx-memory/target/memory-reclaim/verify.log and /Users/feral/mydev/bbx-memory/target/memory-reclaim/verify.exit\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:11de92696e176cdb688abb5c95c1ff2ae5cae630b7f53a4a8c5923fa882ce71b\",\"frontmatter_digest\":\"sha256:105e44c471b348b06ac4491dc90483236b0c5c0c088c9449e8fd7768ce1010ce\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"PFo8NudQNrHDclMI9ML8ZWtZ3yQtoHdxrurxCLrAyF3VIQPaWriDYg8otR92g6iM23J7h3Nls+4JqUeNiSZSDA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/907\",\"event\":{\"id\":\"01M81A3WNZ0H70V2GYY89H21B3\",\"sequence\":907,\"hash\":\"ac7602cd60aa71e2a14e3bbb3a625bbcffe9a19fa37f30c0f3aa12c92166c883\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

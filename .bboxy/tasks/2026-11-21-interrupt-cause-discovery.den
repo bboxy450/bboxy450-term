@@ -1,0 +1,77 @@
+module tasks.`2026-11-21-interrupt-cause-discovery`
+
+task InterruptCauseDiscovery {
+  title "Interrupt: count real turn failures from this machine's logs against the cause catalogue, and capture the countdown block"
+  verify $ test -f .bboxy/reports/2026-11-21-interrupt-cause-discovery.den
+  paths ".bboxy/reports", "crates/bboxy450-harness/src/interrupt.rs"
+  brief """
+    Our stand: subtract before you add. Read-only first.
+
+    The Interrupt feature landed (term `a05e43aef`, harness `c50a9767`/`8d8a1c34`; catalogue `src/interrupt.rs`, 16 causes, back-off 1/3/6/10/15/30 min). Its discovery deliverable was never produced (seat died).
+
+    ## Do
+    1. Scan this machine's harness session logs/JSONL (`~/.bboxy450-harness/sessions`, the `real_session_smoke` reader with `BBOXY_SMOKE_SESSIONS`) for every turn that ended in `StopReason::Error`, MaxTokens, MaxRounds or agent exit. Classify each with the landed catalogue (call its classifier; do not reimplement it).
+    2. Report a table: cause id, count, one redacted example message, and how many fell to `unknown`. Include the six Codex executor seats that died 2026-11-19..21 (seat ids in tasks/2026-11-20-codex-seat-exits-mid-gate).
+    3. If `unknown` holds a repeated real failure, add one catalogue row plus a fixture for it (that is the only code change allowed), with the targeted harness test.
+    4. A native `--capture` of the countdown block on a private fixture account (fake agent returning the capacity error), path in the report.
+    ## Oracle amendment, 2026-11-22 06:00: start
+    - Worktree `/Users/feral/mydev/bbx-causes`, branch `exec/cause-discovery`, from origin/main `8213133a7` (harness `bd8a855`). Since `8213133a7`, `make test-real-sessions` replays live logs only with an explicit `SESSIONS_DIR`: point it at `~/.bboxy450-harness/sessions` for this scan.
+    - Start with `python_execute_orient`; scan from `python_execute` programs. Long commands detached (`nohup ... &`, exit codes under `target/cause-handoff/`).
+    - Any catalogue row you add lands through harness main, then `make bump-harness` and `make land`. Report with the task's verify command.
+
+
+    ## Report from seat:01M81QRCF37537Q4WYT0G33621
+
+    The scan found 15 failures in 165 sessions. One catalogue row and its regression fixture removed all seven quota failures from unknown. All seven incident seats are accounted for, with five logged cancellations. The private native capture shows provider.capacity retrying in 60 seconds. Live replay passed 2/2, harness formal parity covered 531 models, and both signed make land gates exited 0.
+
+    ```json
+    {
+      "op_id": "01M81YG6CV8G81AJP120XYWX1J",
+      "commit": "39ae4c21c1f7dbc18b9d3bc807e0c7caf0d2d344",
+      "report": "[[reports/2026-11-21-interrupt-cause-discovery.den]]",
+      "verify_result": {
+        "command": "test -f .bboxy/reports/2026-11-21-interrupt-cause-discovery.den",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Classify authored failures and reconcile incident seats",
+            "reference": "reports/2026-11-21-interrupt-cause-discovery.den#cause-counts"
+          },
+          {
+            "criterion": "The quota fixture fails the old catalogue and passes the real harness test",
+            "reference": "target/cause-handoff/quota-red.exit=101 and targeted-existing-lib.exit=0"
+          },
+          {
+            "criterion": "Native capacity countdown",
+            "reference": "/Users/feral/mydev/bbx-causes/target/cause-handoff/interrupt-countdown.png"
+          },
+          {
+            "criterion": "Signed source landed in both repositories",
+            "reference": "target/cause-handoff/harness-land.exit=0 and term-land.exit=0"
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    assignee = json"\"seat:01M81QRCF37537Q4WYT0G33621\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    closed = json"{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"op_id\":\"01M81YH168WC00E9E00TN676A6\"}"
+    created = json"\"2026-11-21T12:22:06.315Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7Z0WV3WXN0ZTYWAS7EY76QN\""
+    number = json"1794292861627677"
+    report = json"{\"commit\":\"39ae4c21c1f7dbc18b9d3bc807e0c7caf0d2d344\",\"op_id\":\"01M81YG6CV8G81AJP120XYWX1J\",\"report\":\"[[reports/2026-11-21-interrupt-cause-discovery.den]]\",\"reported_by\":\"seat:01M81QRCF37537Q4WYT0G33621\",\"summary\":\"The scan found 15 failures in 165 sessions. One catalogue row and its regression fixture removed all seven quota failures from unknown. All seven incident seats are accounted for, with five logged cancellations. The private native capture shows provider.capacity retrying in 60 seconds. Live replay passed 2/2, harness formal parity covered 531 models, and both signed make land gates exited 0.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-22T15:38:29.802Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"test -f .bboxy/reports/2026-11-21-interrupt-cause-discovery.den\",\"evidence\":[{\"criterion\":\"Classify authored failures and reconcile incident seats\",\"reference\":\"reports/2026-11-21-interrupt-cause-discovery.den#cause-counts\"},{\"criterion\":\"The quota fixture fails the old catalogue and passes the real harness test\",\"reference\":\"target/cause-handoff/quota-red.exit=101 and targeted-existing-lib.exit=0\"},{\"criterion\":\"Native capacity countdown\",\"reference\":\"/Users/feral/mydev/bbx-causes/target/cause-handoff/interrupt-countdown.png\"},{\"criterion\":\"Signed source landed in both repositories\",\"reference\":\"target/cause-handoff/harness-land.exit=0 and term-land.exit=0\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:c0919c8c52e09ea587c6f39fe24a16e536650ace36c10278aae44f82d2fb8402\",\"frontmatter_digest\":\"sha256:10073c23e89a80356b81bbebe961d57ebae7deb987ac38cfeb3aeef6e428c0fd\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"TGZ8uD/1Aw93ze18csMYPCT1pFNqpzKhxmIc6PjOPW35pTkZ0J5fZoEoXmvDaNpljm1d3djKG0X9fZxgw5fpBg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/997\",\"event\":{\"id\":\"01M81YHBAFZ7MQ4HGBBP36T2VF\",\"sequence\":997,\"hash\":\"b58439ee46ed8706d589f3c4e690dcb929b9eb40e6e4a120501617b66774463e\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

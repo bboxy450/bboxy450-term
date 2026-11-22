@@ -1,0 +1,75 @@
+module tasks.`2026-11-21-app-memory-footprint`
+
+task AppMemoryFootprint {
+  title "GUI app physical footprint 1.2-1.3 GB (peak 1.9 GB) with ~911 MB malloc: find what holds it and whether it grows"
+  verify $ test -f .bboxy/reports/2026-11-21-app-memory-footprint.den
+  paths ".bboxy/reports", "crates/bboxy450-term", "crates/bbt-ui", "crates/bbt-render", "crates/bbt-doc"
+  brief """
+    Our stand: measure first; subtract before you add. Operator: "make sure we dont leak RAM".
+
+    ## Evidence (Oracle, 2026-11-21 18:40; operator's installed app, pid 84829, up 2 days)
+    - `vmmap -summary`: Physical footprint 1.3 G (peak 1.9 G); MALLOC total ~911 MB allocated / ~652 MB in zones; ~705 MB swapped or compressed; IOSurface 31 MB. RSS alone shows only 208-292 MB, so RSS-based leak checks miss this.
+    - Hourly RSS samples since 2026-11-20 10:26: 186 -> 292 MB, noisy (180-267). Footprint is now logged hourly in `~/mydev/bbx-mem-sweep.log` (`app footprint` lines).
+
+    ## Do (read-only on the operator's app; experiment on your own private one)
+    1. On a **private headless app** (`--headless --unattended --test-account`, own run dir), drive a realistic load: several seats, long transcripts, Mermaid blocks, inline images, canvas with chart artifacts, open/close cycles. Measure physical footprint and malloc by zone over time (`vmmap -summary`, `heap`/`leaks` on that private pid, or the app's own counters). Kill only the pid you started.
+    2. Classify: bounded caches (glyph/texture/image atlases, transcript retention, Markdown layout cache), retained-but-unreachable growth, or a real leak (`leaks` reports). Name the owner (`file:line`) of the largest holders.
+    3. Report: footprint vs time curve, top holders, leak verdict, and the smallest fix(es) as follow-up tasks with budgets. A real leak gets fixed here with a regression test bounding growth over N open/close cycles.
+    Run long measurements detached; never attach a debugger to or signal the operator's app.
+    ## Oracle amendment, 2026-11-21 20:40: start
+    - Worktree `/Users/feral/mydev/bbx-memory`, branch `exec/app-memory`, from origin/main `ee65ca2b7`. Start with `python_execute_orient`; drive the private app from `python_execute` programs.
+    - Never run a long command in the foreground: start builds and measurement loops detached (`nohup ... &`, output and exit codes under `target/memory-handoff/`) and poll briefly.
+    - Report with the task's own verify command in `verify_result.command`.
+
+
+    ## Report from seat:01M80PFYWQ0G27WP2J9A5196ZG
+
+    [[Investigate]] [[Observed]] Four private ACP seats grew live malloc from 48.2 to 266.0 MiB across 192 replies and still held 257.0 MiB after close grace. The same-content installed run varied by 0.8 MiB across 48 close/undo pairs. The exact-source app reproduced retention and rendered the stored SVG and inline PNGs. All 16 leak scans found zero unreachable malloc blocks. Allocation stacks identify retained Markdown layouts and two 16 MiB icon atlases. Added the local report and evidence. Removed no product code.
+
+    ```json
+    {
+      "op_id": "01M80S58EG22859N1RYDS5MKKP",
+      "commit": null,
+      "report": "[[reports/2026-11-21-app-memory-footprint.den]]",
+      "verify_result": {
+        "command": "test -f .bboxy/reports/2026-11-21-app-memory-footprint.den",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Private headless workload and time series",
+            "reference": "target/memory-handoff/audit.json and each run's curve.jsonl, with zero windows, file custody, 192 durable replies in the heavy run, 48 close/undo pairs in the standard runs, and captured Mermaid, inline PNGs and SVG chart."
+          },
+          {
+            "criterion": "Allocation owners and leak verdict",
+            "reference": "target/memory-handoff/stack-groups.txt and installed-stacks/00-baseline.malloc_history.txt:39,41. Sixteen successful native leak scans found 0 leaked bytes. Report maps the major stacks and parked ownership to file and line."
+          },
+          {
+            "criterion": "Report and budgeted follow-ups",
+            "reference": "reports/2026-11-21-app-memory-footprint.den documents physical footprint, retained heap, smallest follow-ups and budgets. The original two-day GUI peak was outside the private reproduction."
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    assignee = json"\"seat:01M80PFYWQ0G27WP2J9A5196ZG\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    closed = json"{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"op_id\":\"01M80S617NB769XNX1HDTY4991\"}"
+    created = json"\"2026-11-22T02:35:39.101Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M80HQWHH7YE7JPN96VHPASEK\""
+    number = json"1794292861627713"
+    report = json"{\"commit\":null,\"op_id\":\"01M80S58EG22859N1RYDS5MKKP\",\"report\":\"[[reports/2026-11-21-app-memory-footprint.den]]\",\"reported_by\":\"seat:01M80PFYWQ0G27WP2J9A5196ZG\",\"summary\":\"[[Investigate]] [[Observed]] Four private ACP seats grew live malloc from 48.2 to 266.0 MiB across 192 replies and still held 257.0 MiB after close grace. The same-content installed run varied by 0.8 MiB across 48 close/undo pairs. The exact-source app reproduced retention and rendered the stored SVG and inline PNGs. All 16 leak scans found zero unreachable malloc blocks. Allocation stacks identify retained Markdown layouts and two 16 MiB icon atlases. Added the local report and evidence. Removed no product code.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-22T04:45:50.710Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"test -f .bboxy/reports/2026-11-21-app-memory-footprint.den\",\"evidence\":[{\"criterion\":\"Private headless workload and time series\",\"reference\":\"target/memory-handoff/audit.json and each run's curve.jsonl, with zero windows, file custody, 192 durable replies in the heavy run, 48 close/undo pairs in the standard runs, and captured Mermaid, inline PNGs and SVG chart.\"},{\"criterion\":\"Allocation owners and leak verdict\",\"reference\":\"target/memory-handoff/stack-groups.txt and installed-stacks/00-baseline.malloc_history.txt:39,41. Sixteen successful native leak scans found 0 leaked bytes. Report maps the major stacks and parked ownership to file and line.\"},{\"criterion\":\"Report and budgeted follow-ups\",\"reference\":\"reports/2026-11-21-app-memory-footprint.den documents physical footprint, retained heap, smallest follow-ups and budgets. The original two-day GUI peak was outside the private reproduction.\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:3aee74d69e125fd92fd2e01725be245da34162644beb56c750582a30cb7678a7\",\"frontmatter_digest\":\"sha256:6bcf02a3082a83566d7859ff29123a03d81f4297671efb93dfe1e1636de0501c\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"6rYhEPQKPDWVK6k+HEFDWxu2YybFnXdchhTdo4In59FK6oJIl1WuwSxTCcMjFpb82dARM3bfh/9TuK7xrX0UDw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/875\",\"event\":{\"id\":\"01M80S69VVF7NP85BBSJ5T3HDK\",\"sequence\":875,\"hash\":\"6661bcac57ca1af5cbbb3641cb79dded0b4ad5450b3dbbada2bb2de657062613\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

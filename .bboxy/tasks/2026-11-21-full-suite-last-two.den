@@ -1,0 +1,120 @@
+module tasks.`2026-11-21-full-suite-last-two`
+
+task FullSuiteLastTwo {
+  title "Full make test-parity: Dream C1 pinned producer key order, and acp_face max_tokens ending observed as null"
+  verify $ make test-parity
+  paths "crates/bbt-proto", "crates/bboxy450-harness", "crates/bbt-mux", "scripts", "verification"
+  brief """
+    Our stand: fix the cause; never loosen an assertion or re-pin bytes to hide a regression.
+
+    ## Failure 1 (inherited, reproduced on clean 21e8baacd)
+    `bboxy450-term-proto::dream_c1 public_controls_and_pages_conform_to_pinned_producer_schema_and_bytes`: `inspect` emits keys `method,v,op_id,sources`, the pinned producer bytes order them differently. Repro: `sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked --test dream_c1 -E 'package(bboxy450-term-proto) & test(=public_controls_and_pages_conform_to_pinned_producer_schema_and_bytes)'`. Suspect: workspace-wide `serde_json/preserve_order` (harness d63534e, pinned since ui-kit f17cc5295) changed serialization of a struct/map the pin expects canonical (sorted) or producer-ordered. Fix by making the producer's wire order explicit where it is serialized (as ce7bcfe33 did with the canonical C1 writer), not by re-pinning bytes, unless you prove the producer itself legitimately changed.
+
+    ## Failure 2 (seen on the old pin; recheck on current pin `6bf5c2c4`+)
+    `bboxy450-harness::acp_face max_tokens_max_rounds_and_error_replies_match_the_ending` expects `max_tokens`, observes `null` at `crates/bboxy450-harness/tests/acp_face.rs:311`. Suspect: the Interrupt catalogue (harness `src/interrupt.rs`, `c50a9767`/`8d8a1c34`) now routes MaxTokens through an interrupt cause and the face no longer reports the ending. The ending must stay visible (`context.max_tokens` is a cause, not a replacement for the stop reason). Fix in the harness, land through harness main, `make bump-harness`.
+
+    ## Rules
+    Run long commands detached (`nohup ... &`, exit codes under `target/suite-handoff/`), poll briefly. One full gate machine-wide (`pgrep -fl ci-local.sh`). Report with `make test-parity` as `verify_result.command`.
+
+    ## Report from seat:01M7ZVK9YFPRSBR7EJF6DPC5E1
+
+    Dream C1 corpus 3/3 and ACP face 19/19 passed. Harness main carries 9dc1cb4 and bd4893b, the latter removing a stale loader image comparison that blocked workspace clippy. The wire fix removes dependence on serde_json map order. The ACP fix preserves the recovery causes and restores the two stop reasons. Candidate 1e23b5207 passed build and clippy, then make test-parity exited 2 on MUX shutdown timing and a Git temporary-file EINVAL (2,895/2,897 passed). Both tests passed serially on the same candidate. Term is clean and unpushed. Unblock by assigning the two parallel MUX gate failures for investigation.
+
+    ```json
+    {
+      "op_id": "01M80E7RBYK9QVEHAQC7MBCYE1",
+      "commit": "1e23b52075154f70a8bba856d1b0d9ad1b0bb6bb",
+      "report": "[[reports/2026-11-21-full-suite-last-two.den]]",
+      "verify_result": {
+        "command": "make test-parity",
+        "exit_code": 2,
+        "evidence": [
+          {
+            "criterion": "Pinned Dream C1 producer corpus passes under workspace feature unification",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/suite-handoff/fixed-proto.log"
+          },
+          {
+            "criterion": "ACP token and round stop reasons and durable causes pass",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/suite-handoff/fixed-acp.log"
+          },
+          {
+            "criterion": "Harness main landing and formal evidence",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/suite-handoff/loader-land.log:6674"
+          },
+          {
+            "criterion": "Exact final term candidate full-gate failure",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/suite-handoff/ci-local-final.log:300"
+          },
+          {
+            "criterion": "The two MUX gate cases pass in a serial diagnostic run",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/suite-handoff/mux-isolated.log"
+          }
+        ]
+      }
+    }
+    ```
+
+    ## Oracle ruling, 2026-11-21 17:40: land the candidate
+    - The two target failures are fixed (Dream C1 corpus 3/3, ACP face 19/19; harness `9dc1cb40`, `bd4893b3` on harness main). The remaining `make test-parity` failures, `logic::ownership_tests::projection_ownership_real_io_survives_cancel_restart_and_root_aba` (shutdown timing) and `provenance::twenty_commit_rebase_keeps_control_requests_responsive` (Git temporary file EINVAL), pass serially on the same candidate and the provenance one already flaked on unrelated code on 2026-11-20. They are parallel-run test-isolation flakes, moved to [[tasks/2026-11-21-parallel-run-flakes]].
+    - **Do:** rebase `1e23b5207`/`f3dfb3414` onto origin/main and `make land` (detached, one gate machine-wide). Report with `make test-parity` as the command, its real exit (2), and name the two flakes; the Oracle records it.
+
+
+    ## Report from seat:01M7ZVK9YFPRSBR7EJF6DPC5E1
+
+    Landed signed term commit 1e23b5207 on origin/main. make land exited 0 with 1,972 nextest passes across six packages. The fixes removed dependence on implicit JSON key order, the ACP error reply for token and round limits, and the invalid loader image comparison. The exact landed SHA still has a make test-parity exit of 2 for projection_ownership_real_io_survives_cancel_restart_and_root_aba (shutdown timing) and twenty_commit_rebase_keeps_control_requests_responsive (Git temporary-file EINVAL). Both passed serially and the Oracle assigned both to parallel-run-flakes. The harness pin is bd4893b3 and both worktrees are clean.
+
+    ```json
+    {
+      "op_id": "01M80HMK8NZ4VZWN8N463J9XEC",
+      "commit": "1e23b52075154f70a8bba856d1b0d9ad1b0bb6bb",
+      "report": "[[reports/2026-11-21-full-suite-last-two-landed.den]]",
+      "verify_result": {
+        "command": "make test-parity",
+        "exit_code": 2,
+        "evidence": [
+          {
+            "criterion": "Signed exact candidate landed by canonical make land with exit 0",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/suite-handoff/term-land.log:357"
+          },
+          {
+            "criterion": "Exact landed SHA full parity command exited 2 for two MUX tests",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/suite-handoff/ci-local-final.log:300"
+          },
+          {
+            "criterion": "Both MUX tests passed serially",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/suite-handoff/mux-isolated.log"
+          },
+          {
+            "criterion": "Producer wire corpus and ACP face verified",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/suite-handoff/fixed-proto.log"
+          },
+          {
+            "criterion": "ACP face suite verified",
+            "reference": "/Users/feral/mydev/bbx-gate-repairs/target/suite-handoff/fixed-acp.log"
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    assignee = json"\"seat:01M7ZVK9YFPRSBR7EJF6DPC5E1\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    created = json"\"2026-11-21T22:59:14.533Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M805BJTW9TWZD2SEAJEAGJE2\""
+    number = json"1794292861627703"
+    reconciliation = json"[{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"disposition\":\"implemented\",\"evidence\":[\"origin/main f3dfb3414 Keep Dream C1 mirror bytes in canonical key order; 1e23b5207 Pin the harness ACP repair and loader witness (harness bd4893b3, 9dc1cb40)\",\"make land exit 0, 1,972 nextest passes across six packages; Dream C1 corpus 3/3; ACP face 19/19\",\"make test-parity exit 2 on landed SHA: projection_ownership_real_io_survives_cancel_restart_and_root_aba, twenty_commit_rebase_keeps_control_requests_responsive (both pass serially)\"],\"fresh_accepted\":false,\"kind\":\"historical\",\"op_id\":\"01M80HN037FJ1R8EN33VAD08S1\",\"previous_status\":\"reported\",\"reason\":\"Both target failures fixed and landed; make test-parity still exits 2 only on two parallel-run flakes moved to tasks/2026-11-21-parallel-run-flakes.\"}]"
+    report = json"{\"commit\":\"1e23b52075154f70a8bba856d1b0d9ad1b0bb6bb\",\"op_id\":\"01M80HMK8NZ4VZWN8N463J9XEC\",\"report\":\"[[reports/2026-11-21-full-suite-last-two-landed.den]]\",\"reported_by\":\"seat:01M7ZVK9YFPRSBR7EJF6DPC5E1\",\"summary\":\"Landed signed term commit 1e23b5207 on origin/main. make land exited 0 with 1,972 nextest passes across six packages. The fixes removed dependence on implicit JSON key order, the ACP error reply for token and round limits, and the invalid loader image comparison. The exact landed SHA still has a make test-parity exit of 2 for projection_ownership_real_io_survives_cancel_restart_and_root_aba (shutdown timing) and twenty_commit_rebase_keeps_control_requests_responsive (Git temporary-file EINVAL). Both passed serially and the Oracle assigned both to parallel-run-flakes. The harness pin is bd4893b3 and both worktrees are clean.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-22T02:34:04.709Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    verify_result = json"{\"command\":\"make test-parity\",\"evidence\":[{\"criterion\":\"Signed exact candidate landed by canonical make land with exit 0\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/suite-handoff/term-land.log:357\"},{\"criterion\":\"Exact landed SHA full parity command exited 2 for two MUX tests\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/suite-handoff/ci-local-final.log:300\"},{\"criterion\":\"Both MUX tests passed serially\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/suite-handoff/mux-isolated.log\"},{\"criterion\":\"Producer wire corpus and ACP face verified\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/suite-handoff/fixed-proto.log\"},{\"criterion\":\"ACP face suite verified\",\"reference\":\"/Users/feral/mydev/bbx-gate-repairs/target/suite-handoff/fixed-acp.log\"}],\"exit_code\":2}"
+    provenance = json"{\"digest\":\"sha256:893248ac1a58e3720a42923ecba135b4c7211d1fb951b4d2a9dcbb34a802949f\",\"frontmatter_digest\":\"sha256:2b8553e49ff58862745e4eace5c7c6fe91b0d9f0da4ab7640c02cb2348886602\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"aXIIbfax5G5lK+gGYHEYaeZEtoyEUAj93LHI7RwxqE4JyTMqoffWp4Fp+xPheKVvI01rbycOYX1Iyw8Qgu36DQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/817\",\"event\":{\"id\":\"01M80HN15A76K8S1KX56458KD6\",\"sequence\":817,\"hash\":\"100ec833e8fea88b800ec376f584a7f4f6e9ec5b564e74da380a61ee132d92d1\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

@@ -1,0 +1,55 @@
+module tasks.`2026-11-19-spawn-managed-checkout`
+
+task SpawnManagedCheckout {
+  title "seat_spawn: report pre-supervisor launch failures as rejected, and respawn into amended tasks' managed checkouts"
+  verify $ make test-formal && cargo nextest run -p bboxy450-mux
+  paths "crates/bbt-mux", "crates/bbt-proto", "verification"
+  brief """
+    Our stand: subtract before you add. Report what you removed.
+
+    ## Defect (Oracle, observed 2026-11-19 14:50 on the installed app, fresh after a restart)
+    `seat_spawn` of `bboxy450-harness` + `codex` with `cwd` inside a managed implementation checkout
+    (`~/Library/Application Support/bboxy450-term/run/implementation-workspaces/checkouts/<id>`, also through a no-space symlink)
+    fails in about 160 ms with `unknown: spawn outcome unavailable; inspect the reserved seat ID; no automatic relaunch` and leaves an open ghost seat with no adapter.
+    The same call with `cwd=/Users/feral/mydev/bboxy450-term` or a plain `git worktree` in `~/mydev` returns `applied`.
+
+    `crates/bbt-mux/src/logic.rs:5566` maps every `self.launch` error to `unknown` with `Err(_)`, which drops the cause.
+    A launch that fails before any supervisor spawn request is not an unknown effect: it is a refusal.
+
+    ## Goal
+    1. The real cause reaches the caller: errors raised before the supervisor request (validation, planning, a workspace binding refusal such as `workspace_task_changed`) come back as `rejected` with their message, and the reservation is released (no ghost seat). Only a lost supervisor reply stays `unknown`.
+    2. Find why a managed-checkout `cwd` fails and fix it. If it is the amended-task binding refusal, an amended (non-terminal) task's checkout stays respawnable by its delegating Oracle: an amendment changes the brief, not the workspace.
+
+    ## Acceptance
+    - [ ] A Rust test drives `seat_spawn` into a pre-supervisor failure and asserts `rejected`, the message, and no open seat.
+    - [ ] A test respawns into the managed checkout of an amended task and gets `applied`.
+    - [ ] Update the spawn/reservation model in `verification/` with a broken control (pre-supervisor failure reported as `unknown`, or a reservation leaked) that must fail.
+
+    ## Rules
+    Work only in your worktree. Signed commits, exact paths. One build at a time; targeted tests (`cargo nextest run -p bboxy450-mux`). Land with `make land`. Report at `reports/2026-11-19-spawn-managed-checkout.den`, then `task_report`.
+
+    ## Oracle notes (operator priority: the operator restarts the app after this lands)
+    - **Worktree:** `/Users/feral/mydev/bbx-spawn-fix`, branch `exec/spawn-fix`, from `origin/main` c0411341e. You have the only build slot.
+    - **Witness:** the failing calls passed `cwd` only, with no `workspace` argument. So `implementation_workspaces.reserve` (`logic.rs:5513`) did not run, and the failure is inside `prepare_spawn` (`logic.rs:11192`), `launch` (`logic.rs:7357`) or `adapters::launch::plan` (`crates/bbt-mux/src/adapters/launch.rs:78`), and depends on the cwd being a managed checkout (an ordinary git worktree of this repo with its own `.bboxy`, `.agents` and harness submodule). Reproduce it in a unit test first. Fix 1 makes the cause visible.
+    - Keep it small. Fix the cause and the error mapping; no refactor beyond that.
+    - After `make land` is green and pushed, `task_report` at once. The Oracle rebuilds and reinstalls.
+    """
+
+  managed {
+    assignee = json"\"seat:01M7V08C1EBA1GYB8Q1J13FJ7R\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    created = json"\"2026-11-19T22:49:27.476Z\""
+    created_by = json"\"seat:01M7TZN6JR4PC59P45MZ14S4Q9\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7V0090EEGKMRC0MK5BAHS0Q\""
+    number = json"1794292861627602"
+    reconciliation = json"[{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"disposition\":\"implemented\",\"evidence\":[\"git: 67bdc58f5 Reject unstarted seat spawns and preserve amended task checkouts, on origin/main\",\"git: a48d7d478 Repair two stale mux MCP test expectations on main, on origin/main\",\"make land exit 0, LANDED a48d7d4789ef956f9d2073b4888ae718f84db560 (/tmp/land-spawn-fix2.log)\",\"formal: 964 models, TLC parity held (/tmp/bbx-spawn-formal-01M7V08C.log)\"],\"fresh_accepted\":false,\"kind\":\"historical\",\"op_id\":\"01M7VCBTR23BQAKZJQ2V6199WF\",\"previous_status\":\"claimed\",\"reason\":\"Executor seat 01M7V08C exited before reporting; Oracle landed its commit with make land exit 0 (LANDED a48d7d478, /tmp/land-spawn-fix2.log) and installed from a48d7d4.\"}]"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-20T02:25:29.616Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    provenance = json"{\"digest\":\"sha256:27efa86040dee0750daa6e30e67b281b4bf52af1a1ee0d6f2948239c88923c78\",\"frontmatter_digest\":\"sha256:89ce7b80d3157588bd099ebbc7247acf0ed5a9acf2a1c814d8ea46195c34947a\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"cnRft1ugohoFwUP5BtozMrl+iBjjDK34n30mOw+7LopgwYqtDdBh7sjggmjygnvPNlyQgMF1eOGkFD3jHlwMCA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/335\",\"event\":{\"id\":\"01M7VCBW4DHB9MTN6KGG295QZ6\",\"sequence\":335,\"hash\":\"a306f687de7f3be7cd5fef1bc70b3e4ae610a451687d1a8378bc294811863a94\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

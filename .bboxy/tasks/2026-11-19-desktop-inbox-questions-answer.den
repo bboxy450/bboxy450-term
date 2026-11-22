@@ -1,0 +1,75 @@
+module tasks.`2026-11-19-desktop-inbox-questions-answer`
+
+task DesktopInboxQuestionsAnswer {
+  title "M1: Questions/Answer on the GUI protocol, first answer wins, QuestionAnswer model, desktop inbox"
+  verify $ make test-formal && cargo nextest run -p bboxy450-term-proto -p bboxy450-term-mux -E 'test(/question|answer|inbox/)'
+  paths "crates/bbt-proto", "crates/bbt-mux", "crates/bbt-ui-model", "crates/bbt-ui", "crates/bboxy450-term/src", "crates/bboxy450-term/tests", "crates/bboxy450-harness", "verification", "Makefile", "Cargo.lock"
+  brief """
+    Our stand (verbatim, `specs/philosophy.md`): Find every abstraction, dependency, framework, and layer that exists only to compensate for the complexity introduced by another layer. Question every inherited architectural decision. Don't make my software more like Linux. Make it more like DOS. Everything should be inspectable, understandable, and modifiable. Subtract before you add. Minimize concepts, not lines of code. Report what you removed.
+
+    ## Goal
+    Implement mobile §3, §4 and §7 over the local `gui.sock`. No mesh is needed: `bboxy/gui/3` later carries the same NDJSON. The desktop gets an inbox. This is the protocol the phone app will use.
+
+    ## Steps
+    1. **Check the first-answer rule in the harness first** (mobile §4, marked Unverified). Find where `AnswerQuestion` and `ResolveApproval` are applied in `crates/bboxy450-harness`.
+       - Write a harness test: answer one question twice with different `op_id`s. The second must be refused as already answered, naming who answered. The same `op_id` twice must apply once.
+       - If the harness does not refuse, fix it there. The harness is a submodule: commit in it, push the harness to its `main` through its own landing, then `make bump-harness`.
+    2. **Who answered** (mobile §3). Add an additive `answered_by: Option<Client>` to the harness `Question` and `Approval` items. Only add; never rename or retype an existing field.
+    3. **The GUI protocol** (`crates/bbt-proto/src/gui/`):
+       - `Questions { after }` returns a page and a cursor;
+       - `Answer { seat, generation, item, op_id, reply }` returns `applied | already_answered{by} | stale_generation | refused{scope}`;
+       - the event-lane `QuestionOpened` and `QuestionClosed`.
+       Wire them in `bbt-mux` logic from the per-seat harness connection (`logic.rs:7051`; today it has only `Wait::Question`). Scope checks: `view` and `answer`. Until seat-keys lands, the local GUI attachment holds both, so name the scope check as a function the seat-keys task will plug into.
+    4. **Desktop inbox UI.** This is a minimal bbt-ui list of open questions and approvals across seats, with the schema-driven form from mobile §6. Put the form widget in `bbt-ui`, not in the app, because the phone reuses it.
+    5. **Formal model.** Write `QuestionAnswer` under `verification/` as mobile §7 describes, with a broken control, registered in `verification/contracts.toml` and `coverage.toml`. It must run under `make test-formal` (Yarn plus the pinned Java TLC, which have to agree).
+    6. **Process test.** Two GUI clients race one item on a fixture seat. Assert exactly one `applied` and one `already_answered{by}`.
+
+    ## Acceptance
+    - [ ] The harness double-answer test exists and passes; any fix is landed in the harness and bumped.
+    - [ ] `Questions`, `Answer` and the two events are implemented, and the race test passes.
+    - [ ] QuestionAnswer and its broken control run under `make test-formal`, and the broken control fails as expected.
+    - [ ] The desktop inbox renders and answers a fixture question. Give a capture path from the app's `--capture`.
+
+    ## Rules
+    - Read first: [[specs/mobile]], [[d1794292861627536-remote-nodes-round-4-mobile-both-platforms]], [[epics/autonomous-nodes-and-mobile]], and the repository `AGENTS.md` and `LAND.md`.
+    - Work only in your worktree and the allowed paths. Use signed commits as Boxy <bboxy450@gmail.com>. Run one build or test at a time, and only targeted tests while you iterate (CPU is shared).
+    - Land through `make land` yourself when verification is green (autonomous landing is authorized). Then write the report at `reports/2026-11-19-<slug>.den` and send `task_report` with the commit SHA and each command with its real exit status.
+    - Unattended only: no operator clicks or prompts, and no desktop capture.
+    - Latitude: you choose internal structure, names and test layout. Stop and message the Oracle only if an invariant or spec line would have to break.
+
+
+    ## Amendment (Oracle, 2026-11-19)
+    `crates/bboxy450-harness-wake-up` is added to the allowed paths, because `bbt-mux/src/logic.rs:7076` reaches the seat through `rich::Connection`. Extend that connection additively, so it carries question and approval items with their ids and correlated op outcomes. Do not open a second connection. Keep `dream_c1.rs` untouched: another worktree has uncommitted edits there.
+
+
+    ## Oracle amendment, 2026-11-19 15:05 (Vesper Greywind, seat 01M7TZN6JR4PC59P45MZ14S4Q9)
+    - **Worktree (supersedes the managed checkout):** `/Users/feral/mydev/bbx-inbox`, branch `exec/inbox`, at your 01d4b66ac. Its harness submodule is at your unpushed 4198c3e (3 commits past harness `origin/main`). Land those through the harness's own signed landing first, then `make bump-harness REV=<landed sha>` in term, then run your verify and `make land`.
+    - **Build slot.** At most 2 compiling executors run machine-wide. Your seat is started only when a slot is free; run one cargo command at a time.
+
+    ## Oracle amendment, 2026-11-20 11:25 (Vesper Greywind, seat 01M7VC8EK2C7DQXBNCE9V0J0MH): resume and land
+    - **State:** worktree `/Users/feral/mydev/bbx-inbox`, branch `exec/inbox` at `01d4b66ac` (signed, clean, base older than main). Its harness submodule holds `e2d4f0b`, `f311b9e`, `4198c3e` on harness `origin/main` `d934397` (only in this submodule clone).
+    - **1. Harness first:** from the submodule, land those three through the harness's own signed landing (`make land` in the harness repository, per its LAND.md) to harness `main`. Report the harness SHA.
+    - **2. Term:** `git rebase origin/main` (main is now `9fde68866`+, harness pin `7717bcc`); the gitlink conflict resolves to the landed harness SHA via `make bump-harness REV=<sha>`. Then the brief's acceptance checks, `make test-formal` once, `make land` (one gate machine-wide).
+    - Capture for the desktop inbox: the app's `--capture` on a private fixture account only; never the operator's desktop.
+    - Report at `reports/2026-11-20-desktop-inbox-questions-answer.den`, `task_report`.
+    """
+
+  managed {
+    allowed_paths = json"[\"crates/bbt-proto\",\"crates/bbt-mux\",\"crates/bbt-ui-model\",\"crates/bbt-ui\",\"crates/bboxy450-term/src\",\"crates/bboxy450-term/tests\",\"crates/bboxy450-harness\",\"verification\",\"Makefile\",\"Cargo.lock\",\"crates/bboxy450-harness-wake-up\"]"
+    assignee = json"\"seat:01M7X6CWP8AW1TRJC6A08XTYEJ\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    created = json"\"2026-11-19T15:34:43.332Z\""
+    created_by = json"\"seat:01M7T65M2S25WYQKF65ZXM5RZ8\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7T746QVPKQ0KPWMD827QY96\""
+    number = json"1794292861627539"
+    reconciliation = json"[{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"disposition\":\"implemented\",\"evidence\":[\"make land exit 0, LANDED b0dbefa4c8acd267537a080795a4a492310b4d2b (~/mydev/bbx-inbox/target/oracle-land4.log)\",\"origin/main 10bbaa4d4 Add the desktop question and approval inbox; b0dbefa4c gui_wire.tsv goldens for Questions/Answer (gui_wire_golden 4/4)\",\"harness 0d503aee (first answer wins, answered_by) on harness main, pinned via main's 0b9c2e85\",\"make test-formal exit 0 (oracle-formal.log); executor: race test 19/19, desktop inbox 1/1, test-boundaries 23/23; capture target/desktop-inbox.png (Oracle viewed)\",\"land3 flaked once on provenance::twenty_commit_rebase_keeps_control_requests_responsive (fixture temp dir vanished); land4 passed\"],\"fresh_accepted\":false,\"kind\":\"historical\",\"op_id\":\"01M7Y59GB1Q3EX93C19WMNJDPQ\",\"previous_status\":\"claimed\",\"reason\":\"Executor seats exited before landing; Oracle added the missing #320 wire goldens, rebased and landed.\"}]"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-21T04:19:38.084Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    provenance = json"{\"digest\":\"sha256:9dfe9193f893014a114507a9ca824b5823739b8f32198a5eb9e2cf71b14b0564\",\"frontmatter_digest\":\"sha256:dd709595b2f3c3e23c983adfcb9b798076626477aec3216b9ad30a2cb43287ca\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"+122j89/wycdwar0LNVpQ3aAH7zvZ1Y0xBwGast4uJnZYYy0KUSE181RVo17I/JgL4VAOCC1SKmiaHXqu6m0Dw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/559\",\"event\":{\"id\":\"01M7Y59K2QA11N9H5FFHNWMJ3J\",\"sequence\":559,\"hash\":\"9ea33c95d7eb3496a883e624ab20fabb904a0b575cd3bbc7de0994f30156d072\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

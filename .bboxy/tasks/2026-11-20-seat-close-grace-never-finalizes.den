@@ -1,0 +1,35 @@
+module tasks.`2026-11-20-seat-close-grace-never-finalizes`
+
+task SeatCloseGraceNeverFinalizes {
+  title "seat_close: seats stay closed_grace forever after the 60 s undo deadline, and the call times out with 'UI frame incomplete'"
+  verify $ cargo nextest run -p bboxy450-term-mux -E 'test(close)'
+  paths "crates/bbt-mux", "crates/bboxy450-term/src"
+  brief """
+    Our stand: subtract before you add.
+
+    ## Evidence (2026-11-20 16:25, Oracle)
+    `seat_list` shows six seats in `closed_grace` with no live process, five past `close.deadline_ms` (ui-kit 01M7T75R..., inbox 01M7T75S..., gate-repairs 01M7TDTG... since 2026-11-19; ui-kit-land 01M7VGHT...; svg 01M7X2RB...). Several `seat_close` calls returned `unavailable: timeout: UI frame incomplete; target=None ... effects=[Lifecycle(Target{...undo:false})=Ok(false)]` yet the seat moved to `closed_grace`.
+
+    ## Do
+    Find who finalizes `closed_grace` -> `closed_retained` after the deadline, and why it never runs (likely waits on a UI frame/close control that never completes, or only runs on a UI event). Finalization must be owned by the mux on its own clock, independent of the GUI; the tool reply must report the applied transition instead of a frame timeout once the lifecycle change is recorded. Model the close lifecycle (close, undo inside grace, deadline, GUI absent/restart, process already gone) with a broken control that never finalizes; process witness with no GUI attached.
+    ## Evidence added 2026-11-20 18:30 (Oracle)
+    - A second `seat_close` on a `closed_grace` seat whose process is gone (ui-kit 01M7T75R..., generation 1) is refused: `rejected: target binding changed before orphan close`; the seat stays `closed_grace`. So no tool path can finalize it; six seats are stuck (ui-kit, inbox 01M7T75S..., gate-repairs 01M7TDTG..., ui-kit-land 01M7VGHT..., svg 01M7X2RB..., inbox 01M7X6CW...), all without processes.
+    - Acceptance adds: an orphaned `closed_grace` seat past its deadline finalizes on the mux clock, and a repeated `seat_close` on it is idempotent (reports the finalized state) instead of refusing.
+    """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    created = json"\"2026-11-21T00:15:45.949Z\""
+    created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    id = json"\"01M7XQB157XPJ959B2FG7CKR44\""
+    number = json"1794292861627650"
+    reconciliation = json"[{\"by\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"disposition\":\"implemented\",\"evidence\":[\"origin/main 4130634ea Orphan close finalizes a seat that exited before its window close (crates/bbt-mux/src/logic.rs close_control_orphan accepts ClosedGrace)\",\"cargo nextest run -p bboxy450-term-mux --test it -E test(mcp_orphan_close_checks_supervisor_absence): 1 passed (new ClosedGrace case)\",\"Not done: automatic finalization on the mux clock without a repeat seat_close; full make land not run (operator: minimal tests)\"],\"fresh_accepted\":false,\"kind\":\"historical\",\"op_id\":\"01M7XZG0T3XJGGENY4Y9H6B920\",\"previous_status\":\"open\",\"reason\":\"Root cause: a window close of a seat whose process had already exited waits for an exit receipt that never comes. Fixed in the supervisor-checked orphan close; a repeat seat_close finalizes it. Operator asked for a quick land with minimal tests.\"}]"
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-21T02:38:20.397Z\""
+    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    provenance = json"{\"digest\":\"sha256:a9171d889d0975bbfea08f040531fa87907e514a7fb2b9b6f82ecf001d908e12\",\"frontmatter_digest\":\"sha256:4e13dd0906b5e8509e268bb33b7f442e47901852abfb84f25902f9819f02ce7d\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"Econ7qN7z4CA/U4FgRL6j6e0O3zBCpVfQOJIIrZ9f93JZl8Pwhc+q1f1zBqIQDKTP8Wd95S9S5vNzbP5CYOmCA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/549\",\"event\":{\"id\":\"01M7XZG3W2GHMR7KFJAX3M4VZX\",\"sequence\":549,\"hash\":\"abb23483d12139e383353d10ce4f7ea03e7d06a15497c6b98874e4f777a46f57\"}}"
+    body_tail = json"\"\\n\""
+  }
+}
