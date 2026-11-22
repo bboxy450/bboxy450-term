@@ -14,6 +14,7 @@ import subprocess
 
 from corpus import BASE, digest, dump
 from references import policy
+from reference_browser import require_version
 
 
 def run(out):
@@ -99,6 +100,7 @@ def report(out, review, advisories):
 
 def frozen_advisories(out, review):
     frozen = json.loads((BASE / "fixtures/advisories.json").read_text())
+    require_version(review["comparisons"]["chrome"]["Browser"], frozen["chrome"])
     if frozen["policy"] != policy():
         raise ValueError("frozen numeric comparison policy differs from canonical constants")
     rows = review["comparisons"]["comparisons"]
@@ -120,7 +122,7 @@ def frozen_advisories(out, review):
             entry["changed_fraction"]=row["changed_fraction"]
             entry["pixel_sha256"]=hashes
             refreshed.append((entry["case"],entry["view"]["id"]))
-    if frozen["font_set"] != review["comparisons"]["font_set"] or frozen["chrome"] != review["comparisons"]["chrome"]["Browser"] or frozen["resvg"] != review["comparisons"]["oracle"]["resvg"]:
+    if frozen["font_set"] != review["comparisons"]["font_set"] or frozen["resvg"] != review["comparisons"]["oracle"]["resvg"]:
         raise ValueError("frozen advisory tool/font identity changed")
     if refreshed:
         dump(BASE/"fixtures/advisories.json",frozen)

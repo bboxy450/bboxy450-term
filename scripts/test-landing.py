@@ -1639,23 +1639,27 @@ class GateReceiptTests(unittest.TestCase):
         binary.chmod(0o700)
         sha = repo.commit("Fixture actual CI receipt entrypoint")
         environment = dict(repo.environment, BBOXY_GATE_SLOT="none")
+        environment.pop("SESSIONS_DIR", None)
         result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,
                                 env=environment, text=True, capture_output=True, timeout=15)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(control_marker.is_file(), 'canonical CI must execute the capability control')
         self.assertIn('"make", "test-capability-control"', result.stdout)
+        self.assertNotIn('"make", "test-real-sessions"', result.stdout)
         log = repo.state / "actual-ci.log"
         log.write_text(result.stdout + result.stderr)
         self.assertEqual(landing.gate_proof(log, sha, repo.root)["tested_sha"], sha)
         repo.write('Makefile', normal_makefile + '\ntest-capability-control:\n\t@exit 29\n')
         control_failed = repo.commit('Fixture failing capability control')
         result = subprocess.run(['sh', 'scripts/ci-local.sh'], cwd=repo.root,
-                                env=environment, text=True, capture_output=True, timeout=15)
+                                env=dict(environment, SESSIONS_DIR=str(repo.state / "private sessions")),
+                                text=True, capture_output=True, timeout=15)
         self.assertNotEqual(result.returncode, 0)
         stages = ("test-formal", "test-harness-source", "test-harness-native",
                   "test-real-sessions", "test-capability-control")
         positions = [result.stdout.index(f'"make", "{stage}"') for stage in stages]
         self.assertEqual(positions, sorted(positions))
+        self.assertIn(f'SESSIONS_DIR={repo.state / "private sessions"}', result.stdout)
         self.assertNotIn('"cargo", "build", "-p", "bboxy450-term"', result.stdout)
         log.write_text(result.stdout + result.stderr)
         with self.assertRaisesRegex(landing.Refusal, 'gate_log_not_green'):

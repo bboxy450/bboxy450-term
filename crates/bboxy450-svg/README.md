@@ -7,7 +7,10 @@ measurement pins still refuse an unexpected change. `CORPUS_ONLY=1` is a
 reference diagnostic and cannot claim renderer acceptance.
 
 Make owns the private Python 3.12 environment, approved vl-convert-python
-2.0.0rc7 macOS arm64 wheel and resvg oracle. No system font or global Python
+2.0.0rc7 macOS arm64 wheel, resvg oracle and SHA-256-pinned Chrome for Testing.
+Chrome runs headlessly with a private profile under the selected target directory.
+An explicit `CHROME` path is recorded in the results. Frozen comparisons require
+the exact version in `fixtures/advisories.json`. No system font or global Python
 installation is used. Other platforms report chart export unavailable.
 `fonts/manifest.json` is the sole font identity; the app copies its same bytes
 and upstream license to `Contents/Resources/chart-fonts/`.

@@ -23,9 +23,10 @@ const captureSourceSha=await captureSource();
 const manifestBytes=await fs.readFile(path.join(fontDir,'manifest.json'));
 const fontSet='sha256:'+hash(manifestBytes),fonts=JSON.parse(manifestBytes),faces=[];
 for(const f of fonts.faces){const bytes=await fs.readFile(path.join(fontDir,f.file));if(hash(bytes)!==f.sha256)throw Error('font byte mismatch');faces.push({...f,data:bytes.toString('base64')});}
+const browserSource=request.browser_source;
+const binary=browserSource.binary;
 const profile=await fs.mkdtemp(path.join(out,'profile-'));
-const binary=process.env.CHROME||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const browser=spawn(binary,['--headless=new','--remote-debugging-port=0',`--user-data-dir=${profile}`,'--no-first-run','--no-default-browser-check','--disable-extensions','--hide-scrollbars','--force-color-profile=srgb','--disable-background-networking','about:blank'],{stdio:['ignore','ignore','pipe']});
+const browser=spawn(binary,['--headless=new','--remote-debugging-port=0',`--user-data-dir=${profile}`,'--use-mock-keychain','--password-store=basic','--no-first-run','--no-default-browser-check','--disable-extensions','--hide-scrollbars','--force-color-profile=srgb','--disable-background-networking','about:blank'],{stdio:['ignore','ignore','pipe']});
 await fs.writeFile(path.join(out,'owned-process.json'),JSON.stringify({pid:browser.pid,profile,binary}));
 let stderr='',ws,browserWs,exited=false;
 browser.stderr.on('data',b=>{stderr=(stderr+b).slice(-4000);});
@@ -35,6 +36,7 @@ const runs=[],fileHashes={};
 try{
   const port=await waitForDevToolsPort(profile,()=>stderr);
   const version=await(await fetch(`http://127.0.0.1:${port}/json/version`)).json();
+  if(version.Browser!==browserSource.version)throw Error(`SVG reference browser version mismatch: frozen ${browserSource.version}, observed ${version.Browser}`);
   browserWs=new WebSocket(version.webSocketDebuggerUrl);
   await new Promise((resolve,reject)=>{browserWs.addEventListener('open',resolve,{once:true});browserWs.addEventListener('error',reject,{once:true});});
   const browserCdp=new CDP(browserWs);
@@ -92,7 +94,7 @@ try{
     }
   }
   if(await captureSource()!==captureSourceSha)throw Error('capture program changed during run');
-  await fs.writeFile(path.join(out,'chrome.json'),JSON.stringify({browser:version,source_sha256:captureSourceSha,font_set:fontSet,file_hashes:fileHashes,runs},null,2));
+  await fs.writeFile(path.join(out,'chrome.json'),JSON.stringify({browser:version,browser_source:browserSource,source_sha256:captureSourceSha,font_set:fontSet,file_hashes:fileHashes,runs},null,2));
   console.log(JSON.stringify({chrome:version.Browser,runs:runs.length,font_set:fontSet}));
 }finally{
   if(ws)ws.close();

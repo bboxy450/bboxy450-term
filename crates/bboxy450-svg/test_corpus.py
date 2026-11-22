@@ -18,6 +18,7 @@ from unittest.mock import patch
 import corpus
 from census import census
 from measurements import advance_containment
+from reference_browser import capture_browser, frozen_version
 from references import policy
 
 
@@ -25,6 +26,17 @@ class CorpusChecks(unittest.TestCase):
     def setUp(self):
         self.temp_root = corpus.BASE.parents[1] / "target/svg-loop/test-temp"
         self.temp_root.mkdir(parents=True, exist_ok=True)
+
+    def test_wrong_browser_is_refused_before_capture(self):
+        with tempfile.TemporaryDirectory(dir=self.temp_root) as tmp:
+            root = Path(tmp)
+            browser = root / "explicit browser"
+            browser.write_text('#!/bin/sh\nprintf "Google Chrome 1.2.3.4\\n"\n')
+            browser.chmod(0o700)
+            with patch.dict("os.environ", CHROME=str(browser)), self.assertRaisesRegex(
+                ValueError, f"frozen {frozen_version()}, observed Chrome/1[.]2[.]3[.]4"
+            ):
+                capture_browser(root)
 
     def test_font_byte_substitution_is_refused(self):
         with tempfile.TemporaryDirectory(dir=self.temp_root) as tmp:

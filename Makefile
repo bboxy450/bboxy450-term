@@ -104,6 +104,7 @@ svg-review:
 
 .PHONY: svg-reference
 svg-reference:
+	@python3 -I crates/bboxy450-svg/reference_browser.py '$(TARGET_DIR)/svg-loop'
 	@python3 -I crates/bboxy450-svg/reference_setup.py '$(TARGET_DIR)/svg-loop'
 	@set -eu; export CARGO_BUILD_BUILD_DIR='$(abspath $(TARGET_DIR))/svg-loop/oracle-build'; . scripts/cache-env.sh; \
 	test -f '$(TARGET_DIR)/svg-loop/oracle-source/Cargo.lock' || cargo generate-lockfile --offline --manifest-path '$(TARGET_DIR)/svg-loop/oracle-source/Cargo.toml'; \

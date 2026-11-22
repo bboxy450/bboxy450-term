@@ -7,13 +7,13 @@
 """Phase A references only: project mutually supported layers, never native paint."""
 import json
 import math
-import os
 from pathlib import Path
 import re
 import subprocess
 import xml.etree.ElementTree as ET
 
 from corpus import BASE, digest, dump, load_fonts
+from reference_browser import capture_browser
 
 
 def policy():
@@ -120,7 +120,8 @@ def order_independence(out, request, chrome):
 
     expected = pixels([r for r in chrome["runs"] if r["id"] in names])
     key = digest(json.dumps({"capture": chrome["source_sha256"], "checker": digest(Path(__file__).read_bytes()),
-                             "font_set": chrome["font_set"], "browser": chrome["browser"], "cases": cases,
+                             "font_set": chrome["font_set"], "browser": chrome["browser"],
+                             "browser_source": chrome["browser_source"], "cases": cases,
                              "pixels": sorted(expected.items())}, sort_keys=True).encode())
     root = out / "order-controls"
     root.mkdir(exist_ok=True)
@@ -162,6 +163,7 @@ def order_independence(out, request, chrome):
 
 
 def run(out):
+    browser_source = capture_browser(out)
     source = BASE / "corpus"
     manifest = json.loads((source / "manifest.json").read_text())
     fixtures = json.loads((BASE / "fixtures/manifest.json").read_text())
@@ -172,21 +174,21 @@ def run(out):
         case["capture_views"]={v["id"]:json.loads(subprocess.check_output([str(oracle),"viewport",json.dumps(case["viewBox"]),json.dumps(v["camera"]),str(v["scale"])])) for v in case["views"]}
     refs = out / "references"
     refs.mkdir(parents=True, exist_ok=True)
-    request = {"out": str(refs), "font_directory": str(BASE / "fonts"),
+    request = {"out": str(refs), "font_directory": str(BASE / "fonts"), "browser_source": browser_source,
                "cases": [{**{k: v for k, v in c.items() if k != "source_directory"}, "svg": str(c["source_directory"] / c["svg"])} for c in cases]}
     dump(out / "capture-request.json", request)
     capture_sha = digest(b"".join(p.read_bytes() for p in (BASE / "capture.mjs", BASE.parent / "bboxybook/capture-cdp.mjs", BASE.parent / "bboxybook/capture-startup.mjs", BASE / "src/viewport.rs")))
     cache = refs / "chrome.json"
     chrome = json.loads(cache.read_text()) if cache.is_file() else {}
-    browser_version = subprocess.check_output([os.environ.get("CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"), "--version"], text=True, timeout=10).split()[-1]
-    browser_version = f"Chrome/{browser_version}"
     # Camera numbers retain their values across Python/JS; JSON 108.0 versus
     # 108 is serialization noise, not a new camera or a stale reference.
     expected = {(c["id"], v["id"], c["sha256"], tuple(v["camera"]), v["scale"]) for c in cases for v in c["views"]}
     actual = {(r["id"], r["view"]["id"], r["source_sha256"], tuple(r["view"]["camera"]), r["view"]["scale"]) for r in chrome.get("runs", [])}
     files = chrome.get("file_hashes", {})
     intact = bool(files) and all(Path(p).is_file() and digest(Path(p).read_bytes()) == h for p, h in files.items())
-    if chrome.get("source_sha256") != capture_sha or actual != expected or chrome.get("font_set") != load_fonts()[1] or chrome.get("browser", {}).get("Browser") != browser_version or not intact:
+    if (chrome.get("source_sha256") != capture_sha or actual != expected or chrome.get("font_set") != load_fonts()[1]
+            or chrome.get("browser", {}).get("Browser") != browser_source["version"]
+            or chrome.get("browser_source") != browser_source or not intact):
         subprocess.run(["node", str(BASE / "capture.mjs"), str(out / "capture-request.json")], check=True)
         chrome = json.loads(cache.read_text())
     approved = {f["postscript_name"] for f in load_fonts()[0]["faces"]}
@@ -252,7 +254,8 @@ def run(out):
     capture_order = order_independence(out, request, chrome)
     result = {"phase": "reference evidence", "policy": rules, "oracle": identity,
               "oracle_binary_sha256": oracle_hash, "reference_cache_hits": cache_hits, "capture_order": capture_order,
-              "font_set": load_fonts()[1], "chrome": chrome["browser"], "captures": len(chrome["runs"]), "comparisons": comparisons}
+              "font_set": load_fonts()[1], "chrome": chrome["browser"], "browser_source": browser_source,
+              "captures": len(chrome["runs"]), "comparisons": comparisons}
     dump(out / "reference-comparisons.json", result)
     return result
 

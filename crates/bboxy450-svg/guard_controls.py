@@ -24,10 +24,11 @@ def run(out):
     empty.write_text(f'<svg xmlns="http://www.w3.org/2000/svg" width="48" height="32" viewBox="0 0 48 32" data-bboxy-font-set="{identity}"><text display="none">Hidden</text></svg>')
     manifest = json.loads((BASE / "corpus/manifest.json").read_text())
     original = next(c for c in manifest["cases"] if c["id"] == "vega-line")
+    chrome = json.loads((out / "references/chrome.json").read_text())
     cache_key = digest(json.dumps({"capture": digest((BASE / "capture.mjs").read_bytes()),
                                   "control": digest((BASE / "guard_controls.py").read_bytes()), "font_set": identity,
                                   "source": digest(raw), "empty": digest(empty.read_bytes()), "views": original["views"],
-                                  "browser": json.loads((out / "references/chrome.json").read_text())["browser"]}, sort_keys=True).encode())
+                                  "browser": chrome["browser"], "browser_source": chrome["browser_source"]}, sort_keys=True).encode())
     cache = out / "font-controls.json"
     if cache.is_file():
         previous = json.loads(cache.read_text())
@@ -44,6 +45,7 @@ def run(out):
             request = root / (name + "-" + view["id"] + "-request.json")
             mapping=json.loads(subprocess.check_output([str(out / "oracle-build/debug/bboxy450-svg-reference"), "viewport", json.dumps(box), json.dumps(camera), str(view["scale"])]))
             dump(request, {"out": str(directory), "font_directory": str(BASE / "fonts"),
+                           "browser_source": chrome["browser_source"],
                            "cases": [{"id": name, "exporter": "refusal control", "svg": str(svg), "sha256": digest(svg.read_bytes()),
                                       "viewBox": box, "capture_views": {view["id"]: mapping}, "views": [{**view, "camera": camera}]}]})
             with (root / (name + "-" + view["id"] + ".log")).open("w") as log:
