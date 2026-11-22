@@ -33,6 +33,42 @@ static FONT: LazyLock<FontRef<'static>> = LazyLock::new(|| {
     .expect("bundled JetBrains Mono font")
 });
 
+// The AOSP sans-serif face is variable on current Android and static on
+// older releases. Both use these Roboto filenames where available.
+#[cfg(target_os = "android")]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "one-time loading of an immutable Android system font"
+)]
+fn android_font(path: &str) -> Option<FontRef<'static>> {
+    let data = std::fs::read(path).ok()?.into_boxed_slice();
+    FontRef::from_index(&data, 0)?;
+    FontRef::from_index(Box::leak(data), 0)
+}
+
+#[cfg(target_os = "android")]
+fn android_sans(weight: u16) -> Option<FontRef<'static>> {
+    static REGULAR: LazyLock<Option<FontRef<'static>>> =
+        LazyLock::new(|| android_font("/system/fonts/Roboto-Regular.ttf"));
+    static MEDIUM: LazyLock<Option<FontRef<'static>>> =
+        LazyLock::new(|| android_font("/system/fonts/Roboto-Medium.ttf"));
+    static BOLD: LazyLock<Option<FontRef<'static>>> =
+        LazyLock::new(|| android_font("/system/fonts/Roboto-Bold.ttf"));
+    let regular = (*REGULAR)?;
+    if regular
+        .variations()
+        .find_by_tag(swash::tag_from_bytes(b"wght"))
+        .is_some()
+    {
+        return Some(regular);
+    }
+    match weight {
+        600.. => (*BOLD).or(Some(regular)),
+        450..=599 => (*MEDIUM).or(Some(regular)),
+        _ => Some(regular),
+    }
+}
+
 thread_local! {
     static SHAPER: RefCell<ShapeContext> = RefCell::new(ShapeContext::new());
     static SCALER: RefCell<ScaleContext> = RefCell::new(ScaleContext::new());
@@ -43,19 +79,50 @@ pub(crate) struct Face {
     size_bits: u32,
     weight: u16,
     italic: bool,
+    #[cfg(target_os = "android")]
+    mono: bool,
 }
 
 impl Face {
-    fn new(size: f32, weight: u16, italic: bool) -> Self {
+    fn new(size: f32, weight: u16, italic: bool, _mono: bool) -> Self {
         Self {
             size_bits: size.to_bits(),
             weight,
             italic,
+            #[cfg(target_os = "android")]
+            mono: _mono,
         }
+    }
+
+    fn chrome(style: TextStyle) -> Self {
+        Self::new(style.pixels(), style.weight, style.italic, style.mono)
     }
 
     fn size(self) -> f32 {
         f32::from_bits(self.size_bits)
+    }
+
+    fn font(self) -> FontRef<'static> {
+        #[cfg(target_os = "android")]
+        if !self.mono
+            && let Some(font) = android_sans(self.weight)
+        {
+            return font;
+        }
+        *FONT
+    }
+
+    fn variations(self) -> [(&'static str, f32); 1] {
+        [("wght", f32::from(self.weight))]
+    }
+
+    fn metrics(self) -> swash::Metrics {
+        let font = self.font();
+        let coords: Vec<_> = font
+            .variations()
+            .normalized_coords(self.variations())
+            .collect();
+        font.metrics(&coords).scale(self.size())
     }
 
     pub(crate) fn bitmap(self, id: GlyphId, position: [f64; 2], scale: f32) -> Option<Bitmap> {
@@ -65,9 +132,20 @@ impl Face {
         let transform = self
             .italic
             .then(|| Transform::skew(Angle::from_degrees(12.), Angle::ZERO));
-        let strength = size * f32::from(self.weight.clamp(400, 900) - 400) / 10_000.;
+        let font = self.font();
+        // Roboto has real weights. A synthetic outline can erode small
+        // contours, so keep synthetic weight confined to JetBrains Mono.
+        let strength = if font.key == FONT.key {
+            size * f32::from(self.weight.clamp(400, 900) - 400) / 10_000.
+        } else {
+            0.
+        };
         let image = SCALER.with_borrow_mut(|cx| {
-            let mut scaler = cx.builder(*FONT).size(size).build();
+            let mut scaler = cx
+                .builder(font)
+                .size(size)
+                .variations(self.variations())
+                .build();
             Render::new(&[
                 Source::ColorOutline(0),
                 Source::ColorBitmap(StrikeWith::BestFit),
@@ -160,11 +238,11 @@ struct Positioned {
     y: f32,
 }
 
-fn shape(text: &str, size: f32, tracking: f32, terminal: bool) -> (f32, Vec<Positioned>) {
+fn shape(text: &str, face: Face, tracking: f32, terminal: bool) -> (f32, Vec<Positioned>) {
+    let font = face.font();
     let mut advance = 0.;
     let mut glyphs = Vec::new();
-    // This face covers Latin, Greek and Cyrillic, all left-to-right. Common
-    // and inherited characters stay with the surrounding script.
+    // Common and inherited characters stay with the surrounding script.
     let mut script = None;
     let runs = text.char_indices().filter_map(|(at, ch)| {
         let next = ch.script();
@@ -176,7 +254,11 @@ fn shape(text: &str, size: f32, tracking: f32, terminal: bool) -> (f32, Vec<Posi
     let mut start = 0;
     let mut run = |end, script| {
         SHAPER.with_borrow_mut(|cx| {
-            let mut builder = cx.builder(*FONT).script(script).size(size);
+            let mut builder = cx
+                .builder(font)
+                .script(script)
+                .size(face.size())
+                .variations(face.variations());
             if terminal {
                 builder = builder.features([("liga", 0), ("clig", 0), ("calt", 0)]);
             }
@@ -217,10 +299,11 @@ fn chrome_line(
     text: &str,
     style: TextStyle,
     max_width: Option<f32>,
-) -> Result<(TextMetrics, Vec<Positioned>)> {
+) -> Result<(TextMetrics, Vec<Positioned>, Face)> {
     let size = chrome_size(style)?;
+    let face = Face::chrome(style);
     let tracking = style.tracking_em * size;
-    let shape = |text: &str| shape(text, size, tracking, false);
+    let shape = |text: &str| shape(text, face, tracking, false);
     let uppercase;
     let text = if style.uppercase {
         uppercase = text.to_uppercase();
@@ -253,7 +336,7 @@ fn chrome_line(
             (0., Vec::new())
         };
     }
-    let metrics = FONT.metrics(&[]).scale(size);
+    let metrics = face.metrics();
     Ok((
         TextMetrics {
             advance,
@@ -262,6 +345,7 @@ fn chrome_line(
             leading: metrics.leading,
         },
         glyphs,
+        face,
     ))
 }
 
@@ -270,7 +354,8 @@ pub fn measure(text: &str, style: TextStyle, max_width: Option<f32>) -> Result<T
 }
 
 pub fn x_height(style: TextStyle) -> Result<f32> {
-    Ok(FONT.metrics(&[]).scale(chrome_size(style)?).x_height)
+    chrome_size(style)?;
+    Ok(Face::chrome(style).metrics().x_height)
 }
 
 pub(crate) struct Line {
@@ -292,7 +377,7 @@ pub(crate) fn shape_at(
     if !(0.5..=4.).contains(&scale) || !(0. ..1.).contains(&phase) {
         return Err("invalid chrome raster scale or phase".into());
     }
-    let (metrics, glyphs) = chrome_line(text, style, max_width)?;
+    let (metrics, glyphs, face) = chrome_line(text, style, max_width)?;
     let width = (metrics.advance * scale).ceil();
     if !width.is_finite() || width > (i32::MAX / 2) as f32 {
         return Err("chrome text layout dimensions overflow".into());
@@ -315,7 +400,7 @@ pub(crate) fn shape_at(
         height,
         baseline: height as f32 - baseline,
         metrics,
-        face: Face::new(style.pixels(), style.weight, style.italic),
+        face,
         glyphs: placed,
     })
 }
@@ -384,7 +469,7 @@ impl Font {
         let size = config.size * scale;
         let m = FONT.metrics(&[]).scale(size);
         Ok(Self {
-            face: Face::new(size, 400, false),
+            face: Face::new(size, 400, false, true),
             metrics: FontMetrics {
                 cell_width: cell_width(size).ceil().max(1.) as u32,
                 cell_height: (m.ascent + m.descent + m.leading + 2. * scale).ceil() as u32,
@@ -472,11 +557,6 @@ impl Fonts {
         if !(1..=2).contains(&span) {
             return Err("glyph span must be one or two cells".into());
         }
-        let (advance, glyphs) = shape(text, self.size, 0., true);
-        let width = (self.metrics.cell_width * u32::from(span)) as i32;
-        let height = self.metrics.cell_height as i32;
-        let x = (width as f32 - advance) * 0.5;
-        let y = height - i32::from(self.metrics.baseline);
         let weight = if bold {
             700
         } else if self.thicken {
@@ -484,7 +564,12 @@ impl Fonts {
         } else {
             400
         };
-        let face = Face::new(self.size, weight, italic);
+        let face = Face::new(self.size, weight, italic, true);
+        let (advance, glyphs) = shape(text, face, 0., true);
+        let width = (self.metrics.cell_width * u32::from(span)) as i32;
+        let height = self.metrics.cell_height as i32;
+        let x = (width as f32 - advance) * 0.5;
+        let y = height - i32::from(self.metrics.baseline);
         let glyphs: Vec<_> = glyphs
             .into_iter()
             .filter_map(|glyph| {
