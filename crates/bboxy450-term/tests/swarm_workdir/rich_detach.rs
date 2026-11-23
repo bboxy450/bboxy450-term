@@ -32,14 +32,29 @@ fn identity(row: &Value) -> Value {
     json!({"process":row["state"]["process"],"generation":row["record"]["generation"],"session":row["record"]["harness_session_id"]})
 }
 pub(super) fn rich(f: &Fixture, seat: &str, min_seq: u64) -> Value {
+    rich_frame(f, seat, min_seq)["rich_observation"][seat].clone()
+}
+fn rich_frame(f: &Fixture, seat: &str, min_seq: u64) -> Value {
     wait(|| {
         let frame = f.ctl(&["ui", "layout"]);
         let rich = &frame["rich_observation"][seat];
         (rich["ready"] == true
             && rich["paint_count"].as_u64().unwrap_or(0) > 0
             && rich["cursor"]["seq"].as_u64().unwrap_or(0) >= min_seq)
-            .then(|| rich.clone())
+            .then_some(frame)
     })
+}
+fn at_rich_tail(rich: &Value) -> bool {
+    rich["scroll"][0] == rich["scroll"][1]
+}
+fn rich_pane_rect(frame: &Value, seat: &str) -> [f64; 4] {
+    let pane = frame["panes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["seat"] == seat)
+        .unwrap();
+    std::array::from_fn(|index| pane["rect"][index].as_f64().unwrap())
 }
 fn events(path: &Path) -> Vec<Value> {
     fs::read_to_string(path)
@@ -280,20 +295,16 @@ fn rich_app_routes_composer_approval_scroll_and_focus() {
     ]);
     let identity_before = identity(&row(&f, &seat));
     submit(&f, "Show the native retained transcript");
-    let full = wait(|| {
-        let r = rich(&f, &seat, 1);
-        (r["scroll"][1].as_f64().unwrap() > 100.).then_some(r)
+    let full_frame = wait(|| {
+        let frame = rich_frame(&f, &seat, 1);
+        let r = &frame["rich_observation"][&seat];
+        // Scroll from a settled baseline so tail-follow cannot outrun the wheel.
+        (at_rich_tail(r) && r["scroll"][1].as_f64().unwrap() > 100.).then_some(frame)
     });
-    let layout = f.ctl(&["ui", "layout"]);
-    let pane = layout["panes"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|p| p["seat"] == seat)
-        .unwrap();
-    let rect = pane["rect"].as_array().unwrap();
-    let x = (rect[0].as_f64().unwrap() + rect[2].as_f64().unwrap() / 2.) as u32;
-    let y = (rect[1].as_f64().unwrap() + rect[3].as_f64().unwrap() / 2.) as u32;
+    let full = &full_frame["rich_observation"][&seat];
+    let [x, y, width, height] = rich_pane_rect(&full_frame, &seat);
+    let x = (x + width / 2.) as u32;
+    let y = (y + height / 2.) as u32;
     f.ctl(&[
         "ui",
         "input",
@@ -316,18 +327,18 @@ fn rich_app_routes_composer_approval_scroll_and_focus() {
         (r["focused"] == true).then_some(())
     });
     submit(&f, "Run the tool after explicit native approval");
-    let approval = wait(|| {
-        let r = rich(&f, &seat, 1);
-        (!r["approval_choices"].as_array().unwrap().is_empty()).then_some(r)
+    let approval_frame = wait(|| {
+        let frame = rich_frame(&f, &seat, 1);
+        let r = &frame["rich_observation"][&seat];
+        // Tail-follow can expose a clipped button while it is still moving.
+        (at_rich_tail(r) && r["approval_choices"][0].is_array()).then_some(frame)
     });
     assert!(!marker.exists(), "tool ran before the App approval");
+    let approval = &approval_frame["rich_observation"][&seat];
+    let [x, y, ..] = rich_pane_rect(&approval_frame, &seat);
     let choice = approval["approval_choices"][0].as_array().unwrap();
-    let ax = (rect[0].as_f64().unwrap()
-        + choice[0].as_f64().unwrap()
-        + choice[2].as_f64().unwrap() / 2.) as u32;
-    let ay = (rect[1].as_f64().unwrap()
-        + choice[1].as_f64().unwrap()
-        + choice[3].as_f64().unwrap() / 2.) as u32;
+    let ax = (x + choice[0].as_f64().unwrap() + choice[2].as_f64().unwrap() / 2.) as u32;
+    let ay = (y + choice[1].as_f64().unwrap() + choice[3].as_f64().unwrap() / 2.) as u32;
     f.ctl(&[
         "ui",
         "input",
@@ -356,8 +367,8 @@ fn rich_app_routes_composer_approval_scroll_and_focus() {
         2
     );
     println!(
-        "rich-app-input: seat={seat} composer_turns=2 wheel_before={} wheel_after={} approval_click=[{ax},{ay}] tool=approved identity={identity_before}",
-        full["scroll"], scrolled["scroll"]
+        "rich-app-input: seat={seat} composer_turns=2 wheel_before={} wheel_after={} approval_scroll={} approval_click=[{ax},{ay}] tool=approved identity={identity_before}",
+        full["scroll"], scrolled["scroll"], approval["scroll"]
     );
 }
 #[test]
