@@ -1,7 +1,4 @@
 ---
-type: task
-title: Q1 implement own-seat prepared C1 observation search/read
-role: executor
 allowed_paths:
 - ATTRIBUTION.md
 - Makefile
@@ -27,32 +24,43 @@ allowed_paths:
 - scripts/qos.sh
 - scripts/qos-policy.py
 - LAND.md
-verify: make test-dream-mcp && make test-formal-contracts
-derived_from:
-- '[[research/dreaming-services-mcp]]'
-- '[[specs/dreaming-mcp]]'
+assignee: seat:01M6XXAAX0KD2M33WBR5DGXA2X
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CEVKCCFMBA6DHPPQ19TPG
+created: 2026-11-05T14:27:20.106Z
+created_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 depends_on:
 - '[[tasks/2026-11-05-dream-c1-producer]]'
 - '[[tasks/2026-11-05-dream-c1-consumer]]'
+derived_from:
+- '[[research/dreaming-services-mcp]]'
+- '[[specs/dreaming-mcp]]'
 id: 01M6P1PS9F0AGDDW9HNJR1N99C
-status: accepted
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-08T20:00:57.072Z
-created: 2026-11-05T14:27:20.106Z
 number: 93377961364660
-created_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
-verify_revision: 2
-assignee: seat:01M6XXAAX0KD2M33WBR5DGXA2X
+report:
+  commit: da21c1bde2171af3359d68c5ef61c5617a744507
+  op_id: 01M6YBZBF5XVGM59EKHZZNNFS3
+  report: '[[reports/2026-11-05-dream-mcp-observation-reads.md]]'
+  reported_by: seat:01M6XXAAX0KD2M33WBR5DGXA2X
+  summary: Landed the amended Q1 observation search/read core at da21c1bde2171af3359d68c5ef61c5617a744507 through make land (exit 0). Required test-dream-mcp/formal-contracts passed; final gate passed 196 term, 888 mux and 31 proto tests plus 693 native/TLC models across 34 crates, with clean source and five signed commits. The committed report records exact pins/hints/currentness evidence, deferred optional links and full worker-close/pressure witnesses, and the transient 7.8 GiB disk deviation (restored to 12 GiB). Native report checkpoint 0e2e638c82fcfc42c3eba8be01c3b03dee64c291 is confirmed committed; artifact_claim nevertheless twice refused artifact_not_committed, so no successful manual artifact claim is asserted.
+  verify_revision: 2
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Q1 implement own-seat prepared C1 observation search/read
+type: task
+updated: 2026-11-23T23:39:32.506Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make test-dream-mcp && make test-formal-contracts
 verify_result:
   command: make test-dream-mcp && make test-formal-contracts
-  exit_code: 0
   evidence:
   - criterion: Amended native/core route; heavyweight close-to-read witness explicitly deferred
     reference: crates/bboxy450-term/tests/dream_read.rs:151; crates/bbt-mux/tests/dream_read.rs:89; /tmp/dream-q1-committed-mcp.log exit 0
@@ -66,23 +74,18 @@ verify_result:
     reference: /tmp/dream-q1-land-mapped.log exit 0; receipt f14212217f744ebdf9ff33920e108c7d30346d43eb60cd90e0dfaf1689ca53b2; make check-formal-evidence exit 0
   - criterion: Scoped signed source, notices and actual landing evidence
     reference: HEAD=origin/main=da21c1bde2171af3359d68c5ef61c5617a744507; make test-licenses exit 0; committed report checkpoint 0e2e638c82fcfc42c3eba8be01c3b03dee64c291
-report:
-  summary: Landed the amended Q1 observation search/read core at da21c1bde2171af3359d68c5ef61c5617a744507 through make land (exit 0). Required test-dream-mcp/formal-contracts passed; final gate passed 196 term, 888 mux and 31 proto tests plus 693 native/TLC models across 34 crates, with clean source and five signed commits. The committed report records exact pins/hints/currentness evidence, deferred optional links and full worker-close/pressure witnesses, and the transient 7.8 GiB disk deviation (restored to 12 GiB). Native report checkpoint 0e2e638c82fcfc42c3eba8be01c3b03dee64c291 is confirmed committed; artifact_claim nevertheless twice refused artifact_not_committed, so no successful manual artifact claim is asserted.
-  commit: da21c1bde2171af3359d68c5ef61c5617a744507
-  reported_by: seat:01M6XXAAX0KD2M33WBR5DGXA2X
-  op_id: 01M6YBZBF5XVGM59EKHZZNNFS3
-  verify_revision: 2
-  report: '[[reports/2026-11-05-dream-mcp-observation-reads.md]]'
+  exit_code: 0
+verify_revision: 2
 provenance:
   digest: sha256:24f363f4e6c1dc17706ce51eda8fbc57495577d2aeaf1931633f03f8ab709bcc
-  frontmatter_digest: sha256:b52317fdd5484d5732f8b32bf4f94934fa536dbca9f79b1666d844672d04632b
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: qaeBULxhtnPUlT5IeevZ3oPQHzHEFtWH55Bx3TDwiqT/iAM/MxWCAOvTUOdskZFwkuOwe+6fELgWOwbBwnZKAA==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150817
+  frontmatter_digest: sha256:441d27c1c18ea7a58e0cf2ff66ef97ae306eb03b249ba35003454743ee6e010f
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: HoeLier7aq2GaVyuDcfhIc3vb+FLuZIf0f0i12TmG0d8C8ZxyttuxAQf1d55ZYFkguwt3cugXbiGngqBBY+MAQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1392
   event:
-    id: 01M6YBZVAVE2FE1MCKFQY211X8
-    sequence: 150817
-    hash: 7bac978fb301b762603301b0a3a30692a24834d28a91e388d286d3f6fe0d395e
+    id: 01M85CEWDPSSZPGMB40TSMDZQW
+    sequence: 1392
+    hash: 8b4b00c674ea813de777a27c541d120e03859fae12aa3c4bea6dc36f75e2d734
 ---
 ROLE: EXECUTOR
 

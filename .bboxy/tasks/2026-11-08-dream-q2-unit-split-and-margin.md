@@ -1,8 +1,4 @@
 ---
-type: task
-title: Q2 split the over-1ms helper sample unit and restore the 30 s margin by batching floors, hand off INPUT64
-role: executor
-worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 allowed_paths:
 - tests/fixtures/dream-read/proof-helper-probe.c
 - tests/fixtures/dream-read/private-engine-controls.c
@@ -20,28 +16,40 @@ allowed_paths:
 - tests/support/seat_socket.rs
 - tests/seat_process.rs
 - src/dream/read.rs
-verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
+assignee: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CFY4XVCE5CTN8NHCY1ZZE
+created: 2026-11-08T14:01:01.220Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 derived_from:
 - '[[decisions/d93377961365086-dream-native-quantum-and-debt]]'
 - '[[tasks/2026-11-08-dream-q2-child-exit-kqueue-witness]]'
 id: 01M6XQCS5XN0SEYDYHRMH4EAYN
-status: accepted
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-09T02:40:38.258Z
-created: 2026-11-08T14:01:01.220Z
 number: 93377961366374
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
-assignee: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+report:
+  commit: 1f1b30ddec05e5d8e092d91b92c161bd94d1cc38
+  op_id: 01M6Z2V6WB5M706BAX4DE4C1QW
+  report: '[[reports/2026-11-08-dream-unit-split-and-margin.md]]'
+  reported_by: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+  summary: 'Landed signed 1f1b30ddec05e5d8e092d91b92c161bd94d1cc38 on origin/main with the exact prescribed four-command chain and canonical make land both actual0, clean source, current 442-model/94-contract full native-Java parity and preserved profiles/observers/graphs. Complete report #93377961366422 is committed at native knowledge checkpoint090c71fa68da90d12d850649c3c8910a72fa75c8; sole post-land INPUT67 tuple48c72b08…9030b4 was handed off as1557, independent preparation audit0, owned completed-build cleanup0 leaves22,536,441,856bytes free. Current C113baselines/72intended mutants/74strict compiles/174commands passes; priority pipe-metric fixbc4f7fad was landed separately. All historical failures and28ignored attributes remain nonpasses; supplied API versus actual-process evidence is explicit, runtime_approved=false and real qualification/current private30s margin remain unproven.'
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Q2 split the over-1ms helper sample unit and restore the 30 s margin by batching floors, hand off INPUT64
+type: task
+updated: 2026-11-23T23:40:07.718Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
 verify_result:
   command: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
-  exit_code: 0
   evidence:
   - criterion: Exact final signed-head verification and unchanged source
     reference: target/dream-q2-unit-split-margin-01M6RZZXSHZT3KHBK1QC7K3XB3/unitmargin-exact-four-chain-final-v8.json SHA256 f74b442026f537d8070ada3cb3c86996d00fd80f0a3dedcb64fa06557b401ef6; log315bbf7430a5066e352dd4c7224db87bd3f1d325fa324d77ee11e648f825da78 actual0
@@ -59,23 +67,18 @@ verify_result:
     reference: bc4f7fadabb3c7c73a67bba90c3abc2037e6b16b; default4/4 actual0 log81f1bdfcbe925f2472a8b13f92988dc176a1aa701e9a0ca74a66a79bee96f0be; oldskip101 log9f8e8f989b37f6e47fa02e5402f272fa66bb083e24dcab2c337b889e2252c0fe; original named failure UNESTABLISHED
   - criterion: Owned build cleanup after landing; immutable inputs and current graphs preserved; reserve retained
     reference: target/dream-q2-unit-split-margin-01M6RZZXSHZT3KHBK1QC7K3XB3/owned-completed-build-output-cleanup-result-input67-v4.json SHA2561ea31e6b976c86ebe48ef75f5ad05c96e9fb7d11973b46558bcf7f3299bc1131;actual0,23833journaled entries,5086kept stamps unchanged,free22536441856B; committed report090c71fa68da90d12d850649c3c8910a72fa75c8
-report:
-  summary: 'Landed signed 1f1b30ddec05e5d8e092d91b92c161bd94d1cc38 on origin/main with the exact prescribed four-command chain and canonical make land both actual0, clean source, current 442-model/94-contract full native-Java parity and preserved profiles/observers/graphs. Complete report #93377961366422 is committed at native knowledge checkpoint090c71fa68da90d12d850649c3c8910a72fa75c8; sole post-land INPUT67 tuple48c72b08…9030b4 was handed off as1557, independent preparation audit0, owned completed-build cleanup0 leaves22,536,441,856bytes free. Current C113baselines/72intended mutants/74strict compiles/174commands passes; priority pipe-metric fixbc4f7fad was landed separately. All historical failures and28ignored attributes remain nonpasses; supplied API versus actual-process evidence is explicit, runtime_approved=false and real qualification/current private30s margin remain unproven.'
-  commit: 1f1b30ddec05e5d8e092d91b92c161bd94d1cc38
-  reported_by: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
-  op_id: 01M6Z2V6WB5M706BAX4DE4C1QW
-  verify_revision: 0
-  report: '[[reports/2026-11-08-dream-unit-split-and-margin.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 provenance:
   digest: sha256:de85e3adcb68718dfb4ae37d4f07d0393622335d3550d0f4cd1aa0d84aece5c2
-  frontmatter_digest: sha256:b6d414f1181b13edcd53f3a5aba831624753a01ae79f64aba894faae7c4a8355
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: y3fXYHAfKDaN6y1B5OCGzoRp9LTc1kcFgbldLJiOmVJXmhCedKSfAXRihGT/m5Nya0LVLaARZPrzLVFrFMpbDQ==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150896
+  frontmatter_digest: sha256:decdb19b171022ceb03e14a48f426fe9ca4a69f19fa527e1c678d076a63da84b
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: 2HOdFABYQ9tVvynO+BMpe3Nd/F9NvNpRU5ntdmR/n6KQiTjG4XWz7fd2cN5CwXAiXKOtFqnSY16B7IJD6ZwdDg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1440
   event:
-    id: 01M6Z2VPGM17X26XNJDDBDBQN5
-    sequence: 150896
-    hash: fa58a0da4ff400ff4289a6306cb64d44279f744495159818192ab76af8d9cfac
+    id: 01M85CFYS3PZDFKHBNTM17D8Y1
+    sequence: 1440
+    hash: 1426dca979dee1c8a5a762d1e28d4a56158f50344b96bc15a4cb7a2d64bb4b89
 ---
 ROLE: EXECUTOR
 

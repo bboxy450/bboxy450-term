@@ -1,8 +1,4 @@
 ---
-type: task
-title: Add an ordinary bounded pre-permit Dream entry record
-role: executor
-worktree: /Users/feral/mydev/bboxy450-harness-dream-entry-c1
 allowed_paths:
 - src/dream/bootstrap.rs
 - tests/dream_c1.rs
@@ -20,30 +16,41 @@ allowed_paths:
 - reports/2026-11-06-dream-c1-bootstrap-entry-writer-landed.md
 - reports/2026-11-06-dream-c1-bootstrap-entry-writer-blocked.md
 - reports/2026-11-06-dream-c1-bootstrap-entry-fixed-writer-landed.md
-verify: make check-embedded-build && make land
+assignee: seat:01M6QDKWCA62KCAKG3P2Z7ZVCD
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CE9H5Q5SB0J9DH9KKSDHC
+created: 2026-11-06T03:13:08.841Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
 derived_from:
 - '[[interfaces/dream-term-c1]]'
 - '[[decisions/d93377961365960-dream-launch-entry-and-signature-boundaries]]'
 - '[[decisions/d93377961365736-dream-c1-canonical-make-worker-tuple]]'
 id: 01M6QDH1F0P0BR0SQTSQKXSZGK
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-06T16:14:39.795Z
-created: 2026-11-06T03:13:08.841Z
 number: 93377961365976
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-assignee: seat:01M6QDKWCA62KCAKG3P2Z7ZVCD
-verify_revision: 1
+report:
+  commit: 2ce4359df034405043d419fe550b0f6cafe7887e
+  op_id: 01M6RT2CHQMDMHREV3FX3CDJC7
+  report: '[[reports/2026-11-06-dream-c1-bootstrap-entry-fixed-writer-landed.md]]'
+  reported_by: seat:01M6QDKWCA62KCAKG3P2Z7ZVCD
+  summary: Landed signed2ce4359df034405043d419fe550b0f6cafe7887e on harness main; remote main verified exact. Required make check-embedded-build && make land exited0:116 library pass/1skip,37 C1 integration pass, full275-model/76-contract native/TLC states/labeled-edge/verdict parity and current-source receiptf7fc307c.71 original native birth rows and71 numeric bookkeeping receipts all settled; original maxima967584ns CPU/2177584ns wall, core format/write/disposal maxima25583/85208/13917ns. Ordinary no-fixture3511aa48/rustc1.99.0 profile captured before births; source raw-entry211B/allocator0 and private causal controls retained. Historical d027/9165/old gate failures and unknown causes remain explicit; no term1.99.1 profile/readiness approval. New append-only full report read back exactly; knowledge_commit client tool unavailable, Root checkpoint required per brief. Worktree clean; Root owns cleanup.
+  verify_revision: 1
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Add an ordinary bounded pre-permit Dream entry record
+type: task
+updated: 2026-11-23T23:39:14.586Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make check-embedded-build && make land
 verify_result:
   command: make check-embedded-build && make land
-  exit_code: 0
   evidence:
   - criterion: Exact ordinary record, raw unknown status, max bytes, no allocation, single prepermit accounting
     reference: src/dream/bootstrap.rs:376,383,416,460,624,909,943; verify-land-3.log library116 pass/1skip, C1integration37 pass
@@ -57,23 +64,19 @@ verify_result:
     reference: /private/tmp/dream-entry-c1-landing-2026-11-06/profile-2ce-gate3; ordinarySHA3511aa485d47535ed2607c9083a587603dea3fb0b90e0bf6a9d471d67eda280d; load/import/init/prologue/asm logs and full report
   - criterion: Signed source landing and immutable failed baselines/exclusions
     reference: canonical-land-3-receipt.json landed2ce/sourceSHAca81748a; git ls-remote refs/heads/main exact2ce; superseding report retains d027exit2/causeunknown,9165gateexit2,diagnostic-onlyexit0 and raw logs; term approval excluded
-report:
-  summary: Landed signed2ce4359df034405043d419fe550b0f6cafe7887e on harness main; remote main verified exact. Required make check-embedded-build && make land exited0:116 library pass/1skip,37 C1 integration pass, full275-model/76-contract native/TLC states/labeled-edge/verdict parity and current-source receiptf7fc307c.71 original native birth rows and71 numeric bookkeeping receipts all settled; original maxima967584ns CPU/2177584ns wall, core format/write/disposal maxima25583/85208/13917ns. Ordinary no-fixture3511aa48/rustc1.99.0 profile captured before births; source raw-entry211B/allocator0 and private causal controls retained. Historical d027/9165/old gate failures and unknown causes remain explicit; no term1.99.1 profile/readiness approval. New append-only full report read back exactly; knowledge_commit client tool unavailable, Root checkpoint required per brief. Worktree clean; Root owns cleanup.
-  commit: 2ce4359df034405043d419fe550b0f6cafe7887e
-  reported_by: seat:01M6QDKWCA62KCAKG3P2Z7ZVCD
-  op_id: 01M6RT2CHQMDMHREV3FX3CDJC7
-  verify_revision: 1
-  report: '[[reports/2026-11-06-dream-c1-bootstrap-entry-fixed-writer-landed.md]]'
+  exit_code: 0
+verify_revision: 1
+worktree: /Users/feral/mydev/bboxy450-harness-dream-entry-c1
 provenance:
   digest: sha256:8ac20d54a788d423459805ae1f88ac6817e1235de322c4a8c817c0698e36e18b
-  frontmatter_digest: sha256:42cd9cbe97b7d70ca1e37b411babd6e6e13e2c17fb63217d37ac8b8d44c7b3f0
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: v0JZBlqWmuaDA0E/Y+BJ763vOUKSxnMK+0LRCSg8bJBicqm6AjoVjze3WclkjUhz5eff6iwcxWKhPJN8zVKBDQ==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/149561
+  frontmatter_digest: sha256:948eddb6f09e0307b1d3780969dbaf8bdd18ef81b1559d342eb23e07d2092acd
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: LyDfhnvoE5q9g17vFAzFeVaWTxtsR//d9W42RaNjJRXz/6PVYR8IQLDtBCKZ/xOEvyJGSaSiEyVA0AEo83tfDg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1370
   event:
-    id: 01M6RT8296ZAKGXCA82A6DFSVT
-    sequence: 149561
-    hash: bc3374d18b73a13d3a1ed3545a0f42dc84982b142498cc9b815e0e0e467c901e
+    id: 01M85CEAXSNFVABT4DSWKDV4NF
+    sequence: 1370
+    hash: 70a9f329ba76edf7e2ae2161479da87f7173f856cf530a95713bc785f1d2833f
 ---
 ROLE: EXECUTOR
 

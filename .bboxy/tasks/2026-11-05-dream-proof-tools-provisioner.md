@@ -1,8 +1,4 @@
 ---
-type: task
-title: Build a private source-qualified real Git/GPG candidate for Q2
-role: executor
-worktree: /Users/feral/mydev/bboxy450-harness-dream-proof-tools
 allowed_paths:
 - .gitattributes
 - Makefile
@@ -20,27 +16,6 @@ allowed_paths:
 - reports/2026-11-05-dream-platform-closure-packing-evidence.md
 - scripts/land.py
 - reports/2026-11-06-dream-proof-tools-landed.md
-verify: RUSTC_WRAPPER='' python3 -I -c 'import hashlib,importlib.util,json,tempfile;from pathlib import Path;p=Path("target/dream-proof-tools/input71-formal-rebase-20261109/rebased-publication-continuation.py").resolve();assert hashlib.sha256(p.read_bytes()).hexdigest()=="82689cd1f2d06673a32411279b1b21a3b0b618fdbfd6351a9427b2290240fd0d";s=importlib.util.spec_from_file_location("retained_verify",p);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);plan,gate,old,env=m.prerequisites();published=m.c.load(m.HERE/"qualification-published.json");assert published["locator"]["evidence_sha256"]=="83365f615269cc06a977699d25dc038f01821ca778df1a2e748ec190296ea335" and published["locator"]["receipt_sha256"]=="452390f1bda2258333a0afc3673b7fe43664456066d044bcce264adeef87406c";assert m.c.pin(m.c.PREFIX/"qualification.json")==published["qualification"] and m.c.pin(m.c.PREFIX/"receipt.candidate.json")==published["receipt"];intent,basis,selected,records,hashes=m.c.revalidate();assert hashes==plan["native_records"];m.HERE=Path(tempfile.mkdtemp(prefix="retained-verify-",dir=p.parent));status,result=m.bridged_read_check(plan);assert m.c.revalidate()[4]==hashes;assert m.c.pin(m.c.PREFIX/"qualification.json")==published["qualification"] and m.c.pin(m.c.PREFIX/"receipt.candidate.json")==published["receipt"];m.c.save(m.HERE/"verification.json",{"exit_code":status,"read_check":result,"rebase_proof":plan["rebase_proof"],"locator":published["locator"],"native_reruns":0,"runtime_approved":False});print(json.dumps({"exit_code":status,"evidence":str(m.HERE/"verification.json"),"native_reruns":0}));raise SystemExit(status)' && RUSTC_WRAPPER='' make test-formal-parity && RUSTC_WRAPPER='' make test-licenses
-derived_from:
-- '[[interfaces/dream-proof-tool-qualification]]'
-- '[[decisions/d93377961365654-dream-q2-tool-lifetime-basis]]'
-depends_on:
-- '[[tasks/2026-11-05-dream-proof-tools-ready-brief]]'
-id: 01M6Q0F8AHJY8KTB86ZZB5C32N
-status: accepted
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-09T23:04:22.923Z
-created: 2026-11-05T23:24:58.400Z
-number: 93377961365741
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
-assignee: seat:01M6W6K5SWZB5AEBAAAA73FF4M
 artifacts:
 - '[[01M6Q0NSHHVJFP69CD4XQEDYGN]]'
 - '[[01M6Q2G1A5T05SV005KZYH79NH]]'
@@ -49,19 +24,45 @@ artifacts:
 - '[[01M6Q8Q1JTNG06MK74W0N13ZRJ]]'
 - '[[01M6QA9TTHB9NW0FDKDTE07SWS]]'
 - '[[01M6QDJKY48M4FXEG8YXVCMGKB]]'
+assignee: seat:01M6W6K5SWZB5AEBAAAA73FF4M
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CF0ZT9VYRAFBAY83TCJQC
+created: 2026-11-05T23:24:58.400Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+depends_on:
+- '[[tasks/2026-11-05-dream-proof-tools-ready-brief]]'
+derived_from:
+- '[[interfaces/dream-proof-tool-qualification]]'
+- '[[decisions/d93377961365654-dream-q2-tool-lifetime-basis]]'
+id: 01M6Q0F8AHJY8KTB86ZZB5C32N
+number: 93377961365741
 report:
+  commit: 7b8ed04fe222c27970901811323592d7a23c73ae
+  op_id: 01M718VPCDVVPETSB49MGAXK21
+  report: '[[reports/2026-11-09-dream-proof-tools-input71-landed.md]]'
+  reported_by: seat:01M6W6K5SWZB5AEBAAAA73FF4M
   summary: |-
     LANDED harness main7b8ed04fe222c27970901811323592d7a23c73ae. The ONE authorized make land invocation exited0. Its canonical internals made two source-bound rounds: firstcd44 allgates0 then push1(fetchfirst); automaticrebase onto5f83d8f5 and freshgates/formal then finalpush0. No manual re-invocation. New remote fetch0/ancestry0 observed origin/main=HEAD=landed7b8; worktreeclean; whole sourceSHA c93be1ffff3bd71893c8405422ec6f7fd60e03f8786e6c74116338e734633f72 matcheslandingreceipt.
     Fetched/signed-verified upstreamb46fad65 actual.rfind fix; all39 owned entries (38builder+exactattrs) byte/mode/member-identical to31ff and builder38 toc50. Final43signaturechecks0 (86overbothrounds), no ACPsourceedit. Final required licenses/3Clippy lanes/concurrent107tests/serializedfamilies/changedintegration0; formal45+74+1Rust/12tooltests and520nativeTLCmodels105contracts1crate passed. Currentclean7b8 formal evidenceSHA d1da261e6e2c2894d5e3d29a14f096c1f490a56692645b63479889317648d959; optionalstale-evidence2s and firstpush1 preserved, finalrequiredpathall0.
     Exact amended verify priorreal0 retained under explicitcurrentness ruling; no verify/private native qualification rerun. q83365f61/receipt452390f1/all157refs,8native records40originals,33oldledgers53preservationrefs unchanged; runtime_approved=false/conditional. External5INPUT71paths absent but Pbytesretained, acceptedruling/no gate. Full finalreport205483610615690 committed native4dd560073f0554de487cc4b381715d817f1d97b0; H/handoff31208B SHAf44118a4340817e8cf5444a2b77a80bf355cad822a8d51554fb48547d4fa4158. Scoped work complete; Root acceptance/runtime admission remain separate.
-  commit: 7b8ed04fe222c27970901811323592d7a23c73ae
-  reported_by: seat:01M6W6K5SWZB5AEBAAAA73FF4M
-  op_id: 01M718VPCDVVPETSB49MGAXK21
   verify_revision: 0
-  report: '[[reports/2026-11-09-dream-proof-tools-input71-landed.md]]'
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Build a private source-qualified real Git/GPG candidate for Q2
+type: task
+updated: 2026-11-23T23:39:37.943Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: RUSTC_WRAPPER='' python3 -I -c 'import hashlib,importlib.util,json,tempfile;from pathlib import Path;p=Path("target/dream-proof-tools/input71-formal-rebase-20261109/rebased-publication-continuation.py").resolve();assert hashlib.sha256(p.read_bytes()).hexdigest()=="82689cd1f2d06673a32411279b1b21a3b0b618fdbfd6351a9427b2290240fd0d";s=importlib.util.spec_from_file_location("retained_verify",p);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);plan,gate,old,env=m.prerequisites();published=m.c.load(m.HERE/"qualification-published.json");assert published["locator"]["evidence_sha256"]=="83365f615269cc06a977699d25dc038f01821ca778df1a2e748ec190296ea335" and published["locator"]["receipt_sha256"]=="452390f1bda2258333a0afc3673b7fe43664456066d044bcce264adeef87406c";assert m.c.pin(m.c.PREFIX/"qualification.json")==published["qualification"] and m.c.pin(m.c.PREFIX/"receipt.candidate.json")==published["receipt"];intent,basis,selected,records,hashes=m.c.revalidate();assert hashes==plan["native_records"];m.HERE=Path(tempfile.mkdtemp(prefix="retained-verify-",dir=p.parent));status,result=m.bridged_read_check(plan);assert m.c.revalidate()[4]==hashes;assert m.c.pin(m.c.PREFIX/"qualification.json")==published["qualification"] and m.c.pin(m.c.PREFIX/"receipt.candidate.json")==published["receipt"];m.c.save(m.HERE/"verification.json",{"exit_code":status,"read_check":result,"rebase_proof":plan["rebase_proof"],"locator":published["locator"],"native_reruns":0,"runtime_approved":False});print(json.dumps({"exit_code":status,"evidence":str(m.HERE/"verification.json"),"native_reruns":0}));raise SystemExit(status)' && RUSTC_WRAPPER='' make test-formal-parity && RUSTC_WRAPPER='' make test-licenses
 verify_result:
   command: RUSTC_WRAPPER='' python3 -I -c 'import hashlib,importlib.util,json,tempfile;from pathlib import Path;p=Path("target/dream-proof-tools/input71-formal-rebase-20261109/rebased-publication-continuation.py").resolve();assert hashlib.sha256(p.read_bytes()).hexdigest()=="82689cd1f2d06673a32411279b1b21a3b0b618fdbfd6351a9427b2290240fd0d";s=importlib.util.spec_from_file_location("retained_verify",p);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);plan,gate,old,env=m.prerequisites();published=m.c.load(m.HERE/"qualification-published.json");assert published["locator"]["evidence_sha256"]=="83365f615269cc06a977699d25dc038f01821ca778df1a2e748ec190296ea335" and published["locator"]["receipt_sha256"]=="452390f1bda2258333a0afc3673b7fe43664456066d044bcce264adeef87406c";assert m.c.pin(m.c.PREFIX/"qualification.json")==published["qualification"] and m.c.pin(m.c.PREFIX/"receipt.candidate.json")==published["receipt"];intent,basis,selected,records,hashes=m.c.revalidate();assert hashes==plan["native_records"];m.HERE=Path(tempfile.mkdtemp(prefix="retained-verify-",dir=p.parent));status,result=m.bridged_read_check(plan);assert m.c.revalidate()[4]==hashes;assert m.c.pin(m.c.PREFIX/"qualification.json")==published["qualification"] and m.c.pin(m.c.PREFIX/"receipt.candidate.json")==published["receipt"];m.c.save(m.HERE/"verification.json",{"exit_code":status,"read_check":result,"rebase_proof":plan["rebase_proof"],"locator":published["locator"],"native_reruns":0,"runtime_approved":False});print(json.dumps({"exit_code":status,"evidence":str(m.HERE/"verification.json"),"native_reruns":0}));raise SystemExit(status)' && RUSTC_WRAPPER='' make test-formal-parity && RUSTC_WRAPPER='' make test-licenses
-  exit_code: 0
   evidence:
   - criterion: Requested upstream fix, signed rebase and exact builder ownership preserved
     reference: Signedb46fad659627de01e704a087082d10380e120193 changesACPtest to.rfind; explicit43-commitrebase0, H3/rebase-identity.jsonSHA798887542476a1fca2a319b74b2f11a98d7679104647569acb208a5e8d387a11 proves39ownedtreeentries identical to31ff; final39stillmatch and38toc50, recipea818/attrs4355/validf0b4/corruptb599 unchanged. Bothcanonical43signaturecheckssets0; archived31ff/cd44 andearlierrefs preserved.
@@ -73,16 +74,18 @@ verify_result:
     reference: H3/remote-main-verification.json freshfetch0, observedorigin/main7b8, landedancestorcheck0, HEAD7b8/statusclean. H3/post-land-source.json wholetrackedsourceSHA c93be1ffff3bd71893c8405422ec6f7fd60e03f8786e6c74116338e734633f72 matchescanonicalreceipt. Full43old->landedmappinginH3handoff+committedreport; no release/install/runtimeadmission.
   - criterion: Exact task verification result carried under ruling, native/proposal/history unaltered and full report committed
     reference: Exactfrontmatter1703charcommand SHA06ef21968405f6a617fb4d775313add4c6f4ec101c2622b20a2e54ff8295d745 actual0retainedfromfe137 perOraclecurrentnessrulings; notrerun. q83365f615269cc06a977699d25dc038f01821ca778df1a2e748ec190296ea335/receipt452390f1bda2258333a0afc3673b7fe43664456066d044bcce264adeef87406c/all157refs/8records40originals/33ledgers53preservationrefs unchanged. Runtimefalse/conditional/noarbitrarynativeproof; acceptedexternalavailabilityconditionunchanged. Fullreport205483610615690 committed4dd560073f0554de487cc4b381715d817f1d97b0; nativequalificationreruns0.
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-proof-tools
 provenance:
   digest: sha256:7ff4f1eea168a90f0702879f03a41048d47596276867a7870a2c7820e5159adc
-  frontmatter_digest: sha256:951111ef1f1d9f60eea20ca0e1343d4e1fbc54431fd21687bfd37ce376afb248
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: 1hnEGwW1/qkixbQLbKtbzJ8zK6g1O125a0WZO73fEEP1bzp3GnO+uDdttsyF4LGVfu9bG+Hey2/rTZHyCxjEDQ==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151236
+  frontmatter_digest: sha256:22754c90ee2e79830341ba9d7d4f35f11a4c544f97ea33d87264d25d77ed8d6a
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: 5J4ZjXpcoUT45qxabWVdrANsJZVxqkrH1GJpEGYZcju6SKvg0ykIWSywK2HqcybV96cbyGHI1rGpUT5F/KUECQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1400
   event:
-    id: 01M718WE7PB5PMJNP8NRPXC782
-    sequence: 151236
-    hash: 3042101743cb44c858789867306028fd3b27ff88f6fa8ee503639039d97de3ce
+    id: 01M85CF1Q0JHMXRGY6Z9CDQ9BT
+    sequence: 1400
+    hash: dfedbd0456c30a20374a6bf83ca68e0ee7c88966916d4171216f69ccea5d4a16
 ---
 ROLE: EXECUTOR
 

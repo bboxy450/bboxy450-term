@@ -1,40 +1,48 @@
 ---
-type: task
-title: Establish a concrete Q2 proof-tool lifetime capability basis or prerequisite
-role: architect
-worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 allowed_paths:
 - research/dream-q2-tool-lifetime-basis.md
 - decisions/dream-q2-tool-lifetime-basis.md
 - specs/dreaming-mcp.md
 - interfaces/dreaming-mcp.md
 - reports/2026-11-05-dream-q2-tool-lifetime-basis.md
-verify: git diff --check
-derived_from:
-- '[[decisions/d93377961365126-dream-q2-helper-creation-and-lifetime-budget]]'
-- '[[decisions/d93377961365489-dream-q2-member-window-accounting]]'
-id: 01M6PXGM2WK646HQTTMHT2QBHW
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T22:53:09.514Z
-created: 2026-11-05T22:33:17.493Z
-number: 93377961365645
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
 artifacts:
 - '[[01M6PY0RRB0ZH8G0B0PYXXWJ4R]]'
 - '[[01M6PY0SY69Y3KSZHD2Z4H5XB3]]'
 - '[[01M6PY0W48MESX8QSG6W67NRNQ]]'
+assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CF7301DHPEGYPNP01PB19
+created: 2026-11-05T22:33:17.493Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+derived_from:
+- '[[decisions/d93377961365126-dream-q2-helper-creation-and-lifetime-budget]]'
+- '[[decisions/d93377961365489-dream-q2-member-window-accounting]]'
+id: 01M6PXGM2WK646HQTTMHT2QBHW
+number: 93377961365645
+report:
+  commit: null
+  op_id: 01M6PY1BT6KHZMA1KSXGXF71H4
+  report: '[[reports/2026-11-05-dream-q2-tool-lifetime-basis.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: 'Established the installed lifetime-basis gap without executing candidate tools: selected Xcode Git embeds2.54.0/AppleGit157 SHA9a1c8fc6, GPG2.5.24_1 SHA21cb9adc; Apple signature/Homebrew package metadata and sampled TASKALLINFO/RI/Trace2 do not establish whole-command process/thread bounds. Research fetched exact primary Git/GnuPG/nPth/Apple/build sources; decision65654 keeps current pair verification_unproven and selects one source-built real pair qualified for all unchanged65126 commands as a separate concrete prerequisite, with explicit trusted source/build/platform assumptions and independent runtime gates. Narrow MCP spec/ICD capability/matrix additions fully read back; sent disposition to author/Rook, no task/source override or ACK wait. All native/application/debt/coverage/resources/closure/bootstrap/foreground/reap laws remain. Source race hashes, readback digests, retrieval gaps and required causal/real witnesses retained. git diff --check exit0; no source/build/test/probe/install/account/service/credential/runtime availability claims. Full report29e45fe1448b58e742f1fdfe1ac351ab5c59402213a2ef84fa42f1e635652c07.'
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Establish a concrete Q2 proof-tool lifetime capability basis or prerequisite
+type: task
+updated: 2026-11-23T23:39:44.301Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Installed exact artifacts and current primary-source provenance/lifetime limits
     reference: research/dream-q2-tool-lifetime-basis.md
@@ -44,19 +52,18 @@ verify_result:
     reference: reports/2026-11-05-dream-q2-tool-lifetime-basis.md
   - criterion: Both owners notified without scope override or waiting
     reference: reports/2026-11-05-dream-q2-tool-lifetime-basis.md#knowledge-readbacks--handoff
-report:
-  summary: 'Established the installed lifetime-basis gap without executing candidate tools: selected Xcode Git embeds2.54.0/AppleGit157 SHA9a1c8fc6, GPG2.5.24_1 SHA21cb9adc; Apple signature/Homebrew package metadata and sampled TASKALLINFO/RI/Trace2 do not establish whole-command process/thread bounds. Research fetched exact primary Git/GnuPG/nPth/Apple/build sources; decision65654 keeps current pair verification_unproven and selects one source-built real pair qualified for all unchanged65126 commands as a separate concrete prerequisite, with explicit trusted source/build/platform assumptions and independent runtime gates. Narrow MCP spec/ICD capability/matrix additions fully read back; sent disposition to author/Rook, no task/source override or ACK wait. All native/application/debt/coverage/resources/closure/bootstrap/foreground/reap laws remain. Source race hashes, readback digests, retrieval gaps and required causal/real witnesses retained. git diff --check exit0; no source/build/test/probe/install/account/service/credential/runtime availability claims. Full report29e45fe1448b58e742f1fdfe1ac351ab5c59402213a2ef84fa42f1e635652c07.'
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6PY1BT6KHZMA1KSXGXF71H4
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-q2-tool-lifetime-basis.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 provenance:
   digest: sha256:92ec739449663db0f4b99d06cb0adfbadcb6444cf598c0f43c5ac6f6396e4327
-  frontmatter_digest: sha256:a9b9f1bc448382266ef96fdc44849e4ff82b40cb2dc36d155cd03e29844e4a4d
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: GrPF9gLmrFa8RQeXcTVONZz+G2O4keT0S8B/V2ncEuApf04TvIHaQwRGIPTApXGVgVQj0SNksAyhOEm0LBrsDA==
-  log: .bboxy/log/2026-11-05.jsonl#146052
+  frontmatter_digest: sha256:4d8da36e0ab77a1ccfd9fd241ae0ff41c3397b67ced67f56c357851698723fbc
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: 1kmoKSOSwR32HouD96fdXgdsxtZ+QQv1ndm6EBhUq1Y8lB3aLvDCdA+qPO3XfGtxlKH4KdcF5U6LYRHKooiiDA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1410
+  event:
+    id: 01M85CF7XCMVE6AY7GRJ83TTB3
+    sequence: 1410
+    hash: e6d4177754609cd5e748136bfed0b533df1a633c19bd99507c14930d59430d9c
 ---
 ROLE: ARCHITECT
 

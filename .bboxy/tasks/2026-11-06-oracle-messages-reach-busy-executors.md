@@ -1,7 +1,4 @@
 ---
-type: task
-title: Oracle messages to a busy Codex executor stay native-queued for its whole turn; surface them inside the turn
-role: executor
 allowed_paths:
 - crates/bbt-mux/src/mcp/
 - crates/bbt-mux/src/messaging/
@@ -21,25 +18,37 @@ allowed_paths:
 - crates/bboxy450-term/tests/native_signing.rs
 - crates/bbt-mux/src/index.rs
 - crates/bbt-mux/src/knowledge/routing_tests.rs
-verify: cargo nextest run -p bboxy450-term-mux -E 'test(/hint|unread|steer|deliver/)' && make test-formal-contracts
-status: accepted
-id: 01M6S5E4NHPW1S8AJ2X64Z1H8W
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-06T22:05:40.784Z
-created: 2026-11-06T19:30:13.854Z
-number: 93377961366094
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
 assignee: seat:01M6S7423SHR6V4WNJP29GVSK0
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CFJS5H6EAYVV9DYZEYGXK
+created: 2026-11-06T19:30:13.854Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+id: 01M6S5E4NHPW1S8AJ2X64Z1H8W
+number: 93377961366094
+report:
+  commit: d88df43b73162494c40fea87dc910edfb4a73677
+  op_id: 01M6SEA463R12E1VG5NC6N0NGM
+  report: '[[reports/2026-11-06-oracle-messages-in-turn.md]]'
+  reported_by: seat:01M6S7423SHR6V4WNJP29GVSK0
+  summary: 'Landed signed d88df43b73162494c40fea87dc910edfb4a73677 through make land: bounded Oracle unread hints now surface on active MCP calls, Codex Oracle input uses turn/steer without cancellation, and receipts distinguish native admission, hint/read and explicit ACK. Prescribed verification passed (41 selected tests and 24 contracts); lean gate passed 550 tests plus 570-model native/Yarn/Java TLC parity, with current-source receipt validation, private Python proxy, process boundaries and license checks all exit 0. No reinstall. Full report [[reports/2026-11-06-oracle-messages-in-turn]] is committed in native knowledge checkpoint d5c3fc6747210c237b12f76f821a063942c658e0. Handoff gap: artifact_claim was refused as artifact_not_committed despite the committed checkpoint and a fully caught-up provenance projection; no claim success is asserted.'
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Oracle messages to a busy Codex executor stay native-queued for its whole turn; surface them inside the turn
+type: task
+updated: 2026-11-23T23:39:56.467Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: cargo nextest run -p bboxy450-term-mux -E 'test(/hint|unread|steer|deliver/)' && make test-formal-contracts
 verify_result:
   command: cargo nextest run -p bboxy450-term-mux -E 'test(/hint|unread|steer|deliver/)' && make test-formal-contracts
-  exit_code: 0
   evidence:
   - criterion: Bounded in-turn surfacing and exact read/ACK suppression
     reference: crates/bbt-mux/src/messaging/ledger/surfacing.rs:25; crates/bbt-mux/src/seat_socket.rs:1870; crates/bbt-mux/tests/mcp/oracle_hints.rs:39 and :112; /tmp/oracle-in-turn-final-verify.log — 41 selected tests passed
@@ -53,23 +62,17 @@ verify_result:
     reference: target/oracle-in-turn-land.log:1089 — LANDED d88df43b73162494c40fea87dc910edfb4a73677, make land exit 0; make test-python-execute-native, make test-boundaries, make test-licenses and make check-formal-evidence exit 0; git verify-commit HEAD exit 0; clean worktree
   - criterion: Committed report and provenance handoff limitation
     reference: knowledge_commit operation 01M6SE7MQW0EQFZED9VFNJZEFN — publication_state committed, checkpoint d5c3fc6747210c237b12f76f821a063942c658e0; artifact 01M6SE7NT4XKMJ5R027HB0Y30B; artifact_claim operations 01M6SE7ZVJC3HKRENZDQYZQDKW and 01M6SE96DBHNFF9TMRPK0MXRN0 explicitly rejected artifact_not_committed; no further retries
-report:
-  summary: 'Landed signed d88df43b73162494c40fea87dc910edfb4a73677 through make land: bounded Oracle unread hints now surface on active MCP calls, Codex Oracle input uses turn/steer without cancellation, and receipts distinguish native admission, hint/read and explicit ACK. Prescribed verification passed (41 selected tests and 24 contracts); lean gate passed 550 tests plus 570-model native/Yarn/Java TLC parity, with current-source receipt validation, private Python proxy, process boundaries and license checks all exit 0. No reinstall. Full report [[reports/2026-11-06-oracle-messages-in-turn]] is committed in native knowledge checkpoint d5c3fc6747210c237b12f76f821a063942c658e0. Handoff gap: artifact_claim was refused as artifact_not_committed despite the committed checkpoint and a fully caught-up provenance projection; no claim success is asserted.'
-  commit: d88df43b73162494c40fea87dc910edfb4a73677
-  reported_by: seat:01M6S7423SHR6V4WNJP29GVSK0
-  op_id: 01M6SEA463R12E1VG5NC6N0NGM
-  verify_revision: 0
-  report: '[[reports/2026-11-06-oracle-messages-in-turn.md]]'
+  exit_code: 0
 provenance:
   digest: sha256:cc89454c541590f0a07c43f3ff72f98cb364164b648030b447532d49790b0044
-  frontmatter_digest: sha256:6396e7230b908ba3f9794aacb33cb38d789dae7d2ffc537646d0aa7da9434794
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: doTCuS5/1dhNmu/HribM7vFaVkC4aSKt4n8sBKLGGzKKfLgDyMx0znuyvlwjoLSUQDb0/YUIffn/yfj+muQ5CA==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/149906
+  frontmatter_digest: sha256:7cfe3f16554f28722d67ae58f2f30011651b19babf90c11a27b837a29001dfb4
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: v41OBDJ8ogHTm7BYf6D37qjeal9PelDIH051kBrYgcNGC4ONcokZ+yNwLN6RnDMFCuDxFJGW6eekR6Ilp6HfCQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1422
   event:
-    id: 01M6SEASNXEQPX18C1S7PHYZDG
-    sequence: 149906
-    hash: 28abf621d61e065a4ea4829c43c2ecb6eb8473f06dc853f1b41c11584cee67c5
+    id: 01M85CFKT5AJE2WW62G3GR0VCN
+    sequence: 1422
+    hash: fde5ded84f9655ebe94ce3490004accf9b72e9082abe909f9794418d8db0bccf
 ---
 # Rulings don't reach working executors
 

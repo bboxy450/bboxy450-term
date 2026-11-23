@@ -1,12 +1,4 @@
 ---
-type: task
-title: 'Recover rich-pane B1/B2: seat socket lifecycle and Unix bridge'
-status: accepted
-role: executor
-assignee: seat:01M6HCVV32KS845WHVD5FCX7QE
-delegated_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
-swarm: 01M649102FBS60QWNPZS5VAGF9
-worktree: /Users/feral/mydev/bboxy450-harness-pane-b12
 allowed_paths:
 - src/frontends/**
 - src/gateway/**
@@ -18,24 +10,40 @@ allowed_paths:
 - ATTRIBUTION.md
 - .bboxy/reports/**
 - .bboxy/runs/codex-rich-socket.json
-verify: RUSTC_WRAPPER= make test
-parent: 01M6HCH1SJHDSB6SDAC2ZF1BXX
-id: 01M6HCYCQB66JTBKPHE1YE4QJB
-updated: 2026-11-03T22:05:21.993Z
-created: 2026-11-03T19:07:30.619Z
-number: 15249
-created_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
-updated_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
-authorship:
-  signer: seat:01M6H97SAX3GN1BYB4YG76P3P0
-  kind: seat
-  public_key: B3hFSjBIE1Nnj7mw9Eg9pqyRpYHF/GQaKXPyV1KAod0=
-  process_generation: '1'
 artifacts:
 - '[[01M6HPB4DCT2G54E011RY6GFZW]]'
+assignee: seat:01M6HCVV32KS845WHVD5FCX7QE
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CDDAJDYYC55NZQ9JVEQH9
+created: 2026-11-03T19:07:30.619Z
+created_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
+delegated_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
+id: 01M6HCYCQB66JTBKPHE1YE4QJB
+number: 15249
+parent: 01M6HCH1SJHDSB6SDAC2ZF1BXX
+report:
+  commit: 2fb78a017992f73468b6fa9fe5edbc48ba27f05c
+  op_id: 01M6HPHD2TABP6M2ZN624RH0D7
+  report: '[[reports/2026-11-03-codex-rich-socket-integrated]]'
+  reported_by: seat:01M6HCVV32KS845WHVD5FCX7QE
+  summary: Implemented the amended B1/B2/§9 assignment in pane/b1-b2. Signed source49fced5 includes published af65c6c, preserved interrupted work/tips and recovered quiet/IR1.2/startup contracts, shared Unix/InProc Bridge, socket lifecycle/idempotence, four-view aggregate allocation and unconditional existing idle Status routing. RUSTC_WRAPPER= make test exited0 on49fced5; all273 inputs still match report-only signed HEAD2fb78a0. Report-HEAD native/Java parity and retained-evidence verification exited0 (112 complete graphs/verdicts,38 contracts,one crate). Four-view tail and real false-subscription/actual term consumer heartbeat controls returned red101/restored green0; the unchanged consumer remained live21.001s without durable semantic activity. Indexed append-only report18870 supersedes the preliminary report; artifact claim accepted. Worktree is clean, generated metadata/raw logs retained outside Git. Actual loaded-machine CPU/memory margins remain UNMEASURED and Side A owns its remaining integration/benchmark witnesses.
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: 'Recover rich-pane B1/B2: seat socket lifecycle and Unix bridge'
+type: task
+updated: 2026-11-23T23:38:45.536Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: RUSTC_WRAPPER= make test
 verify_result:
   command: RUSTC_WRAPPER= make test
-  exit_code: 0
   evidence:
   - criterion: Preserve interrupted source and original tips; integrate the published standalone recovery
     reference: /tmp/codex-rich-socket-recovery/preservation-audit.json — all20 hashes equal signed433107e; integrated-signatures-and-preservation.json — af65c6c ancestor, nine approved signatures and six protected files byte-identical; recovery/rich-socket-{original,interrupted,verified}-2026-11-03 retained.
@@ -53,19 +61,18 @@ verify_result:
     reference: /tmp/codex-rich-socket-recovery/final-canonical-result.json — RUSTC_WRAPPER= make test exit0,21:34:32Z–21:50:28Z,no other full gate at launch; final-integrated-input-audit.json — all273 input hashes equal,21 canonical rows/5 GUI rows0,private_HOME=true/operator_input=false; final-make-test.log — packaging and hidden native startup smoke0.
   - criterion: Signed indexed report, retained evidence, clean handoff and preserved metadata
     reference: .bboxy/reports/2026-11-03-codex-rich-socket-integrated.md — indexed report01M6HPAEC8BJKZ1VER3H6Y1P72/#18870,Report trailer on signed2fb78a0; artifact01M6HPB4DCT2G54E011RY6GFZW accepted. final-report-checks.json — KB/secrets/signature/doc-only0; final-retained-evidence-check.log — current archive verification0; final-clean-state.json and preserved-generated-final.json — clean status,273 hashes equal,five generated files preserved/restored,preliminary report unchanged.
-report:
-  summary: Implemented the amended B1/B2/§9 assignment in pane/b1-b2. Signed source49fced5 includes published af65c6c, preserved interrupted work/tips and recovered quiet/IR1.2/startup contracts, shared Unix/InProc Bridge, socket lifecycle/idempotence, four-view aggregate allocation and unconditional existing idle Status routing. RUSTC_WRAPPER= make test exited0 on49fced5; all273 inputs still match report-only signed HEAD2fb78a0. Report-HEAD native/Java parity and retained-evidence verification exited0 (112 complete graphs/verdicts,38 contracts,one crate). Four-view tail and real false-subscription/actual term consumer heartbeat controls returned red101/restored green0; the unchanged consumer remained live21.001s without durable semantic activity. Indexed append-only report18870 supersedes the preliminary report; artifact claim accepted. Worktree is clean, generated metadata/raw logs retained outside Git. Actual loaded-machine CPU/memory margins remain UNMEASURED and Side A owns its remaining integration/benchmark witnesses.
-  commit: 2fb78a017992f73468b6fa9fe5edbc48ba27f05c
-  reported_by: seat:01M6HCVV32KS845WHVD5FCX7QE
-  op_id: 01M6HPHD2TABP6M2ZN624RH0D7
-  verify_revision: 0
-  report: '[[reports/2026-11-03-codex-rich-socket-integrated]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-pane-b12
 provenance:
   digest: sha256:c3ca95abb524eddef49f2abe542a50ceba8b099d7aca142bfe2a2219b848ae04
-  frontmatter_digest: sha256:ecad3d7320c6f646eca4c9a7b3c2333e371974d1f96109928d44a6da5978a7ed
-  signer: seat:01M6H97SAX3GN1BYB4YG76P3P0
-  sig: pi6iLuGyxiglnDvl0zHqeIx2BcABeh6ySIKO6vc/qgP2dcsYPVQsUpUUY/TX3tF2XKXfHvD6tL5PCfiVH1gTCA==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#105029
+  frontmatter_digest: sha256:9f6dcb5b20a7e6e2f0b65bb3d3815e91c759a4899d0df43a077fd8bad746d988
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: y1Rv+8zsGnAwObijZ3FfZ3Ju5vIAiuJ+ehy/ZGQl5t3jCQnadbKnFgWq1cgLeS6Uezxc1zfQUHr9U/QmFt5tCQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1338
+  event:
+    id: 01M85CDEK1720JM5H8FE8NQYY7
+    sequence: 1338
+    hash: 22ff62e438143456eb20ccbbf3344a067ddb35af8ad8a87d32761e433c0bb7bd
 ---
 ROLE: EXECUTOR. Direct operator continuation under the Codex Oracle: the harness pane is still the line-mode frontend; implement the shared native rich face. Work ONLY in /Users/feral/mydev/bboxy450-harness-pane-b12, current branch pane/b1-b2. The previous session was interrupted with 20 source files already changed. Preserve and inspect that work; no reset, stash, broad stage or deletion. Baseline hashes are /tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/preservation-before.json. Read current AGENTS.md, ATTRIBUTION.md and the ICD FROM origin/main (the shared root checkout is old): .bboxy/interfaces/rich-pane.md, gateway.md, embed-seat.md and log-ir-v1 spec. Rebase/integrate current main safely after committing/recovering the interrupted source. Leave original branch tips reachable.
 

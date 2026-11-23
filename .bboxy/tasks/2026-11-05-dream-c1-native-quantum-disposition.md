@@ -1,8 +1,4 @@
 ---
-type: task
-title: Disposition measured C1 indivisible-native CPU versus cooperative quantum
-role: architect
-worktree: /Users/feral/mydev/bboxy450-term-dream-c1
 allowed_paths:
 - specs/dream-term-c1.md
 - interfaces/dream-term-c1.md
@@ -10,25 +6,37 @@ allowed_paths:
 - interfaces/dreaming-mcp.md
 - decisions/*dream*quantum*
 - reports/2026-11-05-dream-c1-native-quantum-disposition.md
-verify: git diff --check
-id: 01M6PHF28EXY6W5V9RDSFFJSVZ
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T19:19:45.500Z
-created: 2026-11-05T19:02:43.868Z
-number: 93377961365081
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
 assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CEQRRB5GM4NFKDGGC9V8E
+created: 2026-11-05T19:02:43.868Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+id: 01M6PHF28EXY6W5V9RDSFFJSVZ
+number: 93377961365081
+report:
+  commit: null
+  op_id: 01M6PJ8P9ZMZ4GAYTYS39E2F28
+  report: '[[reports/2026-11-05-dream-c1-native-quantum-disposition.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: 'Recorded source-grounded decision65086 and narrowly synchronized C1 spec/ICD plus inherited Dream MCP budgets. Cooperative application/parser/cleanup/shared reactor/control work stays1ms; only named isolated creation/no-replace publication calls have observed2ms CPU/25ms wall allocation, finite counts, full inclusive charging/rest debt and retained effects/IDs. SQLite configure must split; the1.316ms child whole tick remains unclassified and needs instrumentation/split, no whole-tick exception. Preserved every foreground/latency/four-job/heap/source/actual-reap gate; current four refusals and separate parser failures remain failures. Incorporated Oracle cutoff correction: max_poll is captured before its own descriptor serialization/publication, terminal metrics cover later work and validate captured<=terminal, no wire bump/resealing/clamping. Full five-artifact/report readbacks match. Consumer git diff --check exited0; report separately records active source-hash race and actual workspace binary/hash provenance. No source/build/test/assignment actions; fresh producer correction and Q2 inheritance go through Oracle amendments.'
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Disposition measured C1 indivisible-native CPU versus cooperative quantum
+type: task
+updated: 2026-11-23T23:39:28.596Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Grounded native versus cooperative boundary with finite admission/debt/effect law
     reference: decisions/d93377961365086-dream-native-quantum-and-debt.md — Exact enforceable law; Debt, controls and real effects
@@ -38,19 +46,18 @@ verify_result:
     reference: decisions/d93377961365086-dream-native-quantum-and-debt.md — Producer classification and frozen wire; Minimal formal and real gates; interfaces/dream-term-c1.md
   - criterion: Full readbacks/digests, actual clean-whitespace check and active-source warning
     reference: reports/2026-11-05-dream-c1-native-quantum-disposition.md — Artifact digests; Actual check and source-only race warning
-report:
-  summary: 'Recorded source-grounded decision65086 and narrowly synchronized C1 spec/ICD plus inherited Dream MCP budgets. Cooperative application/parser/cleanup/shared reactor/control work stays1ms; only named isolated creation/no-replace publication calls have observed2ms CPU/25ms wall allocation, finite counts, full inclusive charging/rest debt and retained effects/IDs. SQLite configure must split; the1.316ms child whole tick remains unclassified and needs instrumentation/split, no whole-tick exception. Preserved every foreground/latency/four-job/heap/source/actual-reap gate; current four refusals and separate parser failures remain failures. Incorporated Oracle cutoff correction: max_poll is captured before its own descriptor serialization/publication, terminal metrics cover later work and validate captured<=terminal, no wire bump/resealing/clamping. Full five-artifact/report readbacks match. Consumer git diff --check exited0; report separately records active source-hash race and actual workspace binary/hash provenance. No source/build/test/assignment actions; fresh producer correction and Q2 inheritance go through Oracle amendments.'
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6PJ8P9ZMZ4GAYTYS39E2F28
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-c1-native-quantum-disposition.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-term-dream-c1
 provenance:
   digest: sha256:5cca672a4a3888f7f35ebca318a246abeea0b856dcb0692772ba194165a426c1
-  frontmatter_digest: sha256:c491b6246b463aab143c540ce8b1439a2678fc5acdd3da5ff6946314dc89935e
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: lGaHIM7HeUAB2z832/OrOF67NMLx2S5NioMgEUWzodBNkFNKEQ7fItF0yqIgHZeQs3lKT5SgYUWKsztLPOO8Cg==
-  log: .bboxy/log/2026-11-05.jsonl#140535
+  frontmatter_digest: sha256:e97c499d1053a5daac5fda0e5b45cb784c5d79d2b2f5a3b409fa59a4a89516fa
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: UJkO3kNjGjTa6FxEhKcHtYLdRpryr/rTgMOT+n/bk1FBFgm4J0NVXx4AJwvZIiMJSdScIzVssQ0QW/MtnKeDAw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1386
+  event:
+    id: 01M85CERJPM93C00A2DG630EYB
+    sequence: 1386
+    hash: bb9aff7aa23b269b6c5496fc0a32f44331c04f0bae9ab6a259bce8c7e531dd74
 ---
 ROLE: ARCHITECT
 

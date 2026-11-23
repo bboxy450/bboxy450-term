@@ -1,9 +1,10 @@
 ---
-type: task
-title: Restore the embedded profile catalogue and expose ACP model/effort controls
-role: executor
-parent: 01M6KEVVYNZW5H21RPTFW1RVDR
-worktree: /Users/feral/mydev/bboxy450-harness-land
+acceptance:
+- Actual installed-path catalogue discovery is reproduced and fixed; safe standalone/Unix catalogues agree without credentials
+- The GUI can display and switch the underlying ACP agent's advertised model and effort choices through the supported ACP API
+- Confirmed values, rejections and unavailable capabilities remain honest; stale session/profile/config changes cannot cross ownership or create a prompt/tool effect
+- Previous shipped queued-history raster, MCP output, loader and launcher-context fixes survive integration with harness main
+- Focused affected compile, native raster/process/config tests and selected stateful controls pass; signed source and committed indexed report retained
 allowed_paths:
 - src/frontends/gui/**
 - tests/acp_controls.rs
@@ -17,35 +18,42 @@ allowed_paths:
 - scripts/test-acp-controls.py
 - tests/gui_rich.rs
 - .bboxy/runs/codex-acp-controls.json
-verify: make verify-acp-controls
-acceptance:
-- Actual installed-path catalogue discovery is reproduced and fixed; safe standalone/Unix catalogues agree without credentials
-- The GUI can display and switch the underlying ACP agent's advertised model and effort choices through the supported ACP API
-- Confirmed values, rejections and unavailable capabilities remain honest; stale session/profile/config changes cannot cross ownership or create a prompt/tool effect
-- Previous shipped queued-history raster, MCP output, loader and launcher-context fixes survive integration with harness main
-- Focused affected compile, native raster/process/config tests and selected stateful controls pass; signed source and committed indexed report retained
-id: 01M6KF628K0H7DHN4R8BCN9WVZ
-status: accepted
-delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T15:44:55.492Z
-created: 2026-11-04T14:25:08.282Z
-number: 21224
-created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-updated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-authorship:
-  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  kind: seat
-  public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
-  process_generation: '1'
-assignee: seat:01M6KF1JD34QA47CQP34FRJN5Z
 artifacts:
 - '[[01M6KH02N28Y35ZQK1QENWY0WR]]'
 - '[[01M6KJPZZD63QQ1AKMTBSFY35Z]]'
 - '[[01M6KK7RJEVTPMFVTX6MYSSS1V]]'
+assignee: seat:01M6KF1JD34QA47CQP34FRJN5Z
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CDRCTC90FVRSHG0VJZ6AV
+created: 2026-11-04T14:25:08.282Z
+created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+id: 01M6KF628K0H7DHN4R8BCN9WVZ
+number: 21224
+parent: 01M6KEVVYNZW5H21RPTFW1RVDR
+report:
+  commit: 133d0cc53ca610346e72a2a9cf293a0f1df25607
+  op_id: 01M6KKND52RKNX1PQE3DJGDC9D
+  report: '[[reports/2026-11-04-acp-controls-rendering-followup.md]]'
+  reported_by: seat:01M6KF1JD34QA47CQP34FRJN5Z
+  summary: 'Metadata-only correction: all five verify_result.evidence criterion fields are copied verbatim from the current task frontmatter.acceptance. Reuses the verified existing indexed rendering report, make verify-acp-controls exit 0, 19 actual log hashes and 68 unchanged production hashes. No gate, code, build, formal run, new report document, integration or backend action this turn; subsequent checkpoints remain preserved. The newly observed MCP-card crash/noisy headers are reserved for a separate task per Oracle and are not claimed resolved here.'
+  verify_revision: 2
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Restore the embedded profile catalogue and expose ACP model/effort controls
+type: task
+updated: 2026-11-23T23:38:56.534Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make verify-acp-controls
 verify_result:
   command: make verify-acp-controls
-  exit_code: 0
   evidence:
   - criterion: Actual installed-path catalogue discovery is reproduced and fixed; safe standalone/Unix catalogues agree without credentials
     reference: 'Retained target/acp-controls/process-and-native-controls.log: 11 passed; path-unit.log: 1 passed; src/frontends/gui/bridge.rs and window.rs production hashes unchanged. Evidence reused from report 01M6KJKX4CVY6TPFHV939A12T7.'
@@ -57,20 +65,19 @@ verify_result:
     reference: 'Retained preserved-gui.log: two centered welcome-loader/motion checks and one MCP output check; pending-raster.log: prior-history GPU pixels; launcher-context tests: 7 passed. These are the bounded existing witnesses, not a claim to resolve the separately reported MCP-card crash/noisy headers.'
   - criterion: Focused affected compile, native raster/process/config tests and selected stateful controls pass; signed source and committed indexed report retained
     reference: Existing make verify-acp-controls exit 0; .bboxy/runs/codex-acp-controls.json sha256:25a795b1a2e5d88e9008a4c935ea23039c8911f46f92fc3ecf7f5c13ec39ab5c; 19 actual log hashes and 68 production hashes previously checked; compile/lint/schema/native checks and six selected native/Java graph/verdict comparisons retained. Signed source a832bd6 and indexed report commit 133d0cc; report sha256:9d34d8a6670f6d0d30cee0de4e89353578259a2945174b06f054cae5f89b86fb.
-report:
-  summary: 'Metadata-only correction: all five verify_result.evidence criterion fields are copied verbatim from the current task frontmatter.acceptance. Reuses the verified existing indexed rendering report, make verify-acp-controls exit 0, 19 actual log hashes and 68 unchanged production hashes. No gate, code, build, formal run, new report document, integration or backend action this turn; subsequent checkpoints remain preserved. The newly observed MCP-card crash/noisy headers are reserved for a separate task per Oracle and are not claimed resolved here.'
-  commit: 133d0cc53ca610346e72a2a9cf293a0f1df25607
-  reported_by: seat:01M6KF1JD34QA47CQP34FRJN5Z
-  op_id: 01M6KKND52RKNX1PQE3DJGDC9D
-  verify_revision: 2
-  report: '[[reports/2026-11-04-acp-controls-rendering-followup.md]]'
+  exit_code: 0
 verify_revision: 2
+worktree: /Users/feral/mydev/bboxy450-harness-land
 provenance:
   digest: sha256:2b8ac42e302371546c0acd086916a5591cfb8e2dc864095c7cbde366cb8c578f
-  frontmatter_digest: sha256:971a7a2486e5f8d21b52c9172ba078dd7d1d26522c453a765b93c58ee3f8fb55
-  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  sig: bCCDiCSqTupBZI9aLwH5/aiPMPHXewkzfCbgj/ppMBXePOVmM2QUcd0/sRdg4GRm5ZE0zF+CpKriW2r4epjjAg==
-  log: .bboxy/log/2026-11-04.jsonl#120218
+  frontmatter_digest: sha256:7e0a0cf1acecddd45ede457227cfd4a948167ba404b8571544cd32a2b041a859
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: tTKnu1t9z5vJR66gYaYJ39cx+jbQRxMFEpWZ6snFnBrXIRujd5SFMhpLlj1R8GLoyqV/FK3w6MBlAj+aa2WgBQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1348
+  event:
+    id: 01M85CDS9T73A3C0H5Q2E3JT9X
+    sequence: 1348
+    hash: e0f613a2c58bf56521fdc737d01aa3b21145c187f518423487bea983329af616
 ---
 ROLE: EXECUTOR.
 

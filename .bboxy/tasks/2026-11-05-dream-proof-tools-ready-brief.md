@@ -1,36 +1,44 @@
 ---
-type: task
-title: Ground the private proof-tool build and qualification handoff for implementation
-role: architect
-worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 allowed_paths:
 - interfaces/dream-proof-tool-qualification.md
 - reports/2026-11-05-dream-proof-tools-ready-brief.md
-verify: git diff --check
+artifacts:
+- '[[01M6PZJAZH085RWKVRDX3XRFAN]]'
+- '[[01M6PZJD5VD0AGVM83G7YKVHTY]]'
+assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CF22922GZXTEAJAM43K9Q
+created: 2026-11-05T22:53:10.935Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
 derived_from:
 - '[[decisions/d93377961365654-dream-q2-tool-lifetime-basis]]'
 - '[[research/dream-q2-tool-lifetime-basis]]'
 id: 01M6PYN0MD0D8KP8D4GXTFTS7T
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T23:22:59.580Z
-created: 2026-11-05T22:53:10.935Z
 number: 93377961365722
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-artifacts:
-- '[[01M6PZJAZH085RWKVRDX3XRFAN]]'
-- '[[01M6PZJD5VD0AGVM83G7YKVHTY]]'
+report:
+  commit: null
+  op_id: 01M6PZJW5RDEWGS0ECFSXW6036
+  report: '[[reports/2026-11-05-dream-proof-tools-ready-brief.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: Frozen builder->Q2 ICD interfaces/dream-proof-tool-qualification digest5f9dc6efafc0f88686faf90a5d5b4403f4c8695b881a45c1bf71995179169323, fully read back. Defines six exact upstream archive/checksum/public-root/signature inputs and pre-build crypto checks (not run here), minimal dependencies/actual generated-config obligations, source guards, private candidate/strict manifests/atomic custody,32KiB receipt+128KiB total prepared evidence and no self-minted runtime approval. Stable host-approved profile pins avoid a Q2 source/final-receipt hash cycle; Q2 materializes unchanged DTO afterward. Exact file/Make/model/causal/component outline uses canonical Q2 authority, separates its final qualifying/four-job gates, preserves all runtime laws and names tree/probe/compiler/link prerequisites. One frozen handoff to author/Rook accepted; installed pair remains Unproven. Actual git diff --check exit0; source races/public retrieval limits/one corrected metadata-path exit1 retained. No code/build/test/probe/candidate launch/install/delegation or availability claim. Append-only reportcb758da1c32caee2e21ebee39d6b256f45d427d77f81433ee1eed728b1897308 read back exactly.
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Ground the private proof-tool build and qualification handoff for implementation
+type: task
+updated: 2026-11-23T23:39:39.033Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Exact pins/source guards and authenticated-source build prerequisites
     reference: interfaces/dream-proof-tool-qualification.md#frozen-inputs-and-authentication
@@ -40,19 +48,18 @@ verify_result:
     reference: interfaces/dream-proof-tool-qualification.md#canonical-implementation-brief-outline
   - criterion: Full readbacks, actual exits/source race/provenance and no runtime claim
     reference: reports/2026-11-05-dream-proof-tools-ready-brief.md
-report:
-  summary: Frozen builder->Q2 ICD interfaces/dream-proof-tool-qualification digest5f9dc6efafc0f88686faf90a5d5b4403f4c8695b881a45c1bf71995179169323, fully read back. Defines six exact upstream archive/checksum/public-root/signature inputs and pre-build crypto checks (not run here), minimal dependencies/actual generated-config obligations, source guards, private candidate/strict manifests/atomic custody,32KiB receipt+128KiB total prepared evidence and no self-minted runtime approval. Stable host-approved profile pins avoid a Q2 source/final-receipt hash cycle; Q2 materializes unchanged DTO afterward. Exact file/Make/model/causal/component outline uses canonical Q2 authority, separates its final qualifying/four-job gates, preserves all runtime laws and names tree/probe/compiler/link prerequisites. One frozen handoff to author/Rook accepted; installed pair remains Unproven. Actual git diff --check exit0; source races/public retrieval limits/one corrected metadata-path exit1 retained. No code/build/test/probe/candidate launch/install/delegation or availability claim. Append-only reportcb758da1c32caee2e21ebee39d6b256f45d427d77f81433ee1eed728b1897308 read back exactly.
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6PZJW5RDEWGS0ECFSXW6036
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-proof-tools-ready-brief.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 provenance:
   digest: sha256:0e653a5ad37ce1c9712b0c5beb72846001b59ab23980d083cab1982f78015e05
-  frontmatter_digest: sha256:fa26a35b480f8bd0433a06c6a45d0e8c5b6ee96bd2294b8e09e3a169548860ba
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: xoMLafz86V2sv6mHFaVaHCk8w+BuyqAcUw/0JbArkXBGYFJvH53SgUg6uSG0WSg3Fp9wx5xthR8yUk5aBQ//AA==
-  log: .bboxy/log/2026-11-05.jsonl#146401
+  frontmatter_digest: sha256:784aaecce8b86c4af3076bcbe1cc0ab2662d82d08e144a5b027df80f31a89de5
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: l3G+nizoQ4P76oIRnG9RXSx19sj8jG6X0AqHsK3SojbNnbb4xKRjPC91xKX3jP5cVoxIzVFqvh0baMRjwk3RAQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1402
+  event:
+    id: 01M85CF2S331QE9Z5FZDB0GR7B
+    sequence: 1402
+    hash: 66a7d59019c92e9e1fdec2d892243add9da5eceada45509b877977e6cffa0047
 ---
 ROLE: ARCHITECT
 

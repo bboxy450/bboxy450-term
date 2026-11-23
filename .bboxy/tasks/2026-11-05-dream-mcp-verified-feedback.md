@@ -1,7 +1,4 @@
 ---
-type: task
-title: Q3 integrate prepared lesson reads and reported-only Dream feedback
-role: executor
 allowed_paths:
 - ATTRIBUTION.md
 - Makefile
@@ -33,32 +30,43 @@ allowed_paths:
 - crates/bboxy450-harness-wake-up/src/dream_c1.rs
 - crates/bboxy450-harness-wake-up/tests/dream_c1.rs
 - crates/bboxy450-harness-wake-up/tests/fixtures/
-verify: make test-dream-mcp && make test-formal-contracts
-derived_from:
-- '[[research/dreaming-services-mcp]]'
-- '[[specs/dreaming-mcp]]'
+assignee: seat:01M6YC2FT3YFH5DH6NJX7N8VJX
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CEY7318WXRAG2TS1XDS4H
+created: 2026-11-05T14:27:23.737Z
+created_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 depends_on:
 - '[[tasks/2026-11-05-dream-mcp-observation-reads]]'
 - '[[tasks/2026-11-05-dream-mcp-verified-snapshot]]'
+derived_from:
+- '[[research/dreaming-services-mcp]]'
+- '[[specs/dreaming-mcp]]'
 id: 01M6P1PWPKEEYWPZGQW21EYCW9
-status: accepted
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-09T05:47:50.484Z
-created: 2026-11-05T14:27:23.737Z
 number: 93377961364662
-created_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
-verify_revision: 2
-assignee: seat:01M6YC2FT3YFH5DH6NJX7N8VJX
+report:
+  commit: 91fc1c4ad0a311bd2eaa99e8251018e47c73f320
+  op_id: 01M6ZDHKDR1J0H834Z8X2190FC
+  report: '[[reports/2026-11-05-dream-mcp-verified-feedback.md]]'
+  reported_by: seat:01M6YC2FT3YFH5DH6NJX7N8VJX
+  summary: 'Landed the narrowed Dream Q3 slice on term main at signed 91fc1c4ad0a311bd2eaa99e8251018e47c73f320 with harness 645fec78174f59b06a9d6973271fc5e8d4ef013e: pinned read-prepare codec conformance, honest unavailable lesson tools, original-op/digest-idempotent feedback refusals with reported_only DTOs, shared structured hints, signed C1 byte compatibility and pointer-only consumer gating. Focused MCP/contracts checks passed; final make land exited 0 with 2,019 selected tests passed, 263 reported skips and a clean 861-model/275-contract/34-crate formal receipt using validated reuse. The readiness test passed unchanged; no conditional ignore was added. Positive transport/admission/provenance/operation_status and benefit scenarios remain Q3b deferrals. Full evidence, prior failures and the accepted upstream harness ignore are in the committed report (native checkpoint ddbfe01caa5971e8fb160deed5e277b717d47861).'
+  verify_revision: 2
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Q3 integrate prepared lesson reads and reported-only Dream feedback
+type: task
+updated: 2026-11-23T23:39:35.022Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make test-dream-mcp && make test-formal-contracts
 verify_result:
   command: make test-dream-mcp && make test-formal-contracts
-  exit_code: 0
   evidence:
   - criterion: Required focused verification; logs precede final pin, with all affected suites rerun in final landing
     reference: /tmp/dream-q3-bc4-mcp-resume.log (34 passed); /tmp/dream-q3-bc4-contracts-resume.log (45 contracts + QoS/Python passed), actual exits 0; source/pin qualification and log hashes in committed report
@@ -72,23 +80,18 @@ verify_result:
     reference: reports/2026-11-05-dream-mcp-verified-feedback.md, record 01M6ZDF0FJ8SKR05FPYZEKSGPD, publication_state=committed at ddbfe01caa5971e8fb160deed5e277b717d47861; report covers every narrowed acceptance line and original deferrals
   - criterion: Ancillary artifact-claim limitation
     reference: knowledge_fetch confirms committed checkpoint 01M6ZDFV0BHTHSE5JY4VJPFA03, but artifact_claim refused artifact_not_committed for both returned artifact ID (op 01M6ZDGC9MGT4SP43TB6SHDMXG) and report path (op 01M6ZDGPVHEKENSX9KYG35VTP5). No artifact ownership claim is asserted; no bypass or further retry.
-report:
-  summary: 'Landed the narrowed Dream Q3 slice on term main at signed 91fc1c4ad0a311bd2eaa99e8251018e47c73f320 with harness 645fec78174f59b06a9d6973271fc5e8d4ef013e: pinned read-prepare codec conformance, honest unavailable lesson tools, original-op/digest-idempotent feedback refusals with reported_only DTOs, shared structured hints, signed C1 byte compatibility and pointer-only consumer gating. Focused MCP/contracts checks passed; final make land exited 0 with 2,019 selected tests passed, 263 reported skips and a clean 861-model/275-contract/34-crate formal receipt using validated reuse. The readiness test passed unchanged; no conditional ignore was added. Positive transport/admission/provenance/operation_status and benefit scenarios remain Q3b deferrals. Full evidence, prior failures and the accepted upstream harness ignore are in the committed report (native checkpoint ddbfe01caa5971e8fb160deed5e277b717d47861).'
-  commit: 91fc1c4ad0a311bd2eaa99e8251018e47c73f320
-  reported_by: seat:01M6YC2FT3YFH5DH6NJX7N8VJX
-  op_id: 01M6ZDHKDR1J0H834Z8X2190FC
-  verify_revision: 2
-  report: '[[reports/2026-11-05-dream-mcp-verified-feedback.md]]'
+  exit_code: 0
+verify_revision: 2
 provenance:
   digest: sha256:681ce20f6ff58278eb3c13caa662dec9dcfcb748e95bc7747029110247ff18dc
-  frontmatter_digest: sha256:7521902eec5dc338ab3827796010a2a0da08f9d5db01cbaf3d269aef88f61f4a
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: PM0k7qkdEMMt+kE3mtI/973DAAuOBWmI/vp216QcvVxBSxEcgMrlaY8UZ06sZxMH4w+K9VzfeY97yedhxnF0Dg==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150950
+  frontmatter_digest: sha256:447003914c4488fcdb272370607278e760eebbee067d33252d7b26f163647500
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: zkyW5+xVTUaFgusi5rF+jmr/uodPagTTmYRaSGn7yOzKJsKXph0TewCXPPnjxLBzSWjlnzCaC13Iq9W9vUMWDw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1396
   event:
-    id: 01M6ZDJFESE3GEPKD5SZ8XS0N2
-    sequence: 150950
-    hash: 783b7c8492808628abbd8d828c0e1a97f03c7a28dff09b2e17e651262375360d
+    id: 01M85CEYW0BY9HA2ZGTGXQXD11
+    sequence: 1396
+    hash: ddc9281079bc27201d6a69784dc462322b529fc94b54ea6f1887549651147fb6
 ---
 ROLE: EXECUTOR
 

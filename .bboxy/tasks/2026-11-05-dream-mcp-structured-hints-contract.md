@@ -1,33 +1,42 @@
 ---
-type: task
-title: Align Architect-owned Dream MCP task drafts with structured host hints
-role: architect
 allowed_paths:
 - tasks/2026-11-05-dream-mcp-observation-reads.md
 - tasks/2026-11-05-dream-mcp-verified-feedback.md
 - reports/2026-11-05-dream-mcp-structured-hints.md
-verify: git diff --check
+assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CEWY5GJDTB3B0D2XP08FD
+created: 2026-11-05T15:53:40.776Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
 derived_from:
 - '[[decisions/d93377961364692-dream-mcp-structured-host-hints]]'
 - '[[interfaces/dreaming-mcp]]'
 id: 01M6P6MXAGWVCRM5C3H3VTVBEQ
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T15:58:04.064Z
-created: 2026-11-05T15:53:40.776Z
 number: 93377961364694
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+report:
+  commit: null
+  op_id: 01M6P6TBZE3HQVF3FAFS4FADB6
+  report: '[[reports/2026-11-05-dream-mcp-structured-hints.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: Amended only the original Q1/Q3 draft brief bodies to require shared structuredContent.hints/text guidance, strict final outer schema validation, post-journal idempotent off-owner projection and charged hint copies within existing budgets. Added actual admitted structured-only/final-schema/repeated-projection/near-limit/poison/recovery witness requirements, consuming the actual shared implementation without duplicate helper or wire/version changes. Full readbacks match; Q1 digest c71bfac7754234b0c1db33bb6dec0573f2314e638b1ab59403ba3fa319e78bc9 and Q3 8dc5f8475fe3a926ed4d9a8ed50dc15ada6491c6ac32e28b98a9da82dad68b4c. All frontmatter except host updated/provenance preserved, including allowed_paths/verify/dependencies/lifecycle; both remain native open/unassigned and were not started. git diff --check exited0. No source/build/service/client-test actions or runtime-green claim; report records governance digests, preservation and remaining integration evidence.
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Align Architect-owned Dream MCP task drafts with structured host hints
+type: task
+updated: 2026-11-23T23:39:33.777Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Both original drafts amended/read back with exact preservation and no assignment
     reference: reports/2026-11-05-dream-mcp-structured-hints.md — Exact records, readback and field preservation
@@ -35,19 +44,17 @@ verify_result:
     reference: tasks/2026-11-05-dream-mcp-observation-reads.md; tasks/2026-11-05-dream-mcp-verified-feedback.md — Shared structured host hints (required integration)
   - criterion: Actual whitespace verification and design-only limits
     reference: reports/2026-11-05-dream-mcp-structured-hints.md — Actual verification and limits
-report:
-  summary: Amended only the original Q1/Q3 draft brief bodies to require shared structuredContent.hints/text guidance, strict final outer schema validation, post-journal idempotent off-owner projection and charged hint copies within existing budgets. Added actual admitted structured-only/final-schema/repeated-projection/near-limit/poison/recovery witness requirements, consuming the actual shared implementation without duplicate helper or wire/version changes. Full readbacks match; Q1 digest c71bfac7754234b0c1db33bb6dec0573f2314e638b1ab59403ba3fa319e78bc9 and Q3 8dc5f8475fe3a926ed4d9a8ed50dc15ada6491c6ac32e28b98a9da82dad68b4c. All frontmatter except host updated/provenance preserved, including allowed_paths/verify/dependencies/lifecycle; both remain native open/unassigned and were not started. git diff --check exited0. No source/build/service/client-test actions or runtime-green claim; report records governance digests, preservation and remaining integration evidence.
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6P6TBZE3HQVF3FAFS4FADB6
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-mcp-structured-hints.md]]'
+  exit_code: 0
 provenance:
   digest: sha256:8527b1988ef10a0fbda5c7664a638304f8c4eb5e25c0332de20bea64fff3c89d
-  frontmatter_digest: sha256:379d785872dbb995824f7bc98460407eb28ed4310a6f29145692dde0dc55ea3a
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: yxLW2ZsCnWirMx/9lobIsXtCfvqrR401dMkLsXa2FmQNeAfq4MCsXa/zP2RlRQ8x2dlAOh5FdRJ2oMaP/bhLCQ==
-  log: .bboxy/log/2026-11-05.jsonl#137485
+  frontmatter_digest: sha256:1a2293d1389cf821293841104e46851f05fb48fdb48c3990ac8d0fec6bdcfb3d
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: seDUjagd38wgIjVtMkB6rAO37f5uH3M0o+BQGpZqECr6je1XpHNcLQFlnevzaOv3nxiyZAIJo4G9V1EAQ3y8Bg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1394
+  event:
+    id: 01M85CEXPBQZHVDA6W0HP2KYGJ
+    sequence: 1394
+    hash: 350694902493bf30d84033a673325e6e78db9f0cc0a39a30970c99b4e133d152
 ---
 ROLE: ARCHITECT
 

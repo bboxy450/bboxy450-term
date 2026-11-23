@@ -1,31 +1,39 @@
 ---
-type: task
-title: Review signed bab543 bootstrap authority and real handoff witnesses
-role: architect
-worktree: /Users/feral/mydev/bboxy450-harness-dream-native-c1
 allowed_paths:
 - reports/2026-11-05-dream-bootstrap-fixed-source-review.md
-verify: git diff --check
-id: 01M6PTXC20YP3XAEB7MJ6KZB1N
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T22:01:13.121Z
-created: 2026-11-05T21:47:49.524Z
-number: 93377961365388
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
 artifacts:
 - '[[01M6PVKD7R7JYV5DM19JZ7DR7G]]'
+assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CE7ZC6AMJFC4E2TWB92NX
+created: 2026-11-05T21:47:49.524Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+id: 01M6PTXC20YP3XAEB7MJ6KZB1N
+number: 93377961365388
+report:
+  commit: null
+  op_id: 01M6PVKQ36H9AAE5JRRTEFV1K9
+  report: '[[reports/2026-11-05-dream-bootstrap-fixed-source-review.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: 'Completed fixed bab543e-versus-206c interaction review and fully read back report digest 6bb964cc2edcd917407a809b9a739d08367a4fe434c1b2cc67723c220a412c80. Canonical bab gate actually exits2: earliest-bypass fixture misses its marker before the causal assertions; promptly sent exact evidence to author/Rook. Seven bootstrap process positives, four ordinary-release completions/reaps and 200 primed control RTTs (p99 27us/max30us) are retained subresults, not a green overall gate. Recorded Rook''s later 56ac correction as outside this cutoff, metric/formal/consumer limits, exact source/artifact/log hashes and current-tree race. git diff --check exited0; no source changes, builds/tests/replays or component acceptance.'
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Review signed bab543 bootstrap authority and real handoff witnesses
+type: task
+updated: 2026-11-23T23:39:12.943Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Fixed source mechanisms and actionable finding
     reference: reports/2026-11-05-dream-bootstrap-fixed-source-review.md#findings-and-disposition
@@ -33,19 +41,18 @@ verify_result:
     reference: reports/2026-11-05-dream-bootstrap-fixed-source-review.md#boundary-review
   - criterion: Actual retained evidence, hashes and coverage limits
     reference: reports/2026-11-05-dream-bootstrap-fixed-source-review.md#real-witnesses-versus-claims
-report:
-  summary: 'Completed fixed bab543e-versus-206c interaction review and fully read back report digest 6bb964cc2edcd917407a809b9a739d08367a4fe434c1b2cc67723c220a412c80. Canonical bab gate actually exits2: earliest-bypass fixture misses its marker before the causal assertions; promptly sent exact evidence to author/Rook. Seven bootstrap process positives, four ordinary-release completions/reaps and 200 primed control RTTs (p99 27us/max30us) are retained subresults, not a green overall gate. Recorded Rook''s later 56ac correction as outside this cutoff, metric/formal/consumer limits, exact source/artifact/log hashes and current-tree race. git diff --check exited0; no source changes, builds/tests/replays or component acceptance.'
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6PVKQ36H9AAE5JRRTEFV1K9
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-bootstrap-fixed-source-review.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-native-c1
 provenance:
   digest: sha256:3d9c858b730f60969b00f743f0a9576be7e6aeed354ce371b76d6ab089ad4ae0
-  frontmatter_digest: sha256:4c4db68b99dae5bee28ff5eafa6726a7635efe9989d37090f6d7f3b818b19ea9
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: Tx6XXNsD4e1zRgJyW/AyRglMklCNJuUcqhHn9brWGHckU1Ibjdl2DAuFyE3K1sIhP+uHCrwJDrPd9lbG1GuYAA==
-  log: .bboxy/log/2026-11-05.jsonl#143978
+  frontmatter_digest: sha256:7c71150452bd72277e110ea7fa3c1b08ed4c749bc6b00febf3657a3dd236766f
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: K2jT5Lpm9czUOJASVpkdpejdyiY3mAci67IAYKlv1BJkPCW7rU2ew26YiUdLNvdydZjJKowjHzeev1duY1hIBA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1368
+  event:
+    id: 01M85CE9AVSJ7JWFR7XTH4ZMKF
+    sequence: 1368
+    hash: 35435266b754a8ff4788164565cade5bec656bb599df55bd27d7189e0f79c867
 ---
 ROLE: ARCHITECT
 

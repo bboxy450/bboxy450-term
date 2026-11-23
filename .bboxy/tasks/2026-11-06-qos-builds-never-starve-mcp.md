@@ -1,7 +1,4 @@
 ---
-type: task
-title: Builds/tests run at background QoS; mux, MCP and UI keep the performance cores; land prints per-step cost
-role: executor
 allowed_paths:
 - crates/bboxy450-term/tests/headless.rs
 - scripts/land-fast.sh
@@ -35,25 +32,37 @@ allowed_paths:
 - scripts/
 - crates/bbt-mux/src/knowledge/routing.rs
 - crates/bbt-mux/src/registry/dream_c1.rs
-verify: python3 -I scripts/test-landing.py && python3 -I scripts/qos-probe.py --check && make test-formal-contracts
-status: accepted
-id: 01M6S3M8WTNZ32TMZ7YX9VTEJR
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-07T10:41:23.245Z
-created: 2026-11-06T18:58:37.431Z
-number: 93377961366081
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
 assignee: seat:01M6S48V44QDK7SE9H4EDFPXVT
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CFM3BGMKXT4X9ZHFYNR5S
+created: 2026-11-06T18:58:37.431Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+id: 01M6S3M8WTNZ32TMZ7YX9VTEJR
+number: 93377961366081
+report:
+  commit: 11b57036170c94a42f7faf5d4162718f517fa940
+  op_id: 01M6TSHXYQB89A8KMABJBRMWYJ
+  report: '[[reports/2026-11-06-qos-builds.md]]'
+  reported_by: seat:01M6S48V44QDK7SE9H4EDFPXVT
+  summary: 'Landed primary QoS at ee60f818 and the authorized follow-up at 11b57036170c94a42f7faf5d4162718f517fa940. Canonical land and the exact final-source verify chain exit 0; 679 models/254 contracts/34 crates, 506 mux tests, 16 wake-up tests, four headless tests, native QoS witnesses and deterministic controls passed. Final land cost: 1836.639 s wall, 2319.434 child CPU seconds, +282415104 target bytes. Both final MCP comparisons are reported honestly: default/background p95 8.978/22.572 ms and 9.938/1.632 ms, all below 250 ms. Six original C1 witnesses remain re-enabled; ten explicit defect transfers (including three additional land-time cases) follow ruling 01M6TGEZ. No reinstall or ordinary one-shot C1 runtime launch. Full committed report: [[reports/2026-11-06-qos-builds]], KB 3605333debcfd3427929daaa2f1dfba6762a63e5.'
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Builds/tests run at background QoS; mux, MCP and UI keep the performance cores; land prints per-step cost
+type: task
+updated: 2026-11-23T23:39:57.805Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: python3 -I scripts/test-landing.py && python3 -I scripts/qos-probe.py --check && make test-formal-contracts
 verify_result:
   command: python3 -I scripts/test-landing.py && python3 -I scripts/qos-probe.py --check && make test-formal-contracts
-  exit_code: 0
   evidence:
   - criterion: Builds and tests started through Make or land show background/utility QoS
     reference: Makefile:8; scripts/qos.sh; scripts/cache-env.sh; scripts/landing.py:139,240; scripts/qos-policy.py. Final 204 landing fixtures and eighteen QoS/cost tests exit0; both private probes report ten native self background flags=1. reports/2026-11-06-qos-builds.md, Changed files and Final executable results.
@@ -67,23 +76,17 @@ verify_result:
     reference: verification/contracts.toml BuildQosResponsiveness; final default-QoS control exit1 with qos_ok=false; delay control exit1 with qos_ok=true/latency_ok=false and p95271.880667ms. Final source-bound formal receipt6cfc9a37895ceebd0439ddc3d94a2e60f0efdbe2211e495aaef7f73b6da4b845:679 validated models,254 contracts,34 crates,dirty=false.
   - criterion: Authorized C1 re-enable/defect-transfer disposition, headless compiler fix, signed landing and retained report
     reference: Ruling01M6TGEZ0HX7V1MFKX47FGW4F6 authorizes further C1 land-time failures to transfer. scripts/qos-policy.py and LAND.md:16 inventoried/six active/ten transferred; five wake-up tests plus custody executed in final canonical gates. All ten ignore/task mappings and unchanged assertions/budgets/guards are documented. Headless compiler wrapper fixture and strict Clippy passed. Eighteen signature checks exit0; git status clean and git cherry empty. Committed report01M6TSB0X2CVHTHBHRTR8KRQVF / KB3605333debcfd3427929daaa2f1dfba6762a63e5.
-report:
-  summary: 'Landed primary QoS at ee60f818 and the authorized follow-up at 11b57036170c94a42f7faf5d4162718f517fa940. Canonical land and the exact final-source verify chain exit 0; 679 models/254 contracts/34 crates, 506 mux tests, 16 wake-up tests, four headless tests, native QoS witnesses and deterministic controls passed. Final land cost: 1836.639 s wall, 2319.434 child CPU seconds, +282415104 target bytes. Both final MCP comparisons are reported honestly: default/background p95 8.978/22.572 ms and 9.938/1.632 ms, all below 250 ms. Six original C1 witnesses remain re-enabled; ten explicit defect transfers (including three additional land-time cases) follow ruling 01M6TGEZ. No reinstall or ordinary one-shot C1 runtime launch. Full committed report: [[reports/2026-11-06-qos-builds]], KB 3605333debcfd3427929daaa2f1dfba6762a63e5.'
-  commit: 11b57036170c94a42f7faf5d4162718f517fa940
-  reported_by: seat:01M6S48V44QDK7SE9H4EDFPXVT
-  op_id: 01M6TSHXYQB89A8KMABJBRMWYJ
-  verify_revision: 0
-  report: '[[reports/2026-11-06-qos-builds.md]]'
+  exit_code: 0
 provenance:
   digest: sha256:4de28fce7f1691ed71c20728aa89423c4709d0c2f63279feb3177f761b48e9f7
-  frontmatter_digest: sha256:a47bbae0d3f1d4b11f899333079b8080a7217bcca5edd09865c5512b2990348b
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: YZWVwXCCVKiGhp2TXLLwJ+0zanKTLOcthMnOMwdhoDwWTnGuj7lFo3Sc779TGQnkJGzKuHOKKn+JH8A4qr4ZCw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150292
+  frontmatter_digest: sha256:8079f1154e31cfa6392d1b689263bebdd66257538b6d95c23cffda1a58641657
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: ynt1D2TP4Q5GmSpNIIYWZzK0LaRkBI2V+kS+Abs0NuIsHWwUlvnStAInZu93RkOK7lugEn9UbTWrb9Cnb9gLCg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1424
   event:
-    id: 01M6TSJHD891PNEJDRRYWXG1KE
-    sequence: 150292
-    hash: ac7e046cb8083f1dec37e6ae34dc9bce508bb0e57bdd4d98e8403e1f83410c0f
+    id: 01M85CFN3EY15918HRT9DBG17E
+    sequence: 1424
+    hash: 547d579ffe581ec6d39baa8a42caa1631d5cc59fed39a94781bf4de4d50259a8
 ---
 # Builds must never starve the MCP or the UI
 

@@ -1,8 +1,4 @@
 ---
-type: task
-title: Implement bounded post-session Dream C1 harness producer
-worktree: /Users/feral/mydev/bboxy450-harness-dream-c1
-role: executor
 allowed_paths:
 - src/dream/c1_wire.rs
 - src/dream/c1.rs
@@ -38,22 +34,6 @@ allowed_paths:
 - src/mcp.rs
 - tests/mcp_client.rs
 - reports/2026-11-05-dream-c1-producer-review.md
-verify: make test-dream-c1 && make test-formal-parity && make check-embedded-build
-id: 01M6NPQKKAKT5PNJDEEY2A1QYQ
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T17:00:31.693Z
-created: 2026-11-05T11:15:31.904Z
-number: 93377961364374
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-assignee: seat:01M6NPMWMJ27PAN93N9BY4KY5J
 artifacts:
 - '[[01M6NYFEM871JC9EBHS3BT4R2V]]'
 - '[[01M6P0A1TK12DZS1XQYY8GCX32]]'
@@ -62,9 +42,40 @@ artifacts:
 - '[[01M6P6BEPJVE4J6MW6WD5T7J49]]'
 - '[[01M6P9M1WQKG5XQT5PFSGZJJN3]]'
 - '[[01M6PAF7WVG99456AC76KTRY1K]]'
+assignee: seat:01M6NPMWMJ27PAN93N9BY4KY5J
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CERZMMJWNPR38ZKCV4BV0
+created: 2026-11-05T11:15:31.904Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+id: 01M6NPQKKAKT5PNJDEEY2A1QYQ
+number: 93377961364374
+rejection:
+  by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+  reason: 'Final-source review confirms R1 at src/dream/c1.rs::Budget::unit: result=f() at:295 is implicitly dropped on unavailable end-clock (:297-298) or elapsed/heap rejection (:304-310), before the paced cleanup path:312. Actual Envelope-returning b.track at:870 can therefore destroy owned parsed state outside measured/paced cleanup. This is a concrete ownership/accounting defect; no runtime excess-latency measurement is claimed. Fix within existing C1 paths by retaining large returned ownership in an external stepped Paced slot across every rejection branch, or an equivalent bounded mechanism; merely adding one unbounded drop inside a cleanup closure is insufficient for a near-limit owned envelope. Add over-budget/clock-failure owned Drop-probe controls and near-limit parsed-envelope failure/cancel disposal witnesses proving measured/paced cleanup completes before Done/settlement and credits release correctly. Keep all limits; update relevant ownership model/broken control coverage honestly. Fetch/rebase own repo origin/main per operator; currently it is unchanged a2ca8f39, so don''t invent a term rebase. Re-run only changed focused checks and the prescribed current-source final gates, refresh retained formal evidence after the new signed source commit, and submit an append-only superseding report. Old4bdafb67 report/evidence remain baseline, not acceptance of the fix. Architect''s remaining fixed-source review continues; address any further precise findings within the same brief.'
+report:
+  commit: 47182320be6435c860bc2176c2ddda582029fa63
+  op_id: 01M6P9TW9Y0GVHXZVZXPN46BK9
+  report: '[[reports/2026-11-05-dream-c1-producer-review.md]]'
+  reported_by: seat:01M6NPMWMJ27PAN93N9BY4KY5J
+  summary: 'R1 corrected in signed47182320be6435c860bc2176c2ddda582029fa63: successful typed returns retain an external stepped owner through CPU/heap/clock/control rejection, nested disposal completes before credit release/Done, with owned Drop probes and near-limit parsed-envelope failure/Cancel/process witnesses. Required make test-dream-c1 && make test-formal-parity && make check-embedded-build, licenses and current-source evidence validation all exit0 unattended;231-model/71-contract native/Java full state/edge/verdict parity. Actual dense rejected parse1562833ns remains a ResourceLimit negative; cleanup maximum348041ns, live credits0, actual exit1373ms. Corrected ordinary-release no-fixtures worker SHA2562c8469829bc94171048677c590b8427b48076512cb04178ad1b2bdcd711beabd handed off with receipt; old artifacts preserved. Own origin/main fetch/rebase exited0/already up to date, tracked tree clean. Append-only superseding report records complete source, logs, measurements and exclusions; consumer integrated results remain outside producer-only certification.'
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Implement bounded post-session Dream C1 harness producer
+type: task
+updated: 2026-11-23T23:39:29.922Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make test-dream-c1 && make test-formal-parity && make check-embedded-build
 verify_result:
   command: make test-dream-c1 && make test-formal-parity && make check-embedded-build
-  exit_code: 0
   evidence:
   - criterion: Canonical wire/schema/fixtures and exact worker provisioning
     reference: src/dream/c1_wire.rs; schema/dream-c1-v1.schema.json; tests/fixtures/dream-c1; target/dream-c1-review-47182320-final.log; target/dream-c1-production-47182320/receipt.json
@@ -78,22 +89,18 @@ verify_result:
     reference: Makefile:282; target/dream-c1-review-47182320-final.log; target/dream-c1-review-47182320-licenses.log
   - criterion: Signed commits, exact paths/mechanisms, measured exits, preserved artifacts/exclusions and clean tree
     reference: reports/2026-11-05-dream-c1-producer-review.md (#93377961364973); source47182320be6435c860bc2176c2ddda582029fa63
-report:
-  summary: 'R1 corrected in signed47182320be6435c860bc2176c2ddda582029fa63: successful typed returns retain an external stepped owner through CPU/heap/clock/control rejection, nested disposal completes before credit release/Done, with owned Drop probes and near-limit parsed-envelope failure/Cancel/process witnesses. Required make test-dream-c1 && make test-formal-parity && make check-embedded-build, licenses and current-source evidence validation all exit0 unattended;231-model/71-contract native/Java full state/edge/verdict parity. Actual dense rejected parse1562833ns remains a ResourceLimit negative; cleanup maximum348041ns, live credits0, actual exit1373ms. Corrected ordinary-release no-fixtures worker SHA2562c8469829bc94171048677c590b8427b48076512cb04178ad1b2bdcd711beabd handed off with receipt; old artifacts preserved. Own origin/main fetch/rebase exited0/already up to date, tracked tree clean. Append-only superseding report records complete source, logs, measurements and exclusions; consumer integrated results remain outside producer-only certification.'
-  commit: 47182320be6435c860bc2176c2ddda582029fa63
-  reported_by: seat:01M6NPMWMJ27PAN93N9BY4KY5J
-  op_id: 01M6P9TW9Y0GVHXZVZXPN46BK9
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-c1-producer-review.md]]'
-rejection:
-  reason: 'Final-source review confirms R1 at src/dream/c1.rs::Budget::unit: result=f() at:295 is implicitly dropped on unavailable end-clock (:297-298) or elapsed/heap rejection (:304-310), before the paced cleanup path:312. Actual Envelope-returning b.track at:870 can therefore destroy owned parsed state outside measured/paced cleanup. This is a concrete ownership/accounting defect; no runtime excess-latency measurement is claimed. Fix within existing C1 paths by retaining large returned ownership in an external stepped Paced slot across every rejection branch, or an equivalent bounded mechanism; merely adding one unbounded drop inside a cleanup closure is insufficient for a near-limit owned envelope. Add over-budget/clock-failure owned Drop-probe controls and near-limit parsed-envelope failure/cancel disposal witnesses proving measured/paced cleanup completes before Done/settlement and credits release correctly. Keep all limits; update relevant ownership model/broken control coverage honestly. Fetch/rebase own repo origin/main per operator; currently it is unchanged a2ca8f39, so don''t invent a term rebase. Re-run only changed focused checks and the prescribed current-source final gates, refresh retained formal evidence after the new signed source commit, and submit an append-only superseding report. Old4bdafb67 report/evidence remain baseline, not acceptance of the fix. Architect''s remaining fixed-source review continues; address any further precise findings within the same brief.'
-  by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-c1
 provenance:
   digest: sha256:9a43c17411c66df71237f0022aac66abf85416c1890c1b46d1ccd6a16cd7eb33
-  frontmatter_digest: sha256:b010040b03131bdcbae628f9b7de92e895b62fae7d601f52219c05ff39e317fa
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: 8p17rmKJnyrBf+kFCv3jDqP9RR64izBxqaxzCZqfjkD2eyvUuMqFYvKgs40WOOI8eNawTxQWTBx7DTiehxCeBQ==
-  log: .bboxy/log/2026-11-05.jsonl#139159
+  frontmatter_digest: sha256:9aa56b069643a10ad924002f74d6c9aca8e04a6bc8509add0006a510b7e2655c
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: mr//rUtW+LQU99tcEDYN9MwmdGnoaE1tME3nKnbrq+VBJ9P5V2ENrW8zBuvbCdbYsFuZrM9mhi/Xfiat5T0MDQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1388
+  event:
+    id: 01M85CESWKARNMD5T56QJTXCZA
+    sequence: 1388
+    hash: f66c86c04ba4777d3c17684791f1e875effad1bae67cd8d0fec1441ef8f16ffa
 ---
 ROLE: EXECUTOR
 

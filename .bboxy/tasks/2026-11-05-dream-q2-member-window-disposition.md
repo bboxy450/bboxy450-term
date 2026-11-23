@@ -1,39 +1,47 @@
 ---
-type: task
-title: Disposition repeated Q2 helper grant failures with sound member accounting
-role: architect
-worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 allowed_paths:
 - decisions/dream-q2-member-window-accounting.md
 - specs/dreaming-mcp.md
 - interfaces/dreaming-mcp.md
 - reports/2026-11-05-dream-q2-member-window-disposition.md
-verify: git diff --check
+artifacts:
+- '[[01M6PWJ7EHC4EP0Q0J1QDW5D6R]]'
+- '[[01M6PWJAFJFSB3RQ5ZCW3PYTVH]]'
+assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CF5X2E8H3W6KAFR9FF005
+created: 2026-11-05T22:09:05.937Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
 derived_from:
 - '[[decisions/d93377961365126-dream-q2-helper-creation-and-lifetime-budget]]'
 - '[[specs/dreaming-mcp]]'
 - '[[interfaces/dreaming-mcp]]'
 id: 01M6PW49N03HPN6NAVCERFCM7Q
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T22:19:28.298Z
-created: 2026-11-05T22:09:05.937Z
 number: 93377961365420
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-artifacts:
-- '[[01M6PWJ7EHC4EP0Q0J1QDW5D6R]]'
-- '[[01M6PWJAFJFSB3RQ5ZCW3PYTVH]]'
+report:
+  commit: null
+  op_id: 01M6PWJSHEW74037DJFEWA03FR
+  report: '[[reports/2026-11-05-dream-q2-member-window-disposition.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: Created decision65489 and synchronized only Dream MCP Q2 helper-lifetime/matrix clauses, with complete exact continuation readbacks. Chosen rule uses conservative per-member pre-CONT→positive current-incarnation stop/exit windows, preserves unknown fork/exec coverage through closed roster, combines all active controller/pipe CPU within1ms, and permits separate paced corroboration only after a proven stopped/closed boundary with fresh9x debt. Status81/1.6825ms baseline remains failed; simply2→1 still1.1595ms fails. Retained source/log hashes and exact source race cutoff; missing coverage remains Unproven, all native/heap/control/four-job/30s/reap gates unchanged. Sent obligations to author/Rook, requiring Oracle live-task amendment. Report digest1d1cea1782abd0eb63f63112002f6356fddd6dce4ea6bf05d686be5d82c8e5c5. git diff --check exit0; no source/build/test/probe/performance or acceptance actions.
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Disposition repeated Q2 helper grant failures with sound member accounting
+type: task
+updated: 2026-11-23T23:39:42.758Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Source-grounded exact member-window and stopped-unit disposition
     reference: decisions/d93377961365489-dream-q2-member-window-accounting.md
@@ -43,19 +51,18 @@ verify_result:
     reference: decisions/d93377961365489-dream-q2-member-window-accounting.md#implementation-boundary-and-verification
   - criterion: Actual source/log hashes, failing baseline and verification limits
     reference: reports/2026-11-05-dream-q2-member-window-disposition.md#actual-evidence-and-source-anchors
-report:
-  summary: Created decision65489 and synchronized only Dream MCP Q2 helper-lifetime/matrix clauses, with complete exact continuation readbacks. Chosen rule uses conservative per-member pre-CONT→positive current-incarnation stop/exit windows, preserves unknown fork/exec coverage through closed roster, combines all active controller/pipe CPU within1ms, and permits separate paced corroboration only after a proven stopped/closed boundary with fresh9x debt. Status81/1.6825ms baseline remains failed; simply2→1 still1.1595ms fails. Retained source/log hashes and exact source race cutoff; missing coverage remains Unproven, all native/heap/control/four-job/30s/reap gates unchanged. Sent obligations to author/Rook, requiring Oracle live-task amendment. Report digest1d1cea1782abd0eb63f63112002f6356fddd6dce4ea6bf05d686be5d82c8e5c5. git diff --check exit0; no source/build/test/probe/performance or acceptance actions.
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6PWJSHEW74037DJFEWA03FR
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-q2-member-window-disposition.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 provenance:
   digest: sha256:2354b8403a6a8c917e10d67959d464c2c14a1f85997884efb2c40555cb9506c2
-  frontmatter_digest: sha256:998812ccbc0d2a6dabb0d93d4253e4407eb537ed3b414a9d8d1ee03819ab218f
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: G6h8AgG4BAVGfKUsyz0csdDw7ssNrEWVCoJjN445C4yYj83dfHsVcBhulD7iWvV01RtJ2IQjWm0f0wGz6szlAg==
-  log: .bboxy/log/2026-11-05.jsonl#145228
+  frontmatter_digest: sha256:1a369b29bbff5f948fce2360c730ce4146a3353f73fc846da62a149d8b6ba787
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: RT/OZ/XF6Qp8GKvQptfEu+7ya+ZxVOudVIQAVDxoCjMBQgGu7Qjmss4Dsc3/NH0G3DAP68vPxGoVsYl39ZMCDA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1408
+  event:
+    id: 01M85CF6D5VK360Z7MRFYEGAYP
+    sequence: 1408
+    hash: ee83f7716839e2004d3f241a5a02a3510918f5c9d2a13804a16d79fed836ee0d
 ---
 ROLE: ARCHITECT
 

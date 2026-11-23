@@ -1,37 +1,45 @@
 ---
-type: task
-title: Recover Oracle after the night crash and reconcile this swarm
-role: oracle
-worktree: /Users/feral/mydev/bboxy450-term-oracle-records
-allowed_paths:
-- .bboxy/tasks/**
-- .bboxy/reports/**
-- .bboxy/runs/oracle-recovery-20261104.json
-- /tmp/bboxy-oracle-recovery-01M6KDR7TE4H4B4AF0PZYK0Q1T/**
-verify: python3 -I /tmp/bboxy-oracle-recovery-01M6KDR7TE4H4B4AF0PZYK0Q1T/verify-recovery.py
 acceptance:
 - Authenticated resumed Oracle identity, installed/running source and resource freshness recorded
 - Swarm task inventory fully paged; delivered tasks historically reconciled with real source/log evidence; unresolved transitions explicitly retained
 - Surviving sessions, original worktrees and evidence preserved; no backend restart
 - Profile catalogue plus ACP model/effort follow-up scoped and delegated to a real bboxy Codex ACP executor
-id: 01M6KEVVYNZW5H21RPTFW1RVDR
-status: accepted
-delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T17:59:26.339Z
-created: 2026-11-04T14:19:35.796Z
-number: 21222
-created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-updated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-authorship:
-  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  kind: seat
-  public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
-  process_generation: '1'
+allowed_paths:
+- .bboxy/tasks/**
+- .bboxy/reports/**
+- .bboxy/runs/oracle-recovery-20261104.json
+- /tmp/bboxy-oracle-recovery-01M6KDR7TE4H4B4AF0PZYK0Q1T/**
 assignee: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CDZ6MHWATM052E22DAPM9
+created: 2026-11-04T14:19:35.796Z
+created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+id: 01M6KEVVYNZW5H21RPTFW1RVDR
+number: 21222
+report:
+  commit: c14938ebf14de070d90572a41639a4c45c0400c7
+  op_id: 01M6KV5QDZ3GCSFMG5PFYN8QSP
+  report: '[[reports/2026-11-04-oracle-night-recovery-delivered]]'
+  reported_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+  summary: Recovered authenticated Oracle and fully paged59-task triage;54 terminal with exact administrative gaps retained. Accepted/landed focused GUI/profile/model/theme/attachment work and closed finished executors. Live signed GUIaa62 and harnessa1 preserve supervisor49475/Logic49477 birth identities. Source, sessions, reports and native/formal evidence retained; safe compiler cleanup recorded. Private verifier exited0. New onboarding/Markdown task remains delegated to one native Codex ACP worker; no full-suite or account-wide Claude shutdown claim.
+  verify_revision: 0
+role: oracle
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Recover Oracle after the night crash and reconcile this swarm
+type: task
+updated: 2026-11-23T23:39:03.447Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: python3 -I /tmp/bboxy-oracle-recovery-01M6KDR7TE4H4B4AF0PZYK0Q1T/verify-recovery.py
 verify_result:
   command: python3 -I /tmp/bboxy-oracle-recovery-01M6KDR7TE4H4B4AF0PZYK0Q1T/verify-recovery.py
-  exit_code: 0
   evidence:
   - criterion: Authenticated resumed Oracle identity, installed/running source and resource freshness recorded
     reference: recovery-verification-result.json — real authenticated actor, live installed/source and fresh MCP usage; verifier exit0
@@ -41,19 +49,18 @@ verify_result:
     reference: attachments-live-preservation.json — same supervisor49475 and Logic49477 births; native captures and cleanup manifests retained; verifier exit0
   - criterion: Profile catalogue plus ACP model/effort follow-up scoped and delegated to a real bboxy Codex ACP executor
     reference: acp-core-verified.json and accepted task01M6KF628K0H7DHN4R8BCN9WVZ; signed native Codex ACP Delegate16RTXK2G3P7TXAA2C55S35X8E7 to seat01M6KT5EV066KVVBAPR7RGJWAX
-report:
-  summary: Recovered authenticated Oracle and fully paged59-task triage;54 terminal with exact administrative gaps retained. Accepted/landed focused GUI/profile/model/theme/attachment work and closed finished executors. Live signed GUIaa62 and harnessa1 preserve supervisor49475/Logic49477 birth identities. Source, sessions, reports and native/formal evidence retained; safe compiler cleanup recorded. Private verifier exited0. New onboarding/Markdown task remains delegated to one native Codex ACP worker; no full-suite or account-wide Claude shutdown claim.
-  commit: c14938ebf14de070d90572a41639a4c45c0400c7
-  reported_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  op_id: 01M6KV5QDZ3GCSFMG5PFYN8QSP
-  verify_revision: 0
-  report: '[[reports/2026-11-04-oracle-night-recovery-delivered]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-term-oracle-records
 provenance:
   digest: sha256:9f35003e1cda1342bef16af77681ed922adc7b4a65554f6862a1be77f6a8857a
-  frontmatter_digest: sha256:380eac84efe8a1dac418f51ce6bd02646fe36bb4dbd6f33c5dc0fd6442db740c
-  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  sig: Rpvb0u46A8vJ+Vhuqm0XOl9n6KtPURFtdkf0RVDxZA0jWRTCQBplW18ROS7H6I8VJSwa6Mptv5r8hRCN+s/RBg==
-  log: .bboxy/log/2026-11-04.jsonl#125454
+  frontmatter_digest: sha256:e34d84aa17357abcc7aa0c410f7ac186dc44b230d6362461bb3d792024d7dc4b
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: eQWsNjyIg4VAQ7UjlddvwKzm7rYj3q63bhtqlGooHIAlk0Oau+B8yHKSlK9h9fsvmijLOkrN/4kBUZDEJpoYBQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1358
+  event:
+    id: 01M85CE01NADMFMFPJ7YVY376A
+    sequence: 1358
+    hash: e2c22a03270cf8fd9c8f64d3927ae9712c9de813042effc87a731ff185641462
 ---
 ROLE: ORACLE.
 

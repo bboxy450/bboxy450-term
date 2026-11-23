@@ -1,7 +1,4 @@
 ---
-type: task
-title: Retention policy and make target for .git/bboxy-formal-evidence (22 GiB, 176 receipts, no pruning)
-role: executor
 allowed_paths:
 - scripts/formal.py
 - scripts/land.sh
@@ -12,25 +9,37 @@ allowed_paths:
 - LAND.md
 - verification/README.md
 - .bboxy/reports/
-verify: python3 -I scripts/test-landing.py && make check-formal-evidence
-status: accepted
-id: 01M6S49JCH1GSW2SM7GNE9F6FF
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-06T22:56:22.182Z
-created: 2026-11-06T19:10:15.571Z
-number: 93377961366090
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
 assignee: seat:01M6SEB3WJBTKYM886SJSSY7AE
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CFF1VFBMB64TQBX0WQ7RM
+created: 2026-11-06T19:10:15.571Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+id: 01M6S49JCH1GSW2SM7GNE9F6FF
+number: 93377961366090
+report:
+  commit: 6df528c6d16b2f8c4b8fd9666f1b26c06a3cd51a
+  op_id: 01M6SH6VXKF878J3FNQVJ3N0N2
+  report: '[[reports/2026-11-06-formal-evidence-retention.md]]'
+  reported_by: seat:01M6SEB3WJBTKYM886SJSSY7AE
+  summary: 'Landed signed 6df528c6d16b2f8c4b8fd9666f1b26c06a3cd51a: compressed content-addressed graphs, live/pending-report retention, verified monthly tar.zst archives and budget-triggered background pruning. Actual retained output shrank 2,130,747,831 to 125,392,112 bytes (16.99×; 17.10× with inode dedupe). Exact assigned verification exited 0: 181 landing fixtures plus current-source evidence check; lean land passed Clippy, 447 native tests (12 skipped), and 570 native/TLC models across 34 crates/212 contracts. Compressed-store checker and 23 formal infrastructure tests also passed. Worktree clean; committed full report contains per-criterion evidence, receipt/log hashes and coverage limits.'
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Retention policy and make target for .git/bboxy-formal-evidence (22 GiB, 176 receipts, no pruning)
+type: task
+updated: 2026-11-23T23:39:52.550Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: python3 -I scripts/test-landing.py && make check-formal-evidence
 verify_result:
   command: python3 -I scripts/test-landing.py && make check-formal-evidence
-  exit_code: 0
   evidence:
   - criterion: Live set and newest-N preservation
     reference: scripts/formal.py:495; scripts/test-landing.py:881
@@ -44,23 +53,17 @@ verify_result:
     reference: Formal receipt 3c10919b4c774134cab758c68a5479beea82b88690cf7ab29c19b115c56af618; make check-formal-evidence and compressed-store Make check exited 0
   - criterion: Signed lean landing
     reference: target/formal-retention-land.log SHA256 2a6c78c0b50252e9996e48d3f95f5cf81686511df839daf1c509379a06566e56; LANDED 6df528c6d16b2f8c4b8fd9666f1b26c06a3cd51a; git verify-commit HEAD exit 0
-report:
-  summary: 'Landed signed 6df528c6d16b2f8c4b8fd9666f1b26c06a3cd51a: compressed content-addressed graphs, live/pending-report retention, verified monthly tar.zst archives and budget-triggered background pruning. Actual retained output shrank 2,130,747,831 to 125,392,112 bytes (16.99×; 17.10× with inode dedupe). Exact assigned verification exited 0: 181 landing fixtures plus current-source evidence check; lean land passed Clippy, 447 native tests (12 skipped), and 570 native/TLC models across 34 crates/212 contracts. Compressed-store checker and 23 formal infrastructure tests also passed. Worktree clean; committed full report contains per-criterion evidence, receipt/log hashes and coverage limits.'
-  commit: 6df528c6d16b2f8c4b8fd9666f1b26c06a3cd51a
-  reported_by: seat:01M6SEB3WJBTKYM886SJSSY7AE
-  op_id: 01M6SH6VXKF878J3FNQVJ3N0N2
-  verify_revision: 0
-  report: '[[reports/2026-11-06-formal-evidence-retention.md]]'
+  exit_code: 0
 provenance:
   digest: sha256:5b3013780a4264e03dd35e441b92627bb77ef80783dc44278859ae6d4f37db57
-  frontmatter_digest: sha256:811df05ae58c00726038bb5fa9b8f461ac6ab57604c804a2c8ade0c5a25d6db1
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: hh2VbuqEcUturNkVajqdV6WPU4yWp2KRW/WIeXpQC9hQP3vHC1vzYdUCNt4fxe7CCkosj7FAifKu7tjBUeXLDg==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/149958
+  frontmatter_digest: sha256:38ab9695a3e6fae3d8468592f99f8970479e8c32f0a8ee4ee238044a6af47c22
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: GNSQR4mzp3xCYOlG8Ks2X4XovFbKFdhdcHPZvasYK7BHVMlFz92YbWhnkjTQr+5GGg38e+HoMAvKWMT2OYw+AQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1416
   event:
-    id: 01M6SH7KSCQ09EPHT29B2XEBKQ
-    sequence: 149958
-    hash: 87d8522c50cff91791863c6141edb2b4fca2003a08529cef3b2835a400ec891e
+    id: 01M85CFFZBDQQ7SMDHWK2444YG
+    sequence: 1416
+    hash: 17f84d3b7089b9d816b30792ae9e681ff3b4016ecd50c4654f00c78f9bd3dd12
 ---
 # Formal evidence grows without bound
 

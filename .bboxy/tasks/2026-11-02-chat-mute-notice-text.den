@@ -79,20 +79,21 @@ task ChatMuteNoticeText {
     acceptance = json"[\"Mute and unmute chat rows show the affected seat name and action beside the timestamp.\",\"Live and retained/reopened history use the same readable projection without changing signed envelopes.\",\"Private native regression and required landing checks pass.\"]"
     artifacts = json"[\"[[01M6ETRXY81T3TNRBCHWMQMBPZ]]\"]"
     assignee = json"\"seat:01M6EW8HN9QTQJ7A7GD1ZYMWYR\""
-    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"2\",\"public_key\":\"8G8gIL1MJqmoRkKikaIqqCqCFW1VHfzquBV0bXH7xs8=\",\"signer\":\"seat:01M6EW8HN9QTQJ7A7GD1ZYMWYR\"}"
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"IhwJpEqgrI15NnYdyYEM3kIp4hytvOvzm8tdCCRbdxA=\",\"signer\":\"seat:01M85CCJ31X1DB6EWWS8M0RBCQ\"}"
+    closed = json"{\"by\":\"seat:01M85CCJ31X1DB6EWWS8M0RBCQ\",\"op_id\":\"01M85CD60N1STKRKX8EQSEW46F\"}"
     created = json"\"2026-11-02T18:29:20.382Z\""
     created_by = json"\"seat:01M6ER6V2ZYS7Z1K05TE6ZJTJD\""
     delegated_by = json"\"seat:01M6EW8HN9QTQJ7A7GD1ZYMWYR\""
     id = json"\"01M6ERBS9H6X72BA83WYFA8SWS\""
     number = json"5002216"
-    provenance = json"{\"digest\":\"sha256:009d1fc98550ec4766eef051201d2f2a6b6fa22f6bbf7178a548efb16acaa839\",\"frontmatter_digest\":\"sha256:2b8987bd3473b8bc6c04c2de882f0d06b66e07c07ae58ec28915ff1a5a87001e\",\"log\":\".bboxy/log/2026-11-02.jsonl#8414\",\"sig\":\"h7bkPus/XaiMsJhkhykS4C/InY47//yNXdmWQSyzVtGz2D0CR7Zv4yn6nAp/Z4k4avC1SiE0enQsj7DUW+R1Cw==\",\"signer\":\"seat:01M6EW8HN9QTQJ7A7GD1ZYMWYR\"}"
     report = json"{\"commit\":\"ffd3fc762446996aea788b421b87d31fe185fee8\",\"op_id\":\"01M6F268VDBB5XFZCB9G2YD0TY\",\"report\":\"[[reports/2026-11-02-chat-mute-notice-text]]\",\"reported_by\":\"seat:01M6EW8HN9QTQJ7A7GD1ZYMWYR\",\"summary\":\"LANDED CHAT FIX ONLY: signed commit ffd3fc762446996aea788b421b87d31fe185fee8 was pushed to main; git ls-remote origin refs/heads/main returned that exact SHA, and git push exited 0. The operator explicitly directed 'you can skip tests, just get that small fix into main'; the remaining canonical/formal gate was waived for this landing, not reported as passed. The final change contains the named mute/unmute projection, its projection/reopened-history regression, private native chat/restart checks, Make target and messaging spec/report. The recovery-budget/lean-runner changes remain on fix/chat-mute-notices and were excluded from main. Existing targeted chat checks and private smoke passed; the current combined-source lean Rust gate passed 308 tests and nine doc corpus tests before the unrelated upstream harness feature guard failed. Signature and whitespace checks passed. This corrects the historical blocked landing status in the linked report; no trusted install or live backend restart is claimed.\",\"verify_revision\":0}"
     role = json"\"solo\""
-    status = Accepted
+    status = Done
     swarm = json"\"01M64ADP8CDYN9VX5CR31SZ629\""
-    updated = json"\"2026-11-02T21:21:28.578Z\""
-    updated_by = json"\"seat:01M6EW8HN9QTQJ7A7GD1ZYMWYR\""
+    updated = json"\"2026-11-23T23:38:37.848Z\""
+    updated_by = json"\"seat:01M85CCJ31X1DB6EWWS8M0RBCQ\""
     verify_result = json"{\"command\":\"make test-chat-mute-notices\",\"evidence\":[{\"criterion\":\"Mute and unmute chat rows show the affected seat name and action beside the timestamp.\",\"reference\":\"Landed service.rs:1145; /tmp/nyx-pinned-final-checks.log native check passed in 3.321s and visually inspected target/chat-mute-notices/seat-mute-chat-restored.png contains all four names/actions/timestamps.\"},{\"criterion\":\"Live and retained/reopened history use the same readable projection without changing signed envelopes.\",\"reference\":\"Landed service.rs:3504 regression checks live rows, reopening, exact envelope equality and signatures; targeted check passed in /tmp/nyx-pinned-final-checks.log; same regression also included in final 308-test green Rust gate.\"},{\"criterion\":\"Private native regression and required landing checks pass.\",\"reference\":\"Native regression and smoke exit 0; both source commits separately compiled. Operator explicitly waived remaining tests/gates to land this chat fix. git verify-commit HEAD exit 0, git diff --check exit 0, git push origin HEAD:main exit 0, remote main independently verified at ffd3fc762446996aea788b421b87d31fe185fee8. No current-source formal success is claimed.\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:009d1fc98550ec4766eef051201d2f2a6b6fa22f6bbf7178a548efb16acaa839\",\"frontmatter_digest\":\"sha256:eaf41d05d981ed077de4f7b87368b7d99c2a9eb3a1433ce977255fb02c7caefa\",\"signer\":\"seat:01M85CCJ31X1DB6EWWS8M0RBCQ\",\"sig\":\"wvhJ2Lub324pN0JaOQGQOK+gGR9iMfkMXCfMdpC4Zip6qikC4d5IBQq4HvWffIk+UQRUlEneBgoE7YWQIxjcCg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1328\",\"event\":{\"id\":\"01M85CD70Q3Y3793YMGABGVVB0\",\"sequence\":1328,\"hash\":\"9aafa012bc88417ed3d1a49f78cf3665b682d4588975fa7ef73204abe37341e4\"}}"
     body_tail = json"\"\\n\""
   }
 }

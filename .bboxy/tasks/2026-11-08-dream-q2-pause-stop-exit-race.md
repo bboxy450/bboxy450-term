@@ -1,8 +1,4 @@
 ---
-type: task
-title: 'Q2: foreground pause STOP vs helper-exit race (ESRCH -> terminal-before-stop settled by own wait4), hand off INPUT68'
-role: executor
-worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 allowed_paths:
 - tests/fixtures/dream-read/proof-helper-probe.c
 - tests/fixtures/dream-read/private-engine-controls.c
@@ -21,28 +17,40 @@ allowed_paths:
 - reports/2026-11-08-dream-pause-stop-exit-race.md
 - scripts/formal.py
 - scripts/land.py
-verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
+assignee: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CFTDT1TRQM4FJK5ZZ0CAV
+created: 2026-11-09T02:52:36.415Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 derived_from:
 - '[[decisions/d93377961366280-dream-q2-external-helper-budget]]'
 - '[[tasks/2026-11-08-dream-q2-unit-split-and-margin]]'
 id: 01M6Z3HK8A4YRY15RGGT5APE0C
-status: accepted
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-09T08:04:26.306Z
-created: 2026-11-09T02:52:36.415Z
 number: 93377961366427
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
-assignee: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+report:
+  commit: a68d200268ca816a6741e00c6cd334b28628f805
+  op_id: 01M6ZNC7Q94HQAZZ9AWSQDSWS7
+  report: '[[reports/2026-11-08-dream-pause-stop-exit-race.md]]'
+  reported_by: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+  summary: Landed signed a68d200268ca816a6741e00c6cd334b28628f805 with raw STOP errno/order telemetry and pending terminal resolution gated by original own-wait4, group absence and full known paid bill; no ACK/CONT inference. The exact four-command verification and canonical make land both exited0 on that same head. Current C114/74/76/179 and full444-model/95-contract native/Java graph/verdict parity pass; ONE post-land INPUT68 was stored as1572/01M6ZMA612BNCJEHZE714TXE1A and owned cleanup completed with retained full evidence. All historical failures and29 existing ignored attributes remain nonpasses; actual kernel ESRCH cause and installed-tool qualification remain unproven. Full report committed at04100aacacbc17a2b4beccd4e0e3aac63cf5a008.
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: 'Q2: foreground pause STOP vs helper-exit race (ESRCH -> terminal-before-stop settled by own wait4), hand off INPUT68'
+type: task
+updated: 2026-11-23T23:40:04.215Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
 verify_result:
   command: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
-  exit_code: 0
   evidence:
   - criterion: Raw STOP receipt and original-terminal-only settlement, with missing-reap coverage and preserved first error
     reference: reports/2026-11-08-dream-pause-stop-exit-race.md; proof-helper-probe.c:3545/3573/3608/4077; 15 typed existing-ledger fields; no public/terminal changes
@@ -54,23 +62,18 @@ verify_result:
     reference: Exact log7b0cd627a51060fdbb110787ca311c2865ffd18773a44ea032e159a7124afa28; Land log93fa3c0f61e1b1cfbc1acfb21812b68129dc90ad674d1b6fe4b7c64cf43c9ee2; origin/main contains a68d200268ca816a6741e00c6cd334b28628f805; source before/after equal
   - criterion: ONE post-land INPUT68 plus independent audit and preserved cleanup evidence
     reference: Tuplee0f3ba9d8120af99f8e7dfdd8470ccff4414732f855a5ddfb7ef21353bdd3008; receipt7f736d1abc0b493aa0ec12adc443594e5bd9e1ecb65df306101b3dfa1321eb05; audit0/10current signed inputs/325headers/997checks; stored1572; cleanupfbf6a53c40c9cb4b4c46a43c3191285f272c1cc633b28700b159e6a4e70f7bf9; runtime/candidate false
-report:
-  summary: Landed signed a68d200268ca816a6741e00c6cd334b28628f805 with raw STOP errno/order telemetry and pending terminal resolution gated by original own-wait4, group absence and full known paid bill; no ACK/CONT inference. The exact four-command verification and canonical make land both exited0 on that same head. Current C114/74/76/179 and full444-model/95-contract native/Java graph/verdict parity pass; ONE post-land INPUT68 was stored as1572/01M6ZMA612BNCJEHZE714TXE1A and owned cleanup completed with retained full evidence. All historical failures and29 existing ignored attributes remain nonpasses; actual kernel ESRCH cause and installed-tool qualification remain unproven. Full report committed at04100aacacbc17a2b4beccd4e0e3aac63cf5a008.
-  commit: a68d200268ca816a6741e00c6cd334b28628f805
-  reported_by: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
-  op_id: 01M6ZNC7Q94HQAZZ9AWSQDSWS7
-  verify_revision: 0
-  report: '[[reports/2026-11-08-dream-pause-stop-exit-race.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 provenance:
   digest: sha256:92ed4079274f3cd8c7842b4cc908cfd375226e993569371e4508e6fd199ddbae
-  frontmatter_digest: sha256:ae7395fbb97f26bb3ef0525a8ed592a9411f0cda8d691c73adc34be95c65bcd8
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: BSFtA5jDB99D+pcMXEmD+VoYVeIPdORo/i6XAcso/wAeF5hkPbV2RMko/98DDUSnvgYkbsH5sGVGjPaW7xiUDg==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150979
+  frontmatter_digest: sha256:223604cb38de22c3d12a8452b0f0ca2f68e6787263b4fe71c812842e9a8d563c
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: dS1AfIhjg03nX8LHmPzw/VPb1cVjvMIv61qdzBgQ73CLM/yDnWk4uxBuiJWCk+8g7p8pa489ohUSEtiIKZ8vBA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1434
   event:
-    id: 01M6ZNCK5M6X5YTT89QJA6ZSTR
-    sequence: 150979
-    hash: a1af682f27adfd8f44d6ae9e3a6d33ba0e3f9e8f27afe4bff024f06097a48fcb
+    id: 01M85CFVC0Q28WJD3Q6KG2FDHW
+    sequence: 1434
+    hash: 79734a9d9f6221a50c753ecac369a1b5245994b8ba1d93089fb440caca1980ef
 ---
 ROLE: EXECUTOR
 

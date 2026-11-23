@@ -1,37 +1,45 @@
 ---
-type: task
-title: Disposition exact Q2 Git/GPG helper creation and full helper budget
-role: architect
-worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 allowed_paths:
 - specs/dreaming-mcp.md
 - interfaces/dreaming-mcp.md
 - decisions/*dream*q2*helper*
 - reports/2026-11-05-dream-q2-helper-budget-disposition.md
-verify: git diff --check
-id: 01M6PJNK2WYQK5B4NP13TVCTJ0
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T19:45:22.444Z
-created: 2026-11-05T19:23:45.969Z
-number: 93377961365114
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
 artifacts:
 - '[[01M6PKHZE4WFB8TPPZZAZANGDB]]'
 - '[[01M6PKJ0NB7JC03CWJJ28DNH8N]]'
 - '[[01M6PKJ3JSAP3WWS5S185BWK45]]'
 - '[[01M6PKJZ7M1YKW3WE5BPKH4H3Y]]'
+assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CF4PN79NG8AKEVB9BCT2B
+created: 2026-11-05T19:23:45.969Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+id: 01M6PJNK2WYQK5B4NP13TVCTJ0
+number: 93377961365114
+report:
+  commit: null
+  op_id: 01M6PKK0DM7DPG3H3TR0E2DKGD
+  report: '[[reports/2026-11-05-dream-q2-helper-budget-disposition.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: Decision65126 and narrowly synchronized Dream MCP spec/ICD define prepared public Git/GPG process-creation admission under unchanged native gates, finite256 creation reservations including implicit descendants, stopped-before-execution attachment, one group/two processes, ordinary1ms lifetime/controller accounting with9x debt and actual whole-group settlement. Full artifact readbacks/digests and source/log snapshots are retained. git diff --check exited0 in the exact Q2 worktree; no source/build/test/service action. Existing publication baseline remains Failed ResourceLimit; qualifying completion, descendant coverage, four-job/control and causal formal/runtime witnesses remain mandatory. Root notification carries actionable boundary findings; live Q2 task and original C1 remain unchanged by this seat.
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Disposition exact Q2 Git/GPG helper creation and full helper budget
+type: task
+updated: 2026-11-23T23:39:41.637Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Source-grounded helper boundary and finite admission
     reference: decisions/d93377961365126-dream-q2-helper-creation-and-lifetime-budget.md; report source hashes/anchors
@@ -39,19 +47,18 @@ verify_result:
     reference: specs/dreaming-mcp.md e4ce6b24; interfaces/dreaming-mcp.md f630ee74; complete original text preserved
   - criterion: Actual command and honest failed baseline/no tests
     reference: reports/2026-11-05-dream-q2-helper-budget-disposition.md; git diff --check exit0; target/dream-read-positive-q2.log:8-16,28 remains failed
-report:
-  summary: Decision65126 and narrowly synchronized Dream MCP spec/ICD define prepared public Git/GPG process-creation admission under unchanged native gates, finite256 creation reservations including implicit descendants, stopped-before-execution attachment, one group/two processes, ordinary1ms lifetime/controller accounting with9x debt and actual whole-group settlement. Full artifact readbacks/digests and source/log snapshots are retained. git diff --check exited0 in the exact Q2 worktree; no source/build/test/service action. Existing publication baseline remains Failed ResourceLimit; qualifying completion, descendant coverage, four-job/control and causal formal/runtime witnesses remain mandatory. Root notification carries actionable boundary findings; live Q2 task and original C1 remain unchanged by this seat.
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6PKK0DM7DPG3H3TR0E2DKGD
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-q2-helper-budget-disposition.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 provenance:
   digest: sha256:0ca8a39d6e9d5067aafc4f5d4487f22025627bd9f2973d7768c63e713f9a17ff
-  frontmatter_digest: sha256:63c79f5f263b239ccc54f205fceeaa6e0d2633e844ae1d69377e7211653ad97e
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: m2hRFcUE7GE4fyx7YtpbhTSTZvBosEChN+zvEOGkTzsZqkYbOgsYmwMnA2wsAX5HDdMXqjs0YYWHwGwWgxRWDA==
-  log: .bboxy/log/2026-11-05.jsonl#141019
+  frontmatter_digest: sha256:1d354b31d52fe272a5dd02833fe14ba183107a14a02bcbbaa4d9d923e3cae60f
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: KilhFwWTKQY9l7dV8b7vHtaaZf7Afx3uARFugRx/nPH0eqbQVgk6mF1tna0Y0i77sQ6RMeqUgtIQqj9HL+QOBQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1406
+  event:
+    id: 01M85CF5A051MNNBZZVV7JJRAF
+    sequence: 1406
+    hash: 4e3dc621633c10f9628cf76aab0ddb8797bbc37eb519da41fa02411deea77548
 ---
 ROLE: ARCHITECT
 

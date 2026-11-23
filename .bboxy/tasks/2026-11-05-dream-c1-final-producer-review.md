@@ -1,32 +1,41 @@
 ---
-type: task
-title: Review fixed final C1 producer resource, source and lifecycle evidence
-role: architect
 allowed_paths:
 - reports/2026-11-05-dream-c1-final-producer-review.md
-verify: git diff --check
+assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CEF30HVMKBCNJ57YKVSCP
+created: 2026-11-05T16:10:00.894Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
 derived_from:
 - '[[tasks/2026-11-05-dream-c1-producer]]'
 - '[[specs/dream-term-c1]]'
 - '[[interfaces/dream-term-c1]]'
 id: 01M6P7JTDZEY6MC9YBS8TAV5T8
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T16:18:57.320Z
-created: 2026-11-05T16:10:00.894Z
 number: 93377961364713
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+report:
+  commit: null
+  op_id: 01M6P80HR60ZNFCGE9K91MEES8
+  report: '[[reports/2026-11-05-dream-c1-final-producer-review.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: 'Completed fixed-source read-only producer review at clean4bdafb676467f4847d42c1ace154e8fe31521eb0 against current C1 contracts/correction decisions. One unresolved static pacing/accounting defect R1: Budget::unit''s elapsed/heap rejection implicitly drops owned Result<T> outside measured/paced cleanup, reachable from parsed Envelope returns; current burst control returns() and misses disposal. Sent exact mechanism and bounded Drop-probe/near-limit-record witness to Rook and producer. Reviewed incremental source/raw/blob/fork subset, selected D0/drain, credit admission/control reserve, independent cancel/pause/Done-after-compute-join and retained real process/log/formal evidence. Formal receipt hash and six reviewed source/test hashes match fixed source; no suite rerun or universal allocator/parent/UI/authority/hints certification. Producer git diff --check exited0; report full readback matched. No edits/builds/provider/operator/rebase/landing/component acceptance.'
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Review fixed final C1 producer resource, source and lifecycle evidence
+type: task
+updated: 2026-11-23T23:39:19.963Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Fixed-source CPU/pacing/lifecycle/credit/source-proof boundary review
     reference: reports/2026-11-05-dream-c1-final-producer-review.md — Reviewed requirements and concrete evidence
@@ -36,19 +45,17 @@ verify_result:
     reference: reports/2026-11-05-dream-c1-final-producer-review.md — Fixed evidence and hashes; Limits and handoff
   - criterion: Exact producer-tree whitespace check exit0 and no mutation
     reference: reports/2026-11-05-dream-c1-final-producer-review.md — final snapshot2026-11-05 16:15:28 UTC
-report:
-  summary: 'Completed fixed-source read-only producer review at clean4bdafb676467f4847d42c1ace154e8fe31521eb0 against current C1 contracts/correction decisions. One unresolved static pacing/accounting defect R1: Budget::unit''s elapsed/heap rejection implicitly drops owned Result<T> outside measured/paced cleanup, reachable from parsed Envelope returns; current burst control returns() and misses disposal. Sent exact mechanism and bounded Drop-probe/near-limit-record witness to Rook and producer. Reviewed incremental source/raw/blob/fork subset, selected D0/drain, credit admission/control reserve, independent cancel/pause/Done-after-compute-join and retained real process/log/formal evidence. Formal receipt hash and six reviewed source/test hashes match fixed source; no suite rerun or universal allocator/parent/UI/authority/hints certification. Producer git diff --check exited0; report full readback matched. No edits/builds/provider/operator/rebase/landing/component acceptance.'
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6P80HR60ZNFCGE9K91MEES8
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-c1-final-producer-review.md]]'
+  exit_code: 0
 provenance:
   digest: sha256:a282b79c18a89ede30dddfa1c86a0d72631dc3f364cb6cf69c5a81d57234ba0f
-  frontmatter_digest: sha256:3796c7641c5b8ef539e35e78b0a1e5ed597bc45af510be81acbb5bdd3520d49e
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: l9VCLyyBr6GgcusX4kiB2tysXRlSBE7KNkt6RPTmUZjN0+ndUCn2XQW7IgSKBI5Ph4wyMGF43oZOvG7Aj7YABQ==
-  log: .bboxy/log/2026-11-05.jsonl#138435
+  frontmatter_digest: sha256:4064a7efcd2d3e4ec062707c0c80a015b7960784f7595456182e7c7cbfc8a181
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: XTi2W4phnXjjYHyq8yFAPFJHcw6clOMTo91HXaaYrTTalEYTjMLGSgXyi+41wTzcMhHiZbKVx+uqeYh9Ffk0CQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1378
+  event:
+    id: 01M85CEG4M7Q6W71H8BTVP6NTS
+    sequence: 1378
+    hash: 1a1e44a337d2559a045a521d0a328f514b4bad1d86bbfcc21d9fd0f30084233b
 ---
 ROLE: ARCHITECT
 

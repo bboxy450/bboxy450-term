@@ -1,8 +1,4 @@
 ---
-type: task
-title: MCP-first close-out, worktree audit and KB skills
-role: solo
-verify: cargo nextest run -p bboxy450-term-mux --test it -E 'test(task_close) | test(skill) | test(workspace_audit) | test(mcp_task_accept_requires)'
 acceptance:
 - task_accept refuses a report whose commits are not reachable from the integration ref
 - task_close moves accepted to done, refuses other states, and hints seat_close then workspace_release
@@ -18,24 +14,37 @@ allowed_paths:
 - AGENTS.md
 - .agents
 - .bboxy/skills
-id: 01M70TE2D8CVV40Y5EQGMMP8SP
-status: accepted
-delegated_by: seat:01M70FBP1RV5AWZ5AE3ZZWKNHB
-swarm: 01M6ABW0CX6MY0D5WGCSQ3ADTG
-updated: 2026-11-09T19:32:09.256Z
-created: 2026-11-09T18:51:52.543Z
-number: 93377961366485
-created_by: seat:01M70FBP1RV5AWZ5AE3ZZWKNHB
-updated_by: seat:01M70FBP1RV5AWZ5AE3ZZWKNHB
-authorship:
-  signer: seat:01M70FBP1RV5AWZ5AE3ZZWKNHB
-  kind: seat
-  public_key: SkH0jBJLMgNQ8eyjFw4BxnIDzq9wMmgZUeBUslwMcCw=
-  process_generation: '1'
 assignee: seat:01M70FBP1RV5AWZ5AE3ZZWKNHB
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: u1uV2w0O7KVM2p/s9nTh9h0So2DmefovlUQiVjF0K3M=
+  signer: seat:01M85CCK3PTGF5WS0SZ6AY8TGG
+closed:
+  by: seat:01M85CCK3PTGF5WS0SZ6AY8TGG
+  op_id: 01M85CDK8N4F5HYQ86Y448NXPD
+created: 2026-11-09T18:51:52.543Z
+created_by: seat:01M70FBP1RV5AWZ5AE3ZZWKNHB
+delegated_by: seat:01M70FBP1RV5AWZ5AE3ZZWKNHB
+id: 01M70TE2D8CVV40Y5EQGMMP8SP
+number: 93377961366485
+report:
+  commit: f6dee9b38d3e98d8c2667bb3c3f68d53fea72971
+  op_id: 01M70WQD6HD5P8XWDQ6DVFFW8J
+  report: '[[reports/2026-11-09-mcp-close-out-kb-skills-remote-link.md]]'
+  reported_by: seat:01M70FBP1RV5AWZ5AE3ZZWKNHB
+  summary: 'Landed 69a2eb19b and f6dee9b38 (both signed) on origin/main. 69a2eb19b: task_close (accepted -> done), with hints to seat_close, then workspace_audit, then workspace_release; acceptance refuses commits not on origin/main; workspace_audit tool; workspace_prepare fixed for claimed tasks; KB skill type, skill_search, the .agents/skills symlink and the AGENTS.md close-out text. f6dee9b38: remote supervisor link cut 1 (frames; Yarn RemoteDelivery model checked natively and by Java TLC, 52 states each; runtime Outbox/Inbox/FileJournal with a witness test). The verify command exited 0. Not run: make land or the full suite (operator bypass). The installed app needs a rebuild before the new tools are live.'
+  verify_revision: 0
+role: solo
+status: done
+swarm: 01M6ABW0CX6MY0D5WGCSQ3ADTG
+title: MCP-first close-out, worktree audit and KB skills
+type: task
+updated: 2026-11-23T23:38:51.486Z
+updated_by: seat:01M85CCK3PTGF5WS0SZ6AY8TGG
+verify: cargo nextest run -p bboxy450-term-mux --test it -E 'test(task_close) | test(skill) | test(workspace_audit) | test(mcp_task_accept_requires)'
 verify_result:
   command: cargo nextest run -p bboxy450-term-mux --test it -E 'test(task_close) | test(skill) | test(workspace_audit) | test(mcp_task_accept_requires)'
-  exit_code: 0
   evidence:
   - criterion: task_accept refuses a report whose commits are not reachable from the integration ref
     reference: crates/bbt-mux/src/mcp/work_items.rs integrated(); test acceptance_requires_origin_main_commit_and_audit_finds_unmanaged_worktrees
@@ -51,23 +60,17 @@ verify_result:
     reference: commit 69a2eb19b .agents/skills -> ../.bboxy/skills
   - criterion: AGENTS.md close-out uses task_close and workspace_release
     reference: commit 69a2eb19b AGENTS.md Close out landed work
-report:
-  summary: 'Landed 69a2eb19b and f6dee9b38 (both signed) on origin/main. 69a2eb19b: task_close (accepted -> done), with hints to seat_close, then workspace_audit, then workspace_release; acceptance refuses commits not on origin/main; workspace_audit tool; workspace_prepare fixed for claimed tasks; KB skill type, skill_search, the .agents/skills symlink and the AGENTS.md close-out text. f6dee9b38: remote supervisor link cut 1 (frames; Yarn RemoteDelivery model checked natively and by Java TLC, 52 states each; runtime Outbox/Inbox/FileJournal with a witness test). The verify command exited 0. Not run: make land or the full suite (operator bypass). The installed app needs a rebuild before the new tools are live.'
-  commit: f6dee9b38d3e98d8c2667bb3c3f68d53fea72971
-  reported_by: seat:01M70FBP1RV5AWZ5AE3ZZWKNHB
-  op_id: 01M70WQD6HD5P8XWDQ6DVFFW8J
-  verify_revision: 0
-  report: '[[reports/2026-11-09-mcp-close-out-kb-skills-remote-link.md]]'
+  exit_code: 0
 provenance:
   digest: sha256:f646ef5572091145d5da6abf158c9f513459812cfe4542859e438cf9d354b016
-  frontmatter_digest: sha256:12fddc25855a4eee931e98401da020b8187a92fcc6673742e7f7c0965654bdc2
-  signer: seat:01M70FBP1RV5AWZ5AE3ZZWKNHB
-  sig: 9Sc3IHgg98zN9BwVXtvBvRAH7megqb12NbsQjCfdFBpDpEpQmvTSqzN9gtFeG1PFuTdSHOPv9bL4c6yQPHuWBw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151127
+  frontmatter_digest: sha256:b86b77b71fd98e58b03f9af7133bee50868fc010b192abe657a9ef34bcd270e3
+  signer: seat:01M85CCK3PTGF5WS0SZ6AY8TGG
+  sig: aCqqS+XfmZ7FoSb6EkegKl7SaFYPk25TNQcrX++cSegZlNLubA6NTaTtr7m+wwt6+aQgbvtySHTDfCY13ywCCg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1346
   event:
-    id: 01M70WQV0N77B0JER82GTG6Q2R
-    sequence: 151127
-    hash: 50e74d8ea02534513498c0061af46003c1eeb1206635a0fa55e1220c09244cbc
+    id: 01M85CDMBP4A6E2Y5201EN9B8H
+    sequence: 1346
+    hash: d36fefca961331bc952befe4ad64dccf75b9183244ccbfc5d24bd625a158ce3b
 ---
 # MCP-first close-out, worktree audit and KB skills
 

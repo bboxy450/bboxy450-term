@@ -1,28 +1,37 @@
 ---
-type: task
-title: Review in-flight C1 worker/host boundaries and smooth post-session execution
 allowed_paths:
 - reports/2026-11-05-dream-c1-boundary-review.md
-verify: git diff --check && git -C /Users/feral/mydev/bboxy450-harness-dream-c1 diff --check && git -C /Users/feral/mydev/bboxy450-term-dream-c1 diff --check
-id: 01M6NR5T4MD2PCNE3VN9YKP9EP
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T11:52:26.760Z
-created: 2026-11-05T11:40:45.959Z
-number: 93377961364454
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-role: architect
 assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CEB2BAKBXAQXEB8F4TG7S
+created: 2026-11-05T11:40:45.959Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+id: 01M6NR5T4MD2PCNE3VN9YKP9EP
+number: 93377961364454
+report:
+  commit: null
+  op_id: 01M6NRSWF5BGBY8J6FK52MXM9B
+  report: '[[reports/2026-11-05-dream-c1-boundary-review.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: Completed the read-only moving-snapshot review of producer/consumer closure, runtime isolation, provenance, restart/cancel, settlement and wire compatibility. Report digest 86278c4d77b8415b9da3d4a3fd10130ef73ac07b111ebf6c013a4416b0a2f6af records six findings, exact source hashes, direct author feedback and static corrections observed for page integrity, predecessor replay fences and cancelled-state preservation. Cancellation operation identity/deferred settlement and immediate upstream foreground pause remained unresolved in the inspected source; runtime/formal/process verdicts remain unproven. After the report's source cutoff, Rook resolved F6 scope with decisions/d93377961364464-dream-c1-sole-post-close-owner (suppress automatic D0 and IR advice under one TermC1 gate), supplementing the explicit fork-exclusion decision; those choices still need final-source implementation/witness verification. Exact three-tree git diff --check exited 0; no source edits, builds/tests, commits or production actions.
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Review in-flight C1 worker/host boundaries and smooth post-session execution
+type: task
+updated: 2026-11-23T23:39:15.894Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check && git -C /Users/feral/mydev/bboxy450-harness-dream-c1 diff --check && git -C /Users/feral/mydev/bboxy450-term-dream-c1 diff --check
 verify_result:
   command: git diff --check && git -C /Users/feral/mydev/bboxy450-harness-dream-c1 diff --check && git -C /Users/feral/mydev/bboxy450-term-dream-c1 diff --check
-  exit_code: 0
   evidence:
   - criterion: Source-grounded findings/disposition with exact snapshot hashes and lines
     reference: '[[reports/2026-11-05-dream-c1-boundary-review]] Findings and disposition; Snapshot/provenance'
@@ -30,19 +39,17 @@ verify_result:
     reference: '[[reports/2026-11-05-dream-c1-boundary-review]] Boundary mechanisms inspected; F1-F6; [[decisions/d93377961364464-dream-c1-sole-post-close-owner]]'
   - criterion: No static-review claim of green builds, performance or formal verdict; no source edits
     reference: '[[reports/2026-11-05-dream-c1-boundary-review]] Verification evidence and limits; exact three-tree diff check exit 0'
-report:
-  summary: Completed the read-only moving-snapshot review of producer/consumer closure, runtime isolation, provenance, restart/cancel, settlement and wire compatibility. Report digest 86278c4d77b8415b9da3d4a3fd10130ef73ac07b111ebf6c013a4416b0a2f6af records six findings, exact source hashes, direct author feedback and static corrections observed for page integrity, predecessor replay fences and cancelled-state preservation. Cancellation operation identity/deferred settlement and immediate upstream foreground pause remained unresolved in the inspected source; runtime/formal/process verdicts remain unproven. After the report's source cutoff, Rook resolved F6 scope with decisions/d93377961364464-dream-c1-sole-post-close-owner (suppress automatic D0 and IR advice under one TermC1 gate), supplementing the explicit fork-exclusion decision; those choices still need final-source implementation/witness verification. Exact three-tree git diff --check exited 0; no source edits, builds/tests, commits or production actions.
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6NRSWF5BGBY8J6FK52MXM9B
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-c1-boundary-review.md]]'
+  exit_code: 0
 provenance:
   digest: sha256:e81747e81b96af466ecb37fe4034d34007988bc0c662f4d035de94e52f0c5e9b
-  frontmatter_digest: sha256:4e12a88ca4c799e7255b992dbd21bc2e27a8f75b9dbaf18977b4abab7da7cc70
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: clbC2SA2CrryofWqfdkgxmxQTtSpL/ZMgrzcc++9mIKtT2ikIBhZVIt429fI8JUwgNxrvn5QSvLcV/mLTLd/Aw==
-  log: .bboxy/log/2026-11-05.jsonl#134759
+  frontmatter_digest: sha256:c9a5a2af7be5b52175a2386d318294a47e7f66212f730ea06835b2e6b43b70b8
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: M5/V73lWSmODBqfwtysa1uxnlN+B8Zo5on1Puh1uSr4SPhR44fsa9KoZIbNESGv6hH8BVEZrls7hxf1O+YJ0Cw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1372
+  event:
+    id: 01M85CEC62FA4GCEAGYPP4E0MM
+    sequence: 1372
+    hash: 6efbc862b6a0f30c5acfb27a01ffcb825d6d5d327396190578b36b4064860d9a
 ---
 ROLE: ARCHITECT
 

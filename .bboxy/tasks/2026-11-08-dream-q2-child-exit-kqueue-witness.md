@@ -1,8 +1,4 @@
 ---
-type: task
-title: Q2 accept child kqueue NOTE_EXIT as terminal witness for leader-reaped verifier rollup, hand off INPUT63
-role: executor
-worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 allowed_paths:
 - tests/fixtures/dream-read/proof-helper-probe.c
 - tests/fixtures/dream-read/private-engine-controls.c
@@ -17,28 +13,40 @@ allowed_paths:
 - verification/coverage.toml
 - reports/2026-11-08-dream-child-exit-kqueue-witness.md
 - src/dream/resolve.rs
-verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
+assignee: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CFR01CEKAS5CC2QS4KNAJ
+created: 2026-11-08T11:41:42.747Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 derived_from:
 - '[[decisions/d93377961366280-dream-q2-external-helper-budget]]'
 - '[[tasks/2026-11-08-dream-q2-verifier-event-discovery]]'
 id: 01M6XFDPH50WD2KB535GJGQC0W
-status: accepted
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-08T13:50:37.556Z
-created: 2026-11-08T11:41:42.747Z
 number: 93377961366364
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
-assignee: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+report:
+  commit: 390b5836fb3693e3c4861a98def1ef8b53d54d5b
+  op_id: 01M6XPS9SVQQ17HF4BNRBZA6Y4
+  report: '[[reports/2026-11-08-dream-child-exit-kqueue-witness.md]]'
+  reported_by: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+  summary: 'Landed signed 390b5836fb3693e3c4861a98def1ef8b53d54d5b on origin/main: retained process-bound child NOTE_EXIT covers RI ESRCH without invented exit_abstime or duplicate child billing; delayed receipt requires genuine later original-leader RI. Canonical C: 98 baselines/57 mutants/59 compiles/143 commands, actual0; real leader-reaped-child positive plus explicitly labelled API negatives. Literal required four-chain actual0 at implementation b1df2c4c; first Land2 retained, Oracle-amended one QoS attribute followed by ONE final-head canonical Land0 with fresh 442-model/94-contract native/Java parity. INPUT63 sent once with final signed 10-input readset and audit0 (325 headers/997 checks). Full committed report records exact cuts, 27 nonpass ignore attributes, preserved archives/profiles/failures; runtime approval and real qualification remain false/unproven.'
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Q2 accept child kqueue NOTE_EXIT as terminal witness for leader-reaped verifier rollup, hand off INPUT63
+type: task
+updated: 2026-11-23T23:40:01.396Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
 verify_result:
   command: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
-  exit_code: 0
   evidence:
   - criterion: Exact required command actual0 and scope of amended final-head rerun
     reference: target/dream-q2-child-exit-witness-01M6RZZXSHZT3KHBK1QC7K3XB3/childexit-exact-four-chain-v1.json (b1df; log20cc0b626552249dd64b48c70121b51f0dda5719c9bf25ed088d7c4798f52dae); childexit-canonical-land-rerun-v2.json (390b; actual0; log03bf6612e5d6fdcfb9d0cfcc41954fe60ce9a55476ac0adcd8d55843e6774dbf); task amendment aea2366e65aed9979eefc8a892b8df3f6a2deadfb60622073abebafc15782b6a
@@ -50,23 +58,18 @@ verify_result:
     reference: target/dream-q2-child-exit-witness-01M6RZZXSHZT3KHBK1QC7K3XB3/INPUT63-final-tuple-v2.json SHA0200af25c72d19765232582e6d84a32f4e52f47534a00d75ac624d0dda176de2; receipt888182901a213dfb915f1d9e14ba044da319c8aabf542e800c2830e4357e03c0; audit3282144dea91e8fc73daea427bcbb993cfbbfbcd1cad56807ec4522c956768c2; native handoff1459/id01M6XPNATDY3FRTQ9D7XA504AV
   - criterion: Signed landed source/remote/clean state, full committed report and honest nonpasses/limits
     reference: 'report KB commit0a05bb6a28a704d6aeea59af28b8149ac9a3dadc; final-source-remote-and-runtime-state-v2.json: HEAD=origin/main390b5836fb3693e3c4861a98def1ef8b53d54d5b, clean, own lsof empty; final-report-deferral-inventory-v2.json SHAe07491b822a58343572f790804d775cd3d92a2fb89ba00b33a6988aa2de2d040; old LandRED and b1df profile/archive retained separately'
-report:
-  summary: 'Landed signed 390b5836fb3693e3c4861a98def1ef8b53d54d5b on origin/main: retained process-bound child NOTE_EXIT covers RI ESRCH without invented exit_abstime or duplicate child billing; delayed receipt requires genuine later original-leader RI. Canonical C: 98 baselines/57 mutants/59 compiles/143 commands, actual0; real leader-reaped-child positive plus explicitly labelled API negatives. Literal required four-chain actual0 at implementation b1df2c4c; first Land2 retained, Oracle-amended one QoS attribute followed by ONE final-head canonical Land0 with fresh 442-model/94-contract native/Java parity. INPUT63 sent once with final signed 10-input readset and audit0 (325 headers/997 checks). Full committed report records exact cuts, 27 nonpass ignore attributes, preserved archives/profiles/failures; runtime approval and real qualification remain false/unproven.'
-  commit: 390b5836fb3693e3c4861a98def1ef8b53d54d5b
-  reported_by: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
-  op_id: 01M6XPS9SVQQ17HF4BNRBZA6Y4
-  verify_revision: 0
-  report: '[[reports/2026-11-08-dream-child-exit-kqueue-witness.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 provenance:
   digest: sha256:005834dbc6057321d313a5be6720435316cf6b47eb8d7058797ffbd7a66bf233
-  frontmatter_digest: sha256:b12123d3255281229e7e8afb0774177e9bf5514e0c9b4a7fc9c38da8887b66e5
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: Q2SRpN2x5IgX8m76w6r3HBLV+YS1JNu479pMAjAnSUqykHRKeHBbBsvNIaE31525r4UrCd5nRo5Nv45Ny8q6DA==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150696
+  frontmatter_digest: sha256:be80a92ce7978ddfba367955b447d772d86c5f638b0d89be9e034f5691edaf54
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: xZBIDEos3USb6oQl2nZuZg2Su21cnjWj9LLztyjyp5YC7PfjZPzhTuDrmMopqiXWu9LxGSAUDTr1UOwt1seuAw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1430
   event:
-    id: 01M6XPSRJX8XP8867WGQBJR4JZ
-    sequence: 150696
-    hash: 017437def29d75700741707071462d3c27c340d78da710a2fb2f2c125508e752
+    id: 01M85CFRKFQKPBYBQDH1G0Q5NC
+    sequence: 1430
+    hash: 1f0e7980b5273569112acdf0dadc000e97d70e1a6b631deefe7406b949011a65
 ---
 ROLE: EXECUTOR
 

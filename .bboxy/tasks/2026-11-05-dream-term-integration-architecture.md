@@ -1,32 +1,44 @@
 ---
-type: task
-title: Ground Dream and swarm Dream integration into bboxy450-term
 allowed_paths:
 - research/dream-term-integration.md
 - specs/dream-term-integration.md
 - interfaces/dream-term.md
 - reports/2026-11-05-dream-term-integration-architecture.md
 - reports/2026-11-05-dream-term-integration-architecture-review.md
-verify: git diff --check
-id: 01M6NJF1W3MP1PNY7EBNMH7H3H
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T10:30:43.416Z
-created: 2026-11-05T10:00:57.308Z
-number: 93377961364352
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-role: architect
 assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CFCFV1HYFGPHZ8YA13SKS
+created: 2026-11-05T10:00:57.308Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+id: 01M6NJF1W3MP1PNY7EBNMH7H3H
+number: 93377961364352
+rejection:
+  by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+  reason: 'One narrow correction before acceptance: remove the blanket 10 GiB free-space product gate, resolve the old budgets.md versus current LAND.md discrepancy as specified in the amended brief, and submit the permitted append-only correction report/current digests. Source reachability, C1–C6 sequence, ICD and verification matrix otherwise reviewed.'
+report:
+  commit: null
+  op_id: 01M6NM4AN1EGZHPATJMMK0RMC3
+  report: '[[reports/2026-11-05-dream-term-integration-architecture-review.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: Applied the requested narrow disk-policy correction only. The spec now admits Dream materialization against its explicit job budget and the actual applicable owner's admission check; it records the older budgets.md:58 versus current LAND.md:58-60 discrepancy, removes the blanket 10 GiB product gate, and does not apply LAND's recovery reserve automatically to Dream. Complete readback confirmed only the requested sentence/note changed; current research/spec/ICD digests are in the append-only superseding review report. git diff --check exited 0; term remains ad243195 and embedded harness a2ca8f39, with no production/submodule edits, commits or product tests. Original report remains unchanged.
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Ground Dream and swarm Dream integration into bboxy450-term
+type: task
+updated: 2026-11-23T23:39:49.614Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Source map names actual producer/consumer code, current revisions, personal and swarm Dream behavior and missing seams, with file:line citations.
     reference: '[[research/dream-term-integration]] unchanged at d46654dd0eab4e43fd3eb223eead3543371d696a900ae808c30110c4b4fcbc44; prior source audit retained in [[reports/2026-11-05-dream-term-integration-architecture]].'
@@ -36,22 +48,17 @@ verify_result:
     reference: '[[specs/dream-term-integration]] R1–R11 matrix unchanged; [[reports/2026-11-05-dream-term-integration-architecture-review]] records only readback and Git checks actually run; no product/formal runs.'
   - criterion: No production/source or submodule changes; report records actual read/verification commands and exits, revisions, artifact locators, unresolved decisions and deliberate exclusions.
     reference: '[[reports/2026-11-05-dream-term-integration-architecture-review]] supersedes original handoff, preserves original report, records current digests, term/harness HEAD and short status, git diff --check exit 0, commits=[] and narrow exclusions.'
-report:
-  summary: Applied the requested narrow disk-policy correction only. The spec now admits Dream materialization against its explicit job budget and the actual applicable owner's admission check; it records the older budgets.md:58 versus current LAND.md:58-60 discrepancy, removes the blanket 10 GiB product gate, and does not apply LAND's recovery reserve automatically to Dream. Complete readback confirmed only the requested sentence/note changed; current research/spec/ICD digests are in the append-only superseding review report. git diff --check exited 0; term remains ad243195 and embedded harness a2ca8f39, with no production/submodule edits, commits or product tests. Original report remains unchanged.
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6NM4AN1EGZHPATJMMK0RMC3
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-term-integration-architecture-review.md]]'
-rejection:
-  reason: 'One narrow correction before acceptance: remove the blanket 10 GiB free-space product gate, resolve the old budgets.md versus current LAND.md discrepancy as specified in the amended brief, and submit the permitted append-only correction report/current digests. Source reachability, C1–C6 sequence, ICD and verification matrix otherwise reviewed.'
-  by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+  exit_code: 0
 provenance:
   digest: sha256:7f7d7980609640105dddeaf630994535d772e12c42b6ba973ae6c115d3c6af32
-  frontmatter_digest: sha256:1692d17b32cd888c6fb08f88b3a9d3a94b8a183c190c1443e93ba93f0e446fbe
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: P8XPlxpDZ6VNOJEVFXkQIPsB1B84C3ge85krLoO5sVrwJVRSd7x5rCtRPIJnyNSKOXi48PX8QD+I/6kBo/obCA==
-  log: .bboxy/log/2026-11-05.jsonl#134016
+  frontmatter_digest: sha256:597d661ad6c02d45f98317aa61257c0bdf5bf573447affaf7490a76923c94b95
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: QQ0e3pOrTS39I1RKieWsv3CIj+kaQBCw8TIZKVvM/ScwD2DZCYFKGhfCTLmk3s6iXdRVqVcdA9/OfAr3rxkkCg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1412
+  event:
+    id: 01M85CFD3GS41ZJD37QKACEJ85
+    sequence: 1412
+    hash: 704104a2f618c1faf2f76240dedc447013fa9b47a58e3c255888cf385eb8c6d4
 ---
 ROLE: ARCHITECT
 

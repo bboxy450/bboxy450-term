@@ -1,30 +1,39 @@
 ---
-type: task
-title: Freeze the minimal C1 Dream inspection contract for implementation
 allowed_paths:
 - specs/dream-term-c1.md
 - interfaces/dream-term-c1.md
 - reports/2026-11-05-dream-c1-contract.md
-verify: git diff --check
-id: 01M6NNCSYCDXV8Y0ZG6YFTGD8K
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T11:14:02.313Z
-created: 2026-11-05T10:52:09.521Z
-number: 93377961364366
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-role: architect
 assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CECCRK8TH4G4FJAWPQJZ2
+created: 2026-11-05T10:52:09.521Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+id: 01M6NNCSYCDXV8Y0ZG6YFTGD8K
+number: 93377961364366
+report:
+  commit: null
+  op_id: 01M6NPJS6R596PNFY139PGA2VF
+  report: '[[reports/2026-11-05-dream-c1-contract.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: C1 spec and ICD are ready for producer/consumer implementation. They fix the single harness-owned serde/schema/fixture authority, provisioned sibling headless runner, exact control/manifest/result/error wire, own-seat closed-source custody, one deduplicated close-owner path suppressing legacy replay, dedicated bounded low-priority workers, foreground pause, independent cancellation/status, restart/ABA/settlement and immutable paged results. Named formal/control/process and measured stall/flood/large-input/input/message/frame gates are explicit future requirements. Full readback matched both documents; git diff --check exited 0. Term ad243195 and harness a2ca8f39 unchanged; no source edits, builds/tests, commits or assignments. Report records exact source evidence, digests, commands and exclusions.
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Freeze the minimal C1 Dream inspection contract for implementation
+type: task
+updated: 2026-11-23T23:39:17.363Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Exact wire/control/error contract and runner provisioning grounded in existing code.
     reference: '[[interfaces/dream-term-c1]] — all DTOs/framing/hash/errors, single wire owner and conformance corpus; term main.rs:10061-10063, wake-up launch.rs:810-834, adapters/mod.rs:72-98 and Makefile:282-284,645-651.'
@@ -34,19 +43,17 @@ verify_result:
     reference: '[[specs/dream-term-c1]] — Two implementation components and checks, minimal finite models/initial state/actions/fairness, causal controls, private measured stall/flood/foreground/large-input/native witnesses; proposed make test-dream-c1 on both sides and actual existing formal/landing gates distinguished.'
   - criterion: New spec/ICD and append-only report created; git diff --check exit recorded, no source changes.
     reference: '[[reports/2026-11-05-dream-c1-contract]] — spec digest c3eb58e89bf45294d899b67d2cf41f26a1a5faac9340870f32daff94d99eb2fa, ICD 0741de61162cd8f8308046cf286f588d3fc0e9250f50541a0ed8845db4e067dd, exact readbacks, git diff --check exit 0, unchanged HEADs/harness clean, 29 read/check commands and commits=[].'
-report:
-  summary: C1 spec and ICD are ready for producer/consumer implementation. They fix the single harness-owned serde/schema/fixture authority, provisioned sibling headless runner, exact control/manifest/result/error wire, own-seat closed-source custody, one deduplicated close-owner path suppressing legacy replay, dedicated bounded low-priority workers, foreground pause, independent cancellation/status, restart/ABA/settlement and immutable paged results. Named formal/control/process and measured stall/flood/large-input/input/message/frame gates are explicit future requirements. Full readback matched both documents; git diff --check exited 0. Term ad243195 and harness a2ca8f39 unchanged; no source edits, builds/tests, commits or assignments. Report records exact source evidence, digests, commands and exclusions.
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6NPJS6R596PNFY139PGA2VF
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-c1-contract.md]]'
+  exit_code: 0
 provenance:
   digest: sha256:60c460395527034f619bdda263a0810869b6c8eb222983911addaff72b3acf21
-  frontmatter_digest: sha256:f2b4075263cb5a1687308f150f372e0352d84509c364d5269a812aaedcfbba2e
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: 3bQSw7zT7XK3GBlSAq5pDyo882boHfVeq6pT+HxU5UPmgpobGgkop/t+AGMBdneX1xB1POAS8m2OaSrATQ1nBw==
-  log: .bboxy/log/2026-11-05.jsonl#134075
+  frontmatter_digest: sha256:579961c7bbf35fc4293cb7a424bc2dbb7fb783b14f44e8120967fd43532cb093
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: U/faC2dCFqsV7CFrBvPbRYwod0FszyjMMYjwc9nP7W4xz2JxQKKMWiOuqObC9ckrsX/f0dgA/Ng5OWpshmxZBw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1374
+  event:
+    id: 01M85CEDNANV2MMCFZQ656QS51
+    sequence: 1374
+    hash: a92e0ebb3b740de34e21a962d4383d2724b7c76216277579a0f1a6ac4b2a0b86
 ---
 ROLE: ARCHITECT
 

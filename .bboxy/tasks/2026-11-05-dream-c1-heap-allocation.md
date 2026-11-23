@@ -1,31 +1,40 @@
 ---
-type: task
-title: Allocate C1 combined parent/child heap ceiling without widening it
 allowed_paths:
 - specs/dream-term-c1.md
 - interfaces/dream-term-c1.md
 - decisions/dream-c1-heap-allocation.md
 - reports/2026-11-05-dream-c1-heap-allocation.md
-verify: git diff --check
-id: 01M6NT5TRR249DH25T2R39F5NM
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T12:22:23.473Z
-created: 2026-11-05T12:15:44.598Z
-number: 93377961364570
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-role: architect
 assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CEKXYKTW3XH14KYDAZPK3
+created: 2026-11-05T12:15:44.598Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+id: 01M6NT5TRR249DH25T2R39F5NM
+number: 93377961364570
+report:
+  commit: null
+  op_id: 01M6NTEEXDV1T102JFV9D5ETZS
+  report: '[[reports/2026-11-05-dream-c1-heap-allocation.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: Fixed the C1 live heap allocation at parent32 MiB + child96 MiB, each including a protected2 MiB control reserve, without expanding the combined128 MiB, wire/version or other limits. Updated only the spec Working memory row and ICD budget paragraph with current refs/etags; decision decisions/d93377961364572-dream-c1-heap-allocation defines all-live-buffer/native/helper coverage, preallocation reservations and fail-closed resource_limit, separate actual live/reserved/cumulative/RSS evidence and joint-process/independent-overflow/four-job/control witnesses. Sent the authorized boundary decision immediately to both Executors and Rook; native-queued receipts are not model-receipt claims. Existing parent estimates and child between-unit samples do not yet prove enforcement; report retains precise source hashes/gaps and no measurements. Full readbacks matched; git diff --check exit0; no source edits/builds/tests/commits or assignments.
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Allocate C1 combined parent/child heap ceiling without widening it
+type: task
+updated: 2026-11-23T23:39:24.492Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Fixed split, coverage, enforcement/overflow/control reserve and true combined-bound semantics
     reference: '[[decisions/d93377961364572-dream-c1-heap-allocation]]; [[specs/dream-term-c1]] Working memory; [[interfaces/dream-term-c1]] fixed v1 allocation paragraph'
@@ -33,19 +42,17 @@ verify_result:
     reference: '[[reports/2026-11-05-dream-c1-heap-allocation]] Handoff: message IDs and native-queued receipts'
   - criterion: Current source/revisions, budget-only KB changes, actual verification and exclusions
     reference: '[[reports/2026-11-05-dream-c1-heap-allocation]] Source hashes, current etag/full readbacks, git diff --check exit0, commits[]'
-report:
-  summary: Fixed the C1 live heap allocation at parent32 MiB + child96 MiB, each including a protected2 MiB control reserve, without expanding the combined128 MiB, wire/version or other limits. Updated only the spec Working memory row and ICD budget paragraph with current refs/etags; decision decisions/d93377961364572-dream-c1-heap-allocation defines all-live-buffer/native/helper coverage, preallocation reservations and fail-closed resource_limit, separate actual live/reserved/cumulative/RSS evidence and joint-process/independent-overflow/four-job/control witnesses. Sent the authorized boundary decision immediately to both Executors and Rook; native-queued receipts are not model-receipt claims. Existing parent estimates and child between-unit samples do not yet prove enforcement; report retains precise source hashes/gaps and no measurements. Full readbacks matched; git diff --check exit0; no source edits/builds/tests/commits or assignments.
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6NTEEXDV1T102JFV9D5ETZS
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-c1-heap-allocation.md]]'
+  exit_code: 0
 provenance:
   digest: sha256:25918c486e61281a33400a73252fd94123dc836cbcfb5d1b0d55403f856e6abb
-  frontmatter_digest: sha256:cc17680756dd9ac5b867481b8d0b54d383ec77995855f64d7c58f8681511bada
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: YyO7WZ61WmXwF7OfOKqFszipvW70ew//aHRaGn5+4PXLOF3Mpq5uVH3QnCeh7T+f8aUIWhyycF+5UWpZQCOkCw==
-  log: .bboxy/log/2026-11-05.jsonl#135389
+  frontmatter_digest: sha256:d122c7e0b8648e703ea75b118eaf5a58f32ea440cbd4e71b21ef59e7637eb48a
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: XEOfIkkgI+9/fY9NrqfLgThsf3l5/G0ldTCiz6Xo1UfDI1XZ52rBIQi73RzudBuDpGwmG9+Zl/jUknWs/nTOAw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1380
+  event:
+    id: 01M85CEMJV69TQ3F8KBK9XWDVJ
+    sequence: 1380
+    hash: a2d70316a97a99d72efbad0e8360f2137836a07f7b06944bcd0f66f2c9ba3c96
 ---
 ROLE: ARCHITECT
 

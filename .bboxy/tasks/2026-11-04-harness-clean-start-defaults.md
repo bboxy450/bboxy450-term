@@ -1,8 +1,10 @@
 ---
-type: task
-title: Unify profile identity and make empty-home Codex startup work
-role: executor
-worktree: /Users/feral/mydev/bboxy450-term-onboarding
+acceptance:
+- Canonical Codex profile identity is codex, its generated file is codex.md and its ACP executable is codex-acp without duplicate profile generation
+- A private empty home with fake installed Codex/ACP tools starts through normal GUI and CLI or seat entrypoints without relying on legacy nemotron or pre-existing profiles
+- Explicit profile, environment and saved-default precedence is consistent across frontends and existing edited profiles/default files remain preserved
+- A private machine with no agent installed reaches usable GUI setup and headless startup gives an actionable configuration error without vendor calls or implicit package installation
+- Named clean-start process and GUI checks plus affected compilation pass without touching real profiles or restarting the shared backend
 allowed_paths:
 - crates/bboxy450-harness/src/onboarding.rs
 - crates/bboxy450-harness/src/provider/profile.rs
@@ -26,33 +28,39 @@ allowed_paths:
 - .bboxy/reports/**
 - .bboxy/runs/codex-clean-start.json
 - crates/bboxy450-harness/src/backend/acp_agent.rs
-verify: make verify-clean-start
-acceptance:
-- Canonical Codex profile identity is codex, its generated file is codex.md and its ACP executable is codex-acp without duplicate profile generation
-- A private empty home with fake installed Codex/ACP tools starts through normal GUI and CLI or seat entrypoints without relying on legacy nemotron or pre-existing profiles
-- Explicit profile, environment and saved-default precedence is consistent across frontends and existing edited profiles/default files remain preserved
-- A private machine with no agent installed reaches usable GUI setup and headless startup gives an actionable configuration error without vendor calls or implicit package installation
-- Named clean-start process and GUI checks plus affected compilation pass without touching real profiles or restarting the shared backend
-id: 01M6M65A1VYVMQNPSTJ46YD5S2
-status: accepted
-delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T21:32:39.807Z
-created: 2026-11-04T21:06:40.639Z
-number: 93377961363555
-created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-updated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-authorship:
-  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  kind: seat
-  public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
-  process_generation: '1'
-assignee: seat:01M6M69Y5FVMKEHTCVGWKY8EZH
 artifacts:
 - '[[01M6M7JX25B2499PGBV6T38275]]'
+assignee: seat:01M6M69Y5FVMKEHTCVGWKY8EZH
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CDV204VCQNM3PMGMHAY41
+created: 2026-11-04T21:06:40.639Z
+created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+id: 01M6M65A1VYVMQNPSTJ46YD5S2
+number: 93377961363555
+report:
+  commit: aa740e8fa4e0ed73b72088571020a7c8ad86ccaa
+  op_id: 01M6M7KGZ6HV9X30YJ8RWVA04X
+  report: '[[reports/2026-11-04-harness-clean-start-correction.md]]'
+  reported_by: seat:01M6M69Y5FVMKEHTCVGWKY8EZH
+  summary: 'Implemented shared Codex clean-start bootstrap and consistent explicit/environment/saved/default precedence, retaining codex.md with [codex-acp], edited profiles and saved preferences. Corrected the Oracle''s login-shell PATH regression using the existing bounded ACP resolver, retained original profile diagnostics and verified crashed-seat identity recovery. Signed producer checkpoints fdaaf876 and final 87f0a3e7; signed parent handoff aa740e8f. make verify-clean-start exited 0: seven fresh private process/native-GUI checks, strict standalone lint, embedded compilation and license checks; unchanged GUI options/Bridge evidence reused with source/log hashes and no installer rerun. Exact indexed task/report copies and tested source hashes verified; producer clean, parent gitlink deliberately unstaged. No push/merge/install/backend restart or real profile/vendor calls.'
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Unify profile identity and make empty-home Codex startup work
+type: task
+updated: 2026-11-23T23:38:59.000Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make verify-clean-start
 verify_result:
   command: make verify-clean-start
-  exit_code: 0
   evidence:
   - criterion: Canonical Codex profile identity is codex, its generated file is codex.md and its ACP executable is codex-acp without duplicate profile generation
     reference: crates/bboxy450-harness/tests/clean_start.rs:45 and :155 — canonical codex.md/[codex-acp], actual argv, regeneration, preserved bytes and six concurrent create-new publishers.
@@ -64,19 +72,18 @@ verify_result:
     reference: crates/bboxy450-harness/src/frontends/headless.rs:306 and :312; tests/clean_start.rs:101 and :233 — same bounded ACP resolution and original parse/config errors plus actionable guidance.
   - criterion: Named clean-start process and GUI checks plus affected compilation pass without touching real profiles or restarting the shared backend
     reference: .bboxy/runs/codex-clean-start.json — make verify-clean-start exit 0; seven fresh process checks, strict standalone/embedded compile/license checks; unchanged options/Bridge checks reused with source/log hashes.
-report:
-  summary: 'Implemented shared Codex clean-start bootstrap and consistent explicit/environment/saved/default precedence, retaining codex.md with [codex-acp], edited profiles and saved preferences. Corrected the Oracle''s login-shell PATH regression using the existing bounded ACP resolver, retained original profile diagnostics and verified crashed-seat identity recovery. Signed producer checkpoints fdaaf876 and final 87f0a3e7; signed parent handoff aa740e8f. make verify-clean-start exited 0: seven fresh private process/native-GUI checks, strict standalone lint, embedded compilation and license checks; unchanged GUI options/Bridge evidence reused with source/log hashes and no installer rerun. Exact indexed task/report copies and tested source hashes verified; producer clean, parent gitlink deliberately unstaged. No push/merge/install/backend restart or real profile/vendor calls.'
-  commit: aa740e8fa4e0ed73b72088571020a7c8ad86ccaa
-  reported_by: seat:01M6M69Y5FVMKEHTCVGWKY8EZH
-  op_id: 01M6M7KGZ6HV9X30YJ8RWVA04X
-  verify_revision: 0
-  report: '[[reports/2026-11-04-harness-clean-start-correction.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-term-onboarding
 provenance:
   digest: sha256:c906abac03b822076b5fe384a449f3f683405f30819d557c27f77739724b6a62
-  frontmatter_digest: sha256:8737876b958abf0ebbf7724fd9aba763f76941e24d11aa436e1955928ed91d9f
-  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  sig: +mJzMJkJMPYbmLGRzD2zpx16GuDm2XhqgkTQwWVEnTL/oeSFyZMVUDwl9laUQA2Tx5ejRrUPGQndmSQkMJRoDw==
-  log: .bboxy/log/2026-11-04.jsonl#130870
+  frontmatter_digest: sha256:dbc6e5f0959605b431595cc4238040a7abb5ff4afc20f2a10a389895bb09f28a
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: 5wHwak4xeZkG/vO+BNM8bpNKVbZVgScqwFafgMPhIUNYehCVTphdXo6fovhazCfvwP2ENF9pBbw8i0m3I4O0AQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1352
+  event:
+    id: 01M85CDVPXMAW2T7NHEP78505F
+    sequence: 1352
+    hash: 7bbcdfccef570514985ac728c2c898aff9e7e0800376867926d2dd56c5e2da3c
 ---
 ROLE: EXECUTOR.
 

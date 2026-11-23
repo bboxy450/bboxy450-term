@@ -1,33 +1,41 @@
 ---
-type: task
-title: Ground and activate the existing Q2 Dream snapshot brief on accepted producer
-role: architect
-worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 allowed_paths:
 - tasks/2026-11-05-dream-mcp-verified-snapshot.md
 - interfaces/dreaming-mcp.md
 - specs/dreaming-mcp.md
 - decisions/*dream-q2*
 - reports/2026-11-05-dream-q2-accepted-baseline.md
-verify: git diff --check
-id: 01M6PAV8B0JAZP2JE31VFWHGN9
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T17:17:37.685Z
-created: 2026-11-05T17:07:03.116Z
-number: 93377961365032
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
 assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CF3AT2WHM241FKW43DTW7
+created: 2026-11-05T17:07:03.116Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+id: 01M6PAV8B0JAZP2JE31VFWHGN9
+number: 93377961365032
+report:
+  commit: null
+  op_id: 01M6PBCR1WPTQWC22391CA4YET
+  report: '[[reports/2026-11-05-dream-q2-accepted-baseline.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: Made original Q2 native draft ready for delegation on clean /Users/feral/mydev/bboxy450-harness-dream-read-q2, feat/dream-read-q2, accepted47182320be6435c860bc2176c2ddda582029fa63. Grounded actual accepted C1 paced/disposal/credit/custody helpers and existing trust/audit/receipt/Recall/fixture seams. Fixed the bounded ICD input ambiguity with explicit immutable host EvidenceBundle file/root/policy/key/catalogue/artifact bindings and revision/closure validation; no identifiers-only discovery, provider fallback, new publication/inference/Recall or hint-bearing producer wire. Added only seven narrow helper/proof/regression paths and existing make test-dream-c1 before the original Q2 verify gates. Native record remains open/unassigned; other frontmatter preserved except host-generated verify_revision2/update/provenance. Full task/spec/ICD/report readbacks match; git diff --check in exact clean Q2 tree exited0. No source/build/test/service/credential/assignment/landing actions. Term integration/current provider proof remain explicit later dependencies, not a Q2 start barrier.
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Ground and activate the existing Q2 Dream snapshot brief on accepted producer
+type: task
+updated: 2026-11-23T23:39:40.275Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Original Q2 fixed baseline/worktree and preserved native task fields
     reference: tasks/2026-11-05-dream-mcp-verified-snapshot.md; reports/2026-11-05-dream-q2-accepted-baseline.md — Record preservation and full readback
@@ -35,19 +43,18 @@ verify_result:
     reference: interfaces/dreaming-mcp.md — Q2 exact selected evidence packaging; specs/dreaming-mcp.md; task Exact input/proof and shared worker reuse
   - criterion: Full changed-artifact digests/readbacks and actual clean-worktree verification
     reference: reports/2026-11-05-dream-q2-accepted-baseline.md — Exact baseline; Current artifact table; Actual check and remaining evidence
-report:
-  summary: Made original Q2 native draft ready for delegation on clean /Users/feral/mydev/bboxy450-harness-dream-read-q2, feat/dream-read-q2, accepted47182320be6435c860bc2176c2ddda582029fa63. Grounded actual accepted C1 paced/disposal/credit/custody helpers and existing trust/audit/receipt/Recall/fixture seams. Fixed the bounded ICD input ambiguity with explicit immutable host EvidenceBundle file/root/policy/key/catalogue/artifact bindings and revision/closure validation; no identifiers-only discovery, provider fallback, new publication/inference/Recall or hint-bearing producer wire. Added only seven narrow helper/proof/regression paths and existing make test-dream-c1 before the original Q2 verify gates. Native record remains open/unassigned; other frontmatter preserved except host-generated verify_revision2/update/provenance. Full task/spec/ICD/report readbacks match; git diff --check in exact clean Q2 tree exited0. No source/build/test/service/credential/assignment/landing actions. Term integration/current provider proof remain explicit later dependencies, not a Q2 start barrier.
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6PBCR1WPTQWC22391CA4YET
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-q2-accepted-baseline.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 provenance:
   digest: sha256:9c8a4971f8c0c9eb9123184f45800025e3e669f314855304b285291286fa9285
-  frontmatter_digest: sha256:64caea61f8a14ae7a32a6ef51de968f5424e03f311acce086a6602d7aaecc2a9
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: mWjPkxeEYd/d+z5033OdfBQ03j8XNft6+rABvW/dH5JNEstOP0gSrhMyviJxvbAZ0CmlWkD6AVW8XcLdGzzdCw==
-  log: .bboxy/log/2026-11-05.jsonl#139402
+  frontmatter_digest: sha256:4f26ff9ba97c52f0361e75e50ec895324f1af99f494781d5a316dbc96076c184
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: 9yoPi7arOC03iLdy/dRH1BY/NZKvILBNinKl74Dv/mQ/2+Yrh5+GjDSDiJ5Va31++Vt5gyLc5RNYkxC8Q3OeAA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1404
+  event:
+    id: 01M85CF3ZF2M8K68ECFYKE5W7M
+    sequence: 1404
+    hash: da8991d1b1ae88a1c2ca8cf1ebd7d765664b2c5b412b476e3c83910abc8f00e2
 ---
 ROLE: ARCHITECT
 

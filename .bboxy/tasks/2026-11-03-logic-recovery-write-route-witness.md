@@ -1,8 +1,4 @@
 ---
-type: task
-title: Prove document writes remain responsive during recovery and record exact recovery triggers
-role: executor
-verify: sh scripts/land.sh --full
 allowed_paths:
 - crates/bbt-mux/src/index.rs
 - crates/bbt-mux/src/provenance/projection.rs
@@ -52,27 +48,39 @@ allowed_paths:
 - lab/web/harness/gen-acp.sh
 - .bboxy/specs/provenance.md
 - .bboxy/decisions/d19427-canonical-paged-jsonl-recovery-integration.md
-id: 01M6HGAE1XXGRJ58SFATHX9R18
-status: accepted
-delegated_by: seat:01M6HF0S1BAJKHWT2N426W7328
-swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-04T00:52:48.106Z
-created: 2026-11-03T20:06:30.913Z
-number: 16404
-created_by: seat:01M6HF0S1BAJKHWT2N426W7328
-updated_by: seat:01M6HF0S1BAJKHWT2N426W7328
-authorship:
-  signer: seat:01M6HF0S1BAJKHWT2N426W7328
-  kind: seat
-  public_key: NJfxjXALG4vfTtn9XxMx7XCD2GZh2WlrBe8FFTqIaLM=
-  process_generation: '1'
-assignee: seat:01M6HGAF8KJMA0860GJ6VYM9E2
-verify_revision: 1
 artifacts:
 - '[[01M6HZYJQK0XRHNQ43MWMC8FMR]]'
+assignee: seat:01M6HGAF8KJMA0860GJ6VYM9E2
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: cngvldXrRMBr9iLkdhAb6I+UV0Ge1Ux7NMJCwOtzJh0=
+  signer: seat:01M85CCH2ESN9JPQ6S07CVAXDJ
+closed:
+  by: seat:01M85CCH2ESN9JPQ6S07CVAXDJ
+  op_id: 01M85CDES7BY0GJC9Q1C76XNDG
+created: 2026-11-03T20:06:30.913Z
+created_by: seat:01M6HF0S1BAJKHWT2N426W7328
+delegated_by: seat:01M6HF0S1BAJKHWT2N426W7328
+id: 01M6HGAE1XXGRJ58SFATHX9R18
+number: 16404
+report:
+  commit: 184b770f9f43094c518570f143e5eeaeb7e999ef
+  op_id: 01M6HZZC0966JKDBVJABKY669G
+  report: '[[reports/2026-11-03-logic-recovery-write-route-witness.md]]'
+  reported_by: seat:01M6HGAF8KJMA0860GJ6VYM9E2
+  summary: 'Landed implementation 40f45c5838f521bd70e9b8ff907caca3f8784eb9 through sh scripts/land.sh --full (0): 2623 tests passed, private smoke/invariants passed, and complete clean native/TLC parity covers 290 models, 34 crates and 119 contracts. Report #19654 is signed and landed separately as 184b770f9f43094c518570f143e5eeaeb7e999ef through the existing checked records-only reuse path (0; no incremental rechecks). It records canonical bounded recovery/batched sync and explicit legacy STATE.repair migration, per-root actual-IO ownership across cancellation/restart/A-B-A, real admitted-write unknown/backlog with retained signed intent (no commit claimed), distinct once-per-transition triggers, final-source removed-guard failure, unchanged ctl/NUM2 regressions, resolved red gates, exact source/log/receipt hashes and formal limits. Current receipt binds the record SHA (cd9d9357…); worktree is clean and both commits are on origin/main. The exact historical trigger and arbitrary Rust/wall-clock refinement remain unproven.'
+  verify_revision: 1
+role: executor
+status: done
+swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
+title: Prove document writes remain responsive during recovery and record exact recovery triggers
+type: task
+updated: 2026-11-23T23:38:46.905Z
+updated_by: seat:01M85CCH2ESN9JPQ6S07CVAXDJ
+verify: sh scripts/land.sh --full
 verify_result:
   command: sh scripts/land.sh --full
-  exit_code: 0
   evidence:
   - criterion: Canonical final gate and landing
     reference: 40f45c5838f521bd70e9b8ff907caca3f8784eb9; /Users/feral/.local/state/bboxy450-term/landing/presubmits/40f45c5838f521bd70e9b8ff907caca3f8784eb9-07e7b1ea/commands.log SHA256 cc53be84a6ab628e9585267c9b584a6802c6a55ed4c10b525c5ceedbc3a802e7; /tmp/hol-final-complete-land.log exit 0
@@ -86,19 +94,18 @@ verify_result:
     reference: /Users/feral/mydev/bboxy450-term/.git/bboxy-formal-evidence/cd9d93570e189d605cea6a22e5bbd53815391cd4feb46d2d203dcb5f57b49fec/evidence.json; 290 models/34 crates/119 contracts, dirty=false, source 184b770f9f43094c518570f143e5eeaeb7e999ef; finite hand-written declarations, not Rust or macro-to-worker refinement
   - criterion: Signed committed full report and checked report landing
     reference: 'Report #19654 at reports/2026-11-03-logic-recovery-write-route-witness.md, signed Report trailer in 184b770f9f43094c518570f143e5eeaeb7e999ef; /tmp/hol-report-land.log exit 0 with records_checks_exit=0; artifact 01M6HZYJQK0XRHNQ43MWMC8FMR'
-report:
-  summary: 'Landed implementation 40f45c5838f521bd70e9b8ff907caca3f8784eb9 through sh scripts/land.sh --full (0): 2623 tests passed, private smoke/invariants passed, and complete clean native/TLC parity covers 290 models, 34 crates and 119 contracts. Report #19654 is signed and landed separately as 184b770f9f43094c518570f143e5eeaeb7e999ef through the existing checked records-only reuse path (0; no incremental rechecks). It records canonical bounded recovery/batched sync and explicit legacy STATE.repair migration, per-root actual-IO ownership across cancellation/restart/A-B-A, real admitted-write unknown/backlog with retained signed intent (no commit claimed), distinct once-per-transition triggers, final-source removed-guard failure, unchanged ctl/NUM2 regressions, resolved red gates, exact source/log/receipt hashes and formal limits. Current receipt binds the record SHA (cd9d9357…); worktree is clean and both commits are on origin/main. The exact historical trigger and arbitrary Rust/wall-clock refinement remain unproven.'
-  commit: 184b770f9f43094c518570f143e5eeaeb7e999ef
-  reported_by: seat:01M6HGAF8KJMA0860GJ6VYM9E2
-  op_id: 01M6HZZC0966JKDBVJABKY669G
-  verify_revision: 1
-  report: '[[reports/2026-11-03-logic-recovery-write-route-witness.md]]'
+  exit_code: 0
+verify_revision: 1
 provenance:
   digest: sha256:d4230775b14a1814c0b65110eb85ca8e88f59e67aa7c5b6f51fbd63ebc379332
-  frontmatter_digest: sha256:2d6b6e7933357ed9aaa392f618875738bd970c65d4b1e2a968e1d30352b74f54
-  signer: seat:01M6HF0S1BAJKHWT2N426W7328
-  sig: FbirK6dFV69uT5+qEOTQk19C2+nL3X115GKclPtLguQrF9Db5nqxgaKvNpx/1O0dYdOmWuLVGS7cU4VWAxXgCw==
-  log: .bboxy/log/2026-11-04.jsonl#109827
+  frontmatter_digest: sha256:9beb4f34b1974c8b3d69beaa36976cd0d2fc7dfccbde5346b154917fedc07206
+  signer: seat:01M85CCH2ESN9JPQ6S07CVAXDJ
+  sig: ZDmbNvERzV9lNk2naMePBUTiixt9FhCV61L6naV+sc1sWLPYkOsKkb9uiTyF0JUkUD43hvlmLX3ES/uJCzZuCQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1340
+  event:
+    id: 01M85CDFXN6CTTTQD9QY141KN2
+    sequence: 1340
+    hash: 547b1c538aaaed643b61550ca6b9486e3d6aaecab3ef0c89ee845863fe1dd119
 ---
 # Integrated logic recovery, real write witnesses, and projection ownership
 

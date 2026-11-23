@@ -1,8 +1,4 @@
 ---
-type: task
-title: Fix startup-modal keyboard routing and attached-state UI fixture regressions
-role: executor
-verify: make test-startup-input-regressions
 allowed_paths:
 - crates/bboxy450-term/src/main.rs
 - crates/bboxy450-term/src/keyboard.rs
@@ -15,27 +11,39 @@ allowed_paths:
 - .bboxy/tasks/2026-11-03-startup-modal-input-regressions.md
 - .bboxy/reports/2026-11-03-startup-modal-input-regressions.md
 - Makefile
-id: 01M6HGCSS1W74GRFPQW3V7RAVY
-status: accepted
-delegated_by: seat:01M6HF0S1BAJKHWT2N426W7328
-swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-03T20:46:38.276Z
-created: 2026-11-03T20:07:48.593Z
-number: 16417
-created_by: seat:01M6HF0S1BAJKHWT2N426W7328
-updated_by: seat:01M6HF0S1BAJKHWT2N426W7328
-authorship:
-  signer: seat:01M6HF0S1BAJKHWT2N426W7328
-  kind: seat
-  public_key: NJfxjXALG4vfTtn9XxMx7XCD2GZh2WlrBe8FFTqIaLM=
-  process_generation: '1'
-assignee: seat:01M6HGCVKFA0E7CEGE8E7Q5D5P
-verify_revision: 1
 artifacts:
 - '[[01M6HJ1Y0K4CQ4FGKSKGFS9QT6]]'
+assignee: seat:01M6HGCVKFA0E7CEGE8E7Q5D5P
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: cngvldXrRMBr9iLkdhAb6I+UV0Ge1Ux7NMJCwOtzJh0=
+  signer: seat:01M85CCH2ESN9JPQ6S07CVAXDJ
+closed:
+  by: seat:01M85CCH2ESN9JPQ6S07CVAXDJ
+  op_id: 01M85CDHXG4NFJPJ4KX632V7VY
+created: 2026-11-03T20:07:48.593Z
+created_by: seat:01M6HF0S1BAJKHWT2N426W7328
+delegated_by: seat:01M6HF0S1BAJKHWT2N426W7328
+id: 01M6HGCSS1W74GRFPQW3V7RAVY
+number: 16417
+report:
+  commit: 7eb6ead826ff104acf52f1f9bc383e4575ec848b
+  op_id: 01M6HJ1Z9WTD5CCJJWTBZDE8F1
+  report: '[[reports/2026-11-03-startup-modal-input-regressions.md]]'
+  reported_by: seat:01M6HGCVKFA0E7CEGE8E7Q5D5P
+  summary: 'Signed residual cut 7eb6ead826ff104acf52f1f9bc383e4575ec848b on 6afd6314; report #17620. Read upstream 6f2eddce and rebased, retaining its four original fixes without duplicating fixture edits. Moved startup admission from the physical callback into shared key_input/ime_input, preserving Retry/Quit and held-key ownership. Added the canonical six-test Make target and a private headless App::apply_ui witness: the removed-guard control fails (exit 100, one leaked command vs zero), restored and final signed-source runs pass (exit 0, 6/6); make test-licenses exits 0; pinned signature check verifies 1/1; worktree clean. Final log target/startup-input-final.log SHA256 9be3b8302d4db171333741bcaa8e6ac5dec709298b021cf77d541e6a846e5b04. No independent push/full gate; #16394 remains the sole integration lander and owns combined formal/unit/e2e/smoke/docs checks.'
+  verify_revision: 1
+role: executor
+status: done
+swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
+title: Fix startup-modal keyboard routing and attached-state UI fixture regressions
+type: task
+updated: 2026-11-23T23:38:50.159Z
+updated_by: seat:01M85CCH2ESN9JPQ6S07CVAXDJ
+verify: make test-startup-input-regressions
 verify_result:
   command: make test-startup-input-regressions
-  exit_code: 0
   evidence:
   - criterion: Single neutral keyboard route and unchanged assertions
     reference: 'crates/bboxy450-term/src/main.rs:9172; crates/bboxy450-term/src/keyboard.rs:728; target/startup-input-final.log: 6/6 passed'
@@ -49,19 +57,18 @@ verify_result:
     reference: '7eb6ead826ff104acf52f1f9bc383e4575ec848b; target/startup-input-signatures.log: 1 verified, exit 0; git status --porcelain empty; final focused Make target exit 0'
   - criterion: Attribution and remaining formal coverage
     reference: 'target/startup-input-licenses.log: make test-licenses exit 0; verification/contracts.toml:461 records existing ownership abstraction and implementation-only modal coverage; full integration delegated to #16394'
-report:
-  summary: 'Signed residual cut 7eb6ead826ff104acf52f1f9bc383e4575ec848b on 6afd6314; report #17620. Read upstream 6f2eddce and rebased, retaining its four original fixes without duplicating fixture edits. Moved startup admission from the physical callback into shared key_input/ime_input, preserving Retry/Quit and held-key ownership. Added the canonical six-test Make target and a private headless App::apply_ui witness: the removed-guard control fails (exit 100, one leaked command vs zero), restored and final signed-source runs pass (exit 0, 6/6); make test-licenses exits 0; pinned signature check verifies 1/1; worktree clean. Final log target/startup-input-final.log SHA256 9be3b8302d4db171333741bcaa8e6ac5dec709298b021cf77d541e6a846e5b04. No independent push/full gate; #16394 remains the sole integration lander and owns combined formal/unit/e2e/smoke/docs checks.'
-  commit: 7eb6ead826ff104acf52f1f9bc383e4575ec848b
-  reported_by: seat:01M6HGCVKFA0E7CEGE8E7Q5D5P
-  op_id: 01M6HJ1Z9WTD5CCJJWTBZDE8F1
-  verify_revision: 1
-  report: '[[reports/2026-11-03-startup-modal-input-regressions.md]]'
+  exit_code: 0
+verify_revision: 1
 provenance:
   digest: sha256:c42838eb80437b0242dde6dc27b81d56f12ff8e745c9fd1d5eb21b53823bb244
-  frontmatter_digest: sha256:6bef7f614d28778a1eacc0cf9bd28e1e8c66b8125d369557348744ed753ef168
-  signer: seat:01M6HF0S1BAJKHWT2N426W7328
-  sig: F/uUJ2BIkVH6KpJ/NwCYo4n8lL6yn5qnNRWXMQtusaptt/f6fiObltUlmsrmZJ49VwpI48rTyKV30kvla5TECA==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#100309
+  frontmatter_digest: sha256:1499d05c4a47b2d313812970a5eeb8dfcbff4dfbf76dd34a23b78ca6706e6e1e
+  signer: seat:01M85CCH2ESN9JPQ6S07CVAXDJ
+  sig: cCJe5J1/l4qaZzsyVOJ7hadDKRkLoVHhP7XWkSKWDOJcGGWfltW0hs1nyqU50d/1HB+d4MeabMLdwXsKkO0fCA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1344
+  event:
+    id: 01M85CDK1N49D87ANC85ZWPREP
+    sequence: 1344
+    hash: f73b7bd6e31e5273536a35cd3ee02097ddbb1b7b304761af964af9f080184749
 ---
 # Restore the startup modal's input gates without weakening existing assertions
 

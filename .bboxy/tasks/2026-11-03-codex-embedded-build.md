@@ -1,9 +1,4 @@
 ---
-type: task
-title: Gate the ACP relay correctly in embedded-only harness consumers
-status: accepted
-role: executor
-worktree: /Users/feral/mydev/bboxy450-harness-land
 allowed_paths:
 - src/mcp.rs
 - tests/gui_dependencies.py
@@ -13,44 +8,56 @@ allowed_paths:
 - verification/**
 - .bboxy/reports/**
 - .bboxy/runs/codex-embedded-build.json
-verify: make check-embedded-build
-parent: 01M6HCH1SJHDSB6SDAC2ZF1BXX
-id: 01M6J13RYDS0C43JRNWR7BFN9H
-delegated_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T02:22:32.040Z
-created: 2026-11-04T00:59:58.515Z
-number: 19662
-created_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
-updated_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
-authorship:
-  signer: seat:01M6H97SAX3GN1BYB4YG76P3P0
-  kind: seat
-  public_key: B3hFSjBIE1Nnj7mw9Eg9pqyRpYHF/GQaKXPyV1KAod0=
-  process_generation: '1'
-verify_revision: 1
 assignee: seat:01M6HCYVGE7CJ8KK6PB20SPF3D
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CDAEFDH032ASCWXQCCBXS
+created: 2026-11-04T00:59:58.515Z
+created_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
+delegated_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
+id: 01M6J13RYDS0C43JRNWR7BFN9H
+number: 19662
+parent: 01M6HCH1SJHDSB6SDAC2ZF1BXX
+report:
+  commit: 626fbcc59b1c17952f85f054c258e9bc39dd283f
+  op_id: 01M6J5NTA30NCR6NNZB9CBHMEC
+  report: '[[reports/2026-11-04-codex-embedded-build.md]]'
+  reported_by: seat:01M6HCYVGE7CJ8KK6PB20SPF3D
+  summary: 'Signed cfg implementation035e5b29 and clean report HEAD626fbcc select mcp::relay only with acp-agent; canonical check-embedded-build now covers embedded-only strict clippy, default lib and ACP/standalone lib+binary. Actual baseline make2/cargo101 (five dead-code errors) becomes clean committed-source make0; exact logs/hashes and unchanged input inventory retained in the indexed report #19676 and run JSON. Full/runtime/formal suites were intentionally omitted under the current operator speed amendment; prior119-model/39-contract/context/MCP evidence is labeled prior-source. Term2d164 remains frozen/preserved, awaiting Oracle publication of this successor. Original report write timed out but its indexed signed bytes subsequently appeared and are committed; no unknown write was redispatched. No publish/install or permission widening.'
+  verify_revision: 1
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Gate the ACP relay correctly in embedded-only harness consumers
+type: task
+updated: 2026-11-23T23:38:42.188Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make check-embedded-build
 verify_result:
   command: make check-embedded-build
-  exit_code: 0
   evidence:
   - criterion: Embedded-only strict lint regression, default and ACP/standalone compile configurations
     reference: reports/2026-11-04-codex-embedded-build.md; /tmp/codex-embedded-build-red.log exit2 -> /tmp/codex-embedded-build-green.log exit0; .bboxy/runs/codex-embedded-build.json
   - criterion: Minimal feature boundary with no runtime/IR/permission changes; preserve prior evidence
     reference: 035e5b29e4ba02cbd2160fc48ad3ad3600d8c6e7 src/mcp.rs:61 Makefile:32 scripts/test.py:38; models/relay implementation unchanged from a231295; prior evidence explicitly not fresh
-report:
-  summary: 'Signed cfg implementation035e5b29 and clean report HEAD626fbcc select mcp::relay only with acp-agent; canonical check-embedded-build now covers embedded-only strict clippy, default lib and ACP/standalone lib+binary. Actual baseline make2/cargo101 (five dead-code errors) becomes clean committed-source make0; exact logs/hashes and unchanged input inventory retained in the indexed report #19676 and run JSON. Full/runtime/formal suites were intentionally omitted under the current operator speed amendment; prior119-model/39-contract/context/MCP evidence is labeled prior-source. Term2d164 remains frozen/preserved, awaiting Oracle publication of this successor. Original report write timed out but its indexed signed bytes subsequently appeared and are committed; no unknown write was redispatched. No publish/install or permission widening.'
-  commit: 626fbcc59b1c17952f85f054c258e9bc39dd283f
-  reported_by: seat:01M6HCYVGE7CJ8KK6PB20SPF3D
-  op_id: 01M6J5NTA30NCR6NNZB9CBHMEC
-  verify_revision: 1
-  report: '[[reports/2026-11-04-codex-embedded-build.md]]'
+  exit_code: 0
+verify_revision: 1
+worktree: /Users/feral/mydev/bboxy450-harness-land
 provenance:
   digest: sha256:144c6a2f837a8012a66483638923f152ac35022def75f2eb3212c93abfd282bc
-  frontmatter_digest: sha256:eea8658d394eb1f165f9af44aee0e69c40606ba05d1c72964d07520e919ecceb
-  signer: seat:01M6H97SAX3GN1BYB4YG76P3P0
-  sig: FCtbBG0wRArzDgkZ2GNVnCCK0qmhzEccnpx6TNzwrpO5A0r2vorYU+ipjLwFrfxPTLqWcrQlmrr0eaPJrwCsCg==
-  log: .bboxy/log/2026-11-04.jsonl#110012
+  frontmatter_digest: sha256:2fbf4e1d35b583c8a7660696e6f27f87a5744a8db8ed162271219c5b1d4f915a
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: DT5Nu7YkIshb+gyELmMPoIxm5wcYDG3wyDVfymFZMOvnqboPfxjyLGV9NUv5Hsv8cIgr3R11VoApizgVtWlQDQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1334
+  event:
+    id: 01M85CDB9FMSK301RYKEPXN8NG
+    sequence: 1334
+    hash: 9038c01e88ea41bc9466d6ed7bcc351735f30447ba328282addf2647aba02d11
 ---
 ROLE: EXECUTOR. OPERATOR SPEED OVERRIDE: only needed tests, no entire suites. This current brief REPLACES the earlier full make test/full-model requirement below. Work in /Users/feral/mydev/bboxy450-harness-land, branch codex-embedded-cfg-20261103, published basea231295. This assignment goes to the existing rich-host seat01M6HCYVGE7CJ8KK6PB20SPF3D serially: preserve/freeze clean term2d164 first; write only harness-land until this tiny cfg task is reported. Oracle then publishes it and returns you to the amended term task. No new worker/spawn required, no concurrent writing worktrees.
 

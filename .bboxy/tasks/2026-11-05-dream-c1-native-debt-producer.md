@@ -1,8 +1,4 @@
 ---
-type: task
-title: Correct C1 native creation/publication accounting and paid rest debt
-role: executor
-worktree: /Users/feral/mydev/bboxy450-harness-dream-native-c1
 allowed_paths:
 - src/dream/c1.rs
 - tests/dream_c1.rs
@@ -20,27 +16,6 @@ allowed_paths:
 - src/main.rs
 - tests/fixtures/dream-bootstrap/**
 - reports/2026-11-05-dream-c1-native-bootstrap-producer.md
-verify: make test-dream-c1 && make test-formal-parity && make check-embedded-build
-depends_on:
-- '[[tasks/2026-11-05-dream-c1-producer]]'
-derived_from:
-- '[[specs/dream-term-c1]]'
-- '[[decisions/d93377961365086-dream-native-quantum-and-debt]]'
-id: 01M6PJA7JQNQQWVP39VP25BJYZ
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T22:45:03.970Z
-created: 2026-11-05T19:17:33.748Z
-number: 93377961365092
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-assignee: seat:01M6PJAVQFS8RT61ZQ86T7QRRR
 artifacts:
 - '[[01M6PKFWS9HMJSRGVYS0EEK5HY]]'
 - '[[01M6PN64GHTFK3S10WWCZB37F9]]'
@@ -49,9 +24,42 @@ artifacts:
 - '[[01M6PW8R5VB58P7YZQCC8CHMAF]]'
 - '[[01M6PXY3B2KF730HFZ6DCB3Q26]]'
 - '[[01M6PY65BBV7R6PQ4XMP6MJ394]]'
+assignee: seat:01M6PJAVQFS8RT61ZQ86T7QRRR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CEN57ZKKA9VY0T6CHEYAS
+created: 2026-11-05T19:17:33.748Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+depends_on:
+- '[[tasks/2026-11-05-dream-c1-producer]]'
+derived_from:
+- '[[specs/dream-term-c1]]'
+- '[[decisions/d93377961365086-dream-native-quantum-and-debt]]'
+id: 01M6PJA7JQNQQWVP39VP25BJYZ
+number: 93377961365092
+report:
+  commit: d06e696f99472ed754e84353baf11a2974589d6d
+  op_id: 01M6PXE7RPXCFQRSECNFB5KKJ5
+  report: '[[reports/2026-11-05-dream-c1-native-debt-producer.md]]'
+  reported_by: seat:01M6PJAVQFS8RT61ZQ86T7QRRR
+  summary: 'Implemented the scoped producer native/debt correction and earliest private bootstrap permit on nine signed commits through d06e696f99472ed754e84353baf11a2974589d6d. Final C1, full261-model/73-contract native-TLC parity, embedded build, licenses and formal-evidence checks all exited0 unattended; immutable ordinary worker414be210... is source/compiler/features-bound and four multi-MiB workers completed/reaped with causal200 RTT p99=17us, app/control/cleanup maxima284250/109917/67334ns and zero remaining ledger debt. Full append-only report #93377961365643 retains the real61.6ms publication-effect failure, earlier failed gates, exact metric/start/end cutoffs, typed effect/clock/settlement witnesses, artifact hashes and current cold-copy pre-main250ms consumer failure. Only generated private formal receipt is dirty. No production pin, consumer combined conformance, acceptance or landing is claimed.'
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Correct C1 native creation/publication accounting and paid rest debt
+type: task
+updated: 2026-11-23T23:39:25.737Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make test-dream-c1 && make test-formal-parity && make check-embedded-build
 verify_result:
   command: make test-dream-c1 && make test-formal-parity && make check-embedded-build
-  exit_code: 0
   evidence:
   - criterion: Final committed source and all required commands/actual exits, plus licenses
     reference: target/dream-c1-native-evidence-d06e696f/exits.json; test-dream-c1.log; test-formal-parity.log; check-embedded-build.log; test-licenses.log; check-formal-evidence.log — all0 on d06e696f
@@ -73,19 +81,18 @@ verify_result:
     reference: 'report #93377961365643; bab C1exit2;56ac Clippyexit2;ca96 C1exit2 with real61575666ns publish wall/effect1/resource_limit and wait; peer cold-copy dyld readiness failure aqd69hlb remains unproven'
   - criterion: Signed provenance, allowed paths, attribution, no consumer/Q2 edits/dependency or wire change, no landing
     reference: report all9 signed SHAs; git verify-commit HEAD exit0; final-evidence-summary.json56allowedfiles; ATTRIBUTION.md; status only M .bboxy/runs/formal-native.json; final essential profile handoffs01M6PW8R4W41BF3EB76R0VJBKA/01M6PW8R58XP6FATB5PJKFZ909/01M6PW8R5HNEW3RB3MPZMFN2NY
-report:
-  summary: 'Implemented the scoped producer native/debt correction and earliest private bootstrap permit on nine signed commits through d06e696f99472ed754e84353baf11a2974589d6d. Final C1, full261-model/73-contract native-TLC parity, embedded build, licenses and formal-evidence checks all exited0 unattended; immutable ordinary worker414be210... is source/compiler/features-bound and four multi-MiB workers completed/reaped with causal200 RTT p99=17us, app/control/cleanup maxima284250/109917/67334ns and zero remaining ledger debt. Full append-only report #93377961365643 retains the real61.6ms publication-effect failure, earlier failed gates, exact metric/start/end cutoffs, typed effect/clock/settlement witnesses, artifact hashes and current cold-copy pre-main250ms consumer failure. Only generated private formal receipt is dirty. No production pin, consumer combined conformance, acceptance or landing is claimed.'
-  commit: d06e696f99472ed754e84353baf11a2974589d6d
-  reported_by: seat:01M6PJAVQFS8RT61ZQ86T7QRRR
-  op_id: 01M6PXE7RPXCFQRSECNFB5KKJ5
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-c1-native-debt-producer.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-native-c1
 provenance:
   digest: sha256:eadf1dc3fe578a68c08443ddc6de2484b218418bf6def519709f01cc02c2cc67
-  frontmatter_digest: sha256:2b6336a054f44de86502b0bdd8f99e8948afe146433b5d639d7cf40f2f186797
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: jXoZe7/nlh50FDmpyyTSsIbMjN5wNhIUJk9zb/vLaYNBdbmcXAuYY00sfjbH+thUtUxmGhjNuYMerZ/PSq6nCw==
-  log: .bboxy/log/2026-11-05.jsonl#145792
+  frontmatter_digest: sha256:895e3ee07803ec0046c89a7fc4aa8947f590e9cda9d15e298e4eae12b92b0301
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: ZXV7hTTTiS8H1DL8gv1A6HtUDaSOe1ppsZVYr+Bn5Kmbd+uym68PbSefcdYxVRQ/KqS1H95kKTpIi+f4BZWXBA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1382
+  event:
+    id: 01M85CENSZX4K0PBAQNNHQGXW3
+    sequence: 1382
+    hash: 11753887c776d61ddddebc16a69adf697797147c83eb49ada408e3c265068732
 ---
 ROLE: EXECUTOR
 

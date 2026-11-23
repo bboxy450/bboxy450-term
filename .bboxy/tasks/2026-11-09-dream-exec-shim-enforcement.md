@@ -1,8 +1,4 @@
 ---
-type: task
-title: Implement exec-shim external-helper enforcement (decision 66459 + correction), hand off INPUT70
-role: executor
-worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 allowed_paths:
 - tests/fixtures/dream-read/
 - src/dream/read.rs
@@ -17,28 +13,40 @@ allowed_paths:
 - scripts/land.py
 - ATTRIBUTION.md
 - reports/2026-11-09-dream-exec-shim-enforcement.md
-verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
+assignee: seat:01M70FJGXV7W40W80200Z0TDN5
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CG0NX4DRM4ZD2M4PMHEXC
+created: 2026-11-09T15:42:03.370Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 derived_from:
 - '[[decisions/d93377961366459-dream-external-helper-shim-enforcement]]'
 - '[[tasks/2026-11-09-architect-review-external-helper-budget]]'
 id: 01M70FJG4DC2F40F9QPJ94MHBX
-status: accepted
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-09T18:07:37.552Z
-created: 2026-11-09T15:42:03.370Z
 number: 93377961366460
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
-assignee: seat:01M70FJGXV7W40W80200Z0TDN5
+report:
+  commit: 76045587db4a96612e2406b9bb08d4191c626253
+  op_id: 01M70QVTVW3HJHK0KSFEQR4MEH
+  report: '[[reports/2026-11-09-dream-exec-shim-enforcement.md]]'
+  reported_by: seat:01M70FJGXV7W40W80200Z0TDN5
+  summary: 'Dream Exec Shim implemented decision 66459, its Darwin correction and Amendment 2, and landed signed head 76045587db4a96612e2406b9bb08d4191c626253. The exact four-command verification and make land exited 0; all 446 native/Java model graphs and verdicts matched. ONE INPUT70 is /Users/feral/mydev/bboxy450-harness-dream-read-q2/target/dream-exec-shim-decision-witness/INPUT70-source-freeze-tuple.json (SHA-256 3d42b6ecbdd2a3b5da9ac27a31a6cc7ed1c971300937616d567a8dd7dda0b7d4). Shim basis delta is 343 bytes; runtime_approved=false; no candidate/qualification builder run. Real pinned Git->shim->GPG valid/corrupt witnesses pass, with coalesced-fork and setsid-orphan limitations retained. Full report #93377961366477 is committed at native checkpoint c0019f43beecf85c662f968290c1d54c50b5e1a0. Native artifact_claim rejected both its committed report locator and checkpoint ID as artifact_not_committed; the fetched knowledge record independently confirms publication_state=committed. All code/evidence is retained, owned Cargo outputs cleaned, worktree clean.'
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Implement exec-shim external-helper enforcement (decision 66459 + correction), hand off INPUT70
+type: task
+updated: 2026-11-23T23:40:10.317Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
 verify_result:
   command: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
-  exit_code: 0
   evidence:
   - criterion: Exact final-head verification, signed landing and clean remote binding
     reference: target/dream-exec-shim-decision-witness/required-four-v2.json; canonical-land-v2.json; landed-receipt.json; landed-state.json; source-cut.json
@@ -54,23 +62,18 @@ verify_result:
     reference: target/dream-exec-shim-decision-witness/INPUT70-source-freeze-tuple.json; field-changes.json; INPUT70-binding-audit.json
   - criterion: Evidence retained and only owned build outputs cleaned, disk above 8GiB
     reference: target/dream-exec-shim-decision-witness/cleanup-selective.json; profiles-final.json; current-formal-all-raw-files.json
-report:
-  summary: 'Dream Exec Shim implemented decision 66459, its Darwin correction and Amendment 2, and landed signed head 76045587db4a96612e2406b9bb08d4191c626253. The exact four-command verification and make land exited 0; all 446 native/Java model graphs and verdicts matched. ONE INPUT70 is /Users/feral/mydev/bboxy450-harness-dream-read-q2/target/dream-exec-shim-decision-witness/INPUT70-source-freeze-tuple.json (SHA-256 3d42b6ecbdd2a3b5da9ac27a31a6cc7ed1c971300937616d567a8dd7dda0b7d4). Shim basis delta is 343 bytes; runtime_approved=false; no candidate/qualification builder run. Real pinned Git->shim->GPG valid/corrupt witnesses pass, with coalesced-fork and setsid-orphan limitations retained. Full report #93377961366477 is committed at native checkpoint c0019f43beecf85c662f968290c1d54c50b5e1a0. Native artifact_claim rejected both its committed report locator and checkpoint ID as artifact_not_committed; the fetched knowledge record independently confirms publication_state=committed. All code/evidence is retained, owned Cargo outputs cleaned, worktree clean.'
-  commit: 76045587db4a96612e2406b9bb08d4191c626253
-  reported_by: seat:01M70FJGXV7W40W80200Z0TDN5
-  op_id: 01M70QVTVW3HJHK0KSFEQR4MEH
-  verify_revision: 0
-  report: '[[reports/2026-11-09-dream-exec-shim-enforcement.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 provenance:
   digest: sha256:aee15f3dd6c1bfa891f3ce639385fd7cb4096ada113656755834ab404ec5b5e4
-  frontmatter_digest: sha256:da0a7adfff1c84f1a415fa5702fb314f3699ec95412ade7df1427e849da73bde
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: wnuhmMbzOCTgTIJj4qiLCAXzv6KqzAVZvn+iEphWbomeoi154fNKeKtI9twnYD4ND5AsDe1s2MWjVeROolkNBQ==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151089
+  frontmatter_digest: sha256:1f1fe7a0e4560576d8b3352276d9765f27bf4a4e5ee9ec1570899c36a6af867d
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: 7tSiSoIA8sswX3DTRNtjVlFeAgMHGmDLp/nx+I4WtKEp2mXEnvfWobYG30NYEWzCfxFIBmuJ3F5bfu8pW3TsBQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1444
   event:
-    id: 01M70QX25GN8QVG2DRPRZ6RN26
-    sequence: 151089
-    hash: 902cb132d9669229ca610e14b6ce3fcb4cedd203b612ad987027702afd5ceaac
+    id: 01M85CG1AGXX6HPJ0T581WFFT4
+    sequence: 1444
+    hash: fda8672d3d5425a8c8d512bd8ed8abcc31f152504071ac0832e6c7dee0d33dc9
 ---
 ROLE: EXECUTOR
 

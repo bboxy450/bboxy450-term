@@ -1,31 +1,40 @@
 ---
-type: task
-title: Correct C1 memory contract to enforceable working storage and honest native overhead
 allowed_paths:
 - specs/dream-term-c1.md
 - interfaces/dream-term-c1.md
 - decisions/dream-c1-enforceable-memory-contract.md
 - reports/2026-11-05-dream-c1-enforceable-memory-contract.md
-verify: git diff --check
-id: 01M6NV8MB1XAFAB199JFCQKZPC
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T12:45:08.937Z
-created: 2026-11-05T12:34:44.002Z
-number: 93377961364578
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-role: architect
 assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CEDW5YKQB0KRAQBETHMEY
+created: 2026-11-05T12:34:44.002Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+id: 01M6NV8MB1XAFAB199JFCQKZPC
+number: 93377961364578
+report:
+  commit: null
+  op_id: 01M6NVS32KGN5MD24RZM9BN82T
+  report: '[[reports/2026-11-05-dream-c1-enforceable-memory-contract.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: Corrected the premise in superseding decision d93377961364581 and affected C1 spec/ICD budget/matrix/public-authority wording. Keep32/96 MiB shares, protected2 MiB controls and all CPU/duty/latency/closure/settlement gates; enforce declared application-owned storage credits before controllable growth while explicitly measuring opaque serde/BTree/regex/SQLite/native/runtime overhead. Observed32/96/combined128 ceilings still fail regression gates; no all-times whole-process/native proof is claimed and no global allocator/SQLite limit is required. Defined bounded schemas/containers/threads/helpers, overlap headroom, real joint-process/overflow/four-job/control tests and formal coverage limits. Amended authority correction removes C1 credential/signing probes in favor of host-authenticated current public-incarnation/revocation fences; exact identity/status.rs + chain.rs glue and routing/invalidation/zero-custody witnesses sent to both authors/Rook under existing briefs. Full readbacks matched, git diff --check exit0, exact hashes/gaps recorded; no source edits/tests/measurements/builds/commits or new assignments.
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Correct C1 memory contract to enforceable working storage and honest native overhead
+type: task
+updated: 2026-11-23T23:39:18.738Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Practical superseding memory contract with unchanged shares, protected control, enforceable domain and honest overhead/measurement/model limits
     reference: '[[decisions/d93377961364581-dream-c1-enforceable-memory-contract]]; [[specs/dream-term-c1]] Working memory/model matrix; [[interfaces/dream-term-c1]] fixed memory allocation'
@@ -33,19 +42,17 @@ verify_result:
     reference: '[[decisions/d93377961364581-dream-c1-enforceable-memory-contract]] Public authority fence; [[reports/2026-11-05-dream-c1-enforceable-memory-contract]] source glue and three native-queued messages'
   - criterion: Current source/revision evidence, actual diff check, scoped KB edits and no measurements/tests claimed
     reference: '[[reports/2026-11-05-dream-c1-enforceable-memory-contract]] hashes, full etag readbacks, exit0 and exclusions; commits[]'
-report:
-  summary: Corrected the premise in superseding decision d93377961364581 and affected C1 spec/ICD budget/matrix/public-authority wording. Keep32/96 MiB shares, protected2 MiB controls and all CPU/duty/latency/closure/settlement gates; enforce declared application-owned storage credits before controllable growth while explicitly measuring opaque serde/BTree/regex/SQLite/native/runtime overhead. Observed32/96/combined128 ceilings still fail regression gates; no all-times whole-process/native proof is claimed and no global allocator/SQLite limit is required. Defined bounded schemas/containers/threads/helpers, overlap headroom, real joint-process/overflow/four-job/control tests and formal coverage limits. Amended authority correction removes C1 credential/signing probes in favor of host-authenticated current public-incarnation/revocation fences; exact identity/status.rs + chain.rs glue and routing/invalidation/zero-custody witnesses sent to both authors/Rook under existing briefs. Full readbacks matched, git diff --check exit0, exact hashes/gaps recorded; no source edits/tests/measurements/builds/commits or new assignments.
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6NVS32KGN5MD24RZM9BN82T
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-c1-enforceable-memory-contract.md]]'
+  exit_code: 0
 provenance:
   digest: sha256:4aa2efebec9f31c52dbdf6915c7b04f459cd1307f1616983f028b42c809e5464
-  frontmatter_digest: sha256:4684b8c5538bb3dc453827cceb2fb48dfe434511eeee166596c7cbe643edd271
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: RaUmWAW4xe1c3TEuIIfMFqKIPGLXgKpV64C+5gusvX/wrn81Jiteap6DX/8ocbx5vEX/eZhlfl56Zx4/W9tOAA==
-  log: .bboxy/log/2026-11-05.jsonl#135504
+  frontmatter_digest: sha256:2c6cb03ec722d30b88aec08e6c5d66ebe5126685abe2506ef52bd2c994591ab4
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: MLSl+EOZLsX+LqV/flZcBg+dg95wSQprAl6LZcA52OdeAbo4ivDrAtiUwk++jZFqF35C16sY7CvVM1dkCdsWDg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1376
+  event:
+    id: 01M85CEEZ3JBNJW6QS4RM922XP
+    sequence: 1376
+    hash: 79d3297c861ce53243cd60eae1fa1509272b0f43800ade14f0d01d8a6a1f62af
 ---
 ROLE: ARCHITECT
 

@@ -1,8 +1,4 @@
 ---
-type: task
-title: Q2 fix live-sample ESRCH race (zombie between terminal check and TASKALLINFO) and hand off INPUT61
-role: executor
-worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 allowed_paths:
 - tests/fixtures/dream-read/proof-helper-probe.c
 - tests/fixtures/dream-read/private-engine-controls.c
@@ -16,28 +12,40 @@ allowed_paths:
 - verification/corpus.toml
 - verification/coverage.toml
 - reports/2026-11-08-dream-live-sample-esrch-race.md
-verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
+assignee: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CFS2TH9MJR5ZQMHTMM1QV
+created: 2026-11-08T08:00:44.061Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 derived_from:
 - '[[decisions/d93377961366280-dream-q2-external-helper-budget]]'
 - '[[tasks/2026-11-08-dream-q2-process-create-wall-ceiling]]'
 id: 01M6X2S2JVX45W5RX5PEYVJRJ8
-status: accepted
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-08T09:43:31.791Z
-created: 2026-11-08T08:00:44.061Z
 number: 93377961366347
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
-assignee: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+report:
+  commit: f6dffea0ff8038240de796e237362577e58fe843
+  op_id: 01M6X8MT6ZC1E26XCBXHXSDT72
+  report: '[[reports/2026-11-08-dream-live-sample-esrch-race.md]]'
+  reported_by: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+  summary: Landed signed f6dffea0ff8038240de796e237362577e58fe843 on main. Both first and closing TASKALLINFO ESRCH races now use the unchanged actual same-incarnation terminal proof only under exact CURRENT unreaped original custody; errno survives diagnostics and every non-ESRCH/identity/no-exit refusal remains strict. Current canonical C79/48mutants/50compiles/110commands0, affected model tests0, full434-model native/Java parity0, exact required four-chain ONCE0, literal make land0 and fresh remote/clean/signature checks0. INPUT61 stored1434 with signed10-input/compiler/997-check audit tuple; terminal/ledger fields unchanged, runtimefalse/no builder,26 historical deferrals and whole-private30s/qualification gaps remain unproven. Full report committed at cdc2d461e7d05584ce913f2debb1f0430f57fba8; old partial mutant-compile failure and previous builder81 preserved.
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Q2 fix live-sample ESRCH race (zombie between terminal check and TASKALLINFO) and hand off INPUT61
+type: task
+updated: 2026-11-23T23:40:02.518Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
 verify_result:
   command: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
-  exit_code: 0
   evidence:
   - criterion: Both live-sample read races, exact CURRENT original custody and real terminal proof; errno preservation; strict negative classes
     reference: reports/2026-11-08-dream-live-sample-esrch-race.md; source9bacbb0483ab328798af2bc98225bdf8f50f930e6d2ecda6779cec3afec75042; canonical C receipt bf043efc833c01a5dd38b050da537a74fbf056d65ddd348ca005c64dd13c3d2a,79/48/50/110 actual0
@@ -51,23 +59,18 @@ verify_result:
     reference: stored1434/id01M6X8FZM6B3JKH8QVA0JK2N16; tupleff1c31cf724ecae33c874cd65ad25e869f3f6843a0d8eb4ca5814900d8689106; receipteb5f1696cba83e117d354c040b50f0950d5f0fd7847f398255d0a699f73dd987; audit533b16290b9296355c7d2017631eb4fe4a2046263b77dfdd54a20d67e2243790,997checks325headers0
   - criterion: Full committed new report; prior accepted records/failures preserved; limits and deferrals honest
     reference: 'reports/2026-11-08-dream-live-sample-esrch-race.md #93377961366349; KBcdc2d461e7d05584ce913f2debb1f0430f57fba8;26unchanged historicalignorednonpasses; runtime_approved=false,fullprivate30sfit/realqualification unproven'
-report:
-  summary: Landed signed f6dffea0ff8038240de796e237362577e58fe843 on main. Both first and closing TASKALLINFO ESRCH races now use the unchanged actual same-incarnation terminal proof only under exact CURRENT unreaped original custody; errno survives diagnostics and every non-ESRCH/identity/no-exit refusal remains strict. Current canonical C79/48mutants/50compiles/110commands0, affected model tests0, full434-model native/Java parity0, exact required four-chain ONCE0, literal make land0 and fresh remote/clean/signature checks0. INPUT61 stored1434 with signed10-input/compiler/997-check audit tuple; terminal/ledger fields unchanged, runtimefalse/no builder,26 historical deferrals and whole-private30s/qualification gaps remain unproven. Full report committed at cdc2d461e7d05584ce913f2debb1f0430f57fba8; old partial mutant-compile failure and previous builder81 preserved.
-  commit: f6dffea0ff8038240de796e237362577e58fe843
-  reported_by: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
-  op_id: 01M6X8MT6ZC1E26XCBXHXSDT72
-  verify_revision: 0
-  report: '[[reports/2026-11-08-dream-live-sample-esrch-race.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 provenance:
   digest: sha256:21241a2f517b6d4f37facd0d0ff2f52f4ac5c56ed71b7f67037682a5dccbe680
-  frontmatter_digest: sha256:735eebf0c686529204462695763390db08c53a90ce4f1e2e0a94c4ee26b77206
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: CTRJOTgkcZL8hV+QXCOtA5yAPYCCyx++nbMS5jw3j/EdTD2ddn1rG5iGpbkBUEjWWb2xdDEmHH2ic3fSrLjkCA==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150620
+  frontmatter_digest: sha256:bcea5bfaf9c9621b14a934f8401be870cffa09012c29ec6ebbd2bc7e05c3a0e9
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: yC2EW1Mx/JHgPuV+48lMTlarGXH3wKqhyb4Mrc4vifKhvvqvhs6zlk0+2rjrm08rgLQQp5LR/PCn0CyoTQ+RAA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1432
   event:
-    id: 01M6X8NA9DPG6R1PC9R4TCTDNJ
-    sequence: 150620
-    hash: 48d4b23a94cec8df78a6a497667c930d128cf0ad7921e3dde4b6fc8a9b6f3aea
+    id: 01M85CFSPRVSMG8YDW8EC8EBG6
+    sequence: 1432
+    hash: 229e345217aebef1cb08124c7f2de2aa4e7b7cff1f25c5cf305516cff98b2d53
 ---
 ROLE: EXECUTOR
 

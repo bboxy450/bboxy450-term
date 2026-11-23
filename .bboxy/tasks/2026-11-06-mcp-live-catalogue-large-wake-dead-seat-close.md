@@ -1,8 +1,4 @@
 ---
-type: task
-title: 'bboxy MCP: catalogue follows grant epoch, large-brief delegate/reassign, close dead seats'
-role: executor
-worktree: isolated term worktree from origin/main (Oracle supplies path at delegation)
 allowed_paths:
 - crates/bbt-mux/src/mcp/
 - crates/bbt-mux/src/logic.rs
@@ -13,26 +9,37 @@ allowed_paths:
 - .bboxy/reports/
 - crates/bbt-mux/src/models.rs
 - crates/bbt-mux/models/
-verify: cargo nextest run -p bboxy450-term-mux -E 'not (test(local_document_commit_keeps_unrelated_staging_and_refuses_no_change_and_symlinks) | test(held_private_git_hook_keeps_other_swarm_input_resize_and_status_live) | test(priority_burst_overflow_delivers_every_message_once_in_each_priority_fifo) | test(mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_changes))' && make test-formal-contracts
-status: accepted
-id: 01M6S03Q9WAV4XXZBMWW7HB5DZ
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-06T19:59:23.475Z
-created: 2026-11-06T17:57:09.406Z
-number: 93377961366057
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
-verify_revision: 3
 assignee: seat:01M6S0BP5BV4P07WSJSP2X6M27
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CFHKR74P3DTME6P8EWCMT
+created: 2026-11-06T17:57:09.406Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+id: 01M6S03Q9WAV4XXZBMWW7HB5DZ
+number: 93377961366057
+report:
+  commit: 24d03c76b690a4e90b26c3fe81b7211fac051940
+  op_id: 01M6S72M114MQT44XCAN98ZZZJ
+  report: '[[reports/2026-11-06-mcp-live-catalogue.md]]'
+  reported_by: seat:01M6S0BP5BV4P07WSJSP2X6M27
+  summary: Landed signed 24d03c76. Live grant/catalogue notifications, bounded 40 KiB delegation/reassignment, confirmed-orphan close metadata and protected-field amendment diagnostics are implemented. On landed HEAD the amended verify passed 761/761 tests plus 24 formal contracts; full native/TLC parity passed 562 models/34 crates and current-source evidence survived build cleanup. Four identical base failures are excluded per the amended brief. Full report committed as native checkpoint 87c54975. The report records land-fast's missing post-rebase gate refresh; I refreshed formal and assigned verification manually. The live host rejected the additional artifact claim as artifact_not_committed despite the committed report checkpoint.
+  verify_revision: 3
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: 'bboxy MCP: catalogue follows grant epoch, large-brief delegate/reassign, close dead seats'
+type: task
+updated: 2026-11-23T23:39:55.215Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: cargo nextest run -p bboxy450-term-mux -E 'not (test(local_document_commit_keeps_unrelated_staging_and_refuses_no_change_and_symlinks) | test(held_private_git_hook_keeps_other_swarm_input_resize_and_status_live) | test(priority_burst_overflow_delivers_every_message_once_in_each_priority_fifo) | test(mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_changes))' && make test-formal-contracts
 verify_result:
   command: cargo nextest run -p bboxy450-term-mux -E 'not (test(local_document_commit_keeps_unrelated_staging_and_refuses_no_change_and_symlinks) | test(held_private_git_hook_keeps_other_swarm_input_resize_and_status_live) | test(priority_burst_overflow_delivers_every_message_once_in_each_priority_fifo) | test(mux_document_writes_stamp_and_sign_digests_and_file_watch_observes_real_changes))' && make test-formal-contracts
-  exit_code: 0
   evidence:
   - criterion: Live grant changes notify and refresh tools; downgraded calls refuse
     reference: crates/bbt-mux/tests/mcp/live_catalogue.rs:11; /tmp/mcp-live-verify-landed.log — exit 0
@@ -44,23 +51,19 @@ verify_result:
     reference: crates/bbt-mux/tests/mcp/live_catalogue.rs:190; /tmp/mcp-live-verify-landed.log — exit 0
   - criterion: Paired lifecycle/delegation contracts and broken controls
     reference: verification/contracts.toml:1336; /tmp/mcp-live-formal-landed.log — exit 0; evidence 0fc6016c69464134e6eb2e8ba983564ee208a4de52bee3b3123d0560ce8bb752
-report:
-  summary: Landed signed 24d03c76. Live grant/catalogue notifications, bounded 40 KiB delegation/reassignment, confirmed-orphan close metadata and protected-field amendment diagnostics are implemented. On landed HEAD the amended verify passed 761/761 tests plus 24 formal contracts; full native/TLC parity passed 562 models/34 crates and current-source evidence survived build cleanup. Four identical base failures are excluded per the amended brief. Full report committed as native checkpoint 87c54975. The report records land-fast's missing post-rebase gate refresh; I refreshed formal and assigned verification manually. The live host rejected the additional artifact claim as artifact_not_committed despite the committed report checkpoint.
-  commit: 24d03c76b690a4e90b26c3fe81b7211fac051940
-  reported_by: seat:01M6S0BP5BV4P07WSJSP2X6M27
-  op_id: 01M6S72M114MQT44XCAN98ZZZJ
-  verify_revision: 3
-  report: '[[reports/2026-11-06-mcp-live-catalogue.md]]'
+  exit_code: 0
+verify_revision: 3
+worktree: isolated term worktree from origin/main (Oracle supplies path at delegation)
 provenance:
   digest: sha256:c28f96b5ca628e97dbb9c29d1a9632111105eca7dde856d181bf148c1434b703
-  frontmatter_digest: sha256:3dd46789fc84f1b14b6adc7ce913f4aef95bca9df882a100f07d5b1ea5a75568
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: 5kp3rMjhJPrjA0vBHNG+kZTY7hsshW6fD3caHP14QnIVoH65mSh3CBxuil/H9JnUjvptbXc2EflPiu5CnKW2AA==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/149799
+  frontmatter_digest: sha256:dba3f4feba77e3b151dcae3ede564fbd9d715ab79eac60898222ee07d4f4e600
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: 5CK8WOb9dbIjQrwklQgaevXPB9+Lzc7ROZ0slwnDQpA1mgAwzvk7zhHW78PjA/PnBlfFqw4lr9LW7beoRXyACg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1420
   event:
-    id: 01M6S73HY0Z22AM1HPMJ0RJWAM
-    sequence: 149799
-    hash: f296453cb1bb6b7ecba7c2f3f818213bfa90b949f3f32d6aceb3d98a75fdc1ad
+    id: 01M85CFJJSSX9YQ3XAXRHC799P
+    sequence: 1420
+    hash: 5de28c3c925890a91be07a67afa8b71ab37f051594b246bfc5e5ad59c65d68b6
 ---
 # bboxy MCP: live catalogue, large-brief delegation, closing dead seats
 

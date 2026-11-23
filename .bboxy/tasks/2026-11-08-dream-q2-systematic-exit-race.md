@@ -1,8 +1,4 @@
 ---
-type: task
-title: 'Q2: systematic exit-race handling for EVERY live helper observation syscall (shared observe_or_terminal + per-site fault injection), hand off INPUT69'
-role: executor
-worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 allowed_paths:
 - tests/fixtures/dream-read/proof-helper-probe.c
 - tests/fixtures/dream-read/private-engine-controls.c
@@ -19,28 +15,40 @@ allowed_paths:
 - verification/corpus.toml
 - verification/coverage.toml
 - reports/2026-11-08-dream-systematic-exit-race.md
-verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
+assignee: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CFWW6WFG0KX0VXZR1BVWK
+created: 2026-11-09T07:58:49.961Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 derived_from:
 - '[[decisions/d93377961366280-dream-q2-external-helper-budget]]'
 - '[[tasks/2026-11-08-dream-q2-pause-stop-exit-race]]'
 id: 01M6ZN2A59M7P10SC59GW0F6F6
-status: accepted
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-09T12:11:33.760Z
-created: 2026-11-09T07:58:49.961Z
 number: 93377961366445
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
-assignee: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+report:
+  commit: 637cb234d93d08d0c8fcfb820b7e48f9538bc0e1
+  op_id: 01M703GR7CAEH3719N86P89W33
+  report: '[[reports/2026-11-08-dream-systematic-exit-race.md]]'
+  reported_by: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+  summary: Landed signed 637cb234d93d08d0c8fcfb820b7e48f9538bc0e1 with shared domain-specific observe_or_terminal handling, complete callsite inventory, 27 per-site supplied-error/real-original-settlement controls and bypass mutants, and a standalone formal companion. The exact required four-command chain and canonical make land both exited 0; all 446 native/pinned-Java graphs and named verdicts matched. ONE post-land INPUT69 was compiled/audited and sent (83682788…8511; runtime_approved=false, no builder run); owned build cleanup retained proofs/tools/inputs and left 30,160,269,312 bytes available. Full report committed as 626e0a130f60e77002136b41e0143cebae4c37cc.
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: 'Q2: systematic exit-race handling for EVERY live helper observation syscall (shared observe_or_terminal + per-site fault injection), hand off INPUT69'
+type: task
+updated: 2026-11-23T23:40:06.583Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
 verify_result:
   command: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
-  exit_code: 0
   evidence:
   - criterion: Every live observation callsite inventoried
     reference: reports/2026-11-08-dream-systematic-exit-race.md — inline 107 native/context,81 logical,67 route bindings and27 sites; inventory-v5 SHA7ba5e927d0d26bab3d4fd57428da71231eebf39191926f70f73ce9b3fdc4a4a1
@@ -56,23 +64,18 @@ verify_result:
     reference: /Users/feral/mydev/bboxy450-harness-dream-read-q2/target/dream-q2-systematic-exit-race-01M6RZZXSHZT3KHBK1QC7K3XB3/systematic-exit-exact-four-chain-final-v1.json logSHA907a5e6b43b5537e7e3ef28890aca2a7d20976513575e4ff17e44757f3af634a; canonical-land-input69-v1.json logSHA84745bdfdddc2fc1a3fe3092c8ebfc1b363e071a57bd842efe2c3a38f28e01e6
   - criterion: ONE post-land INPUT69 and owned cleanup
     reference: /Users/feral/mydev/bboxy450-harness-dream-read-q2/target/dream-q2-systematic-exit-race-01M6RZZXSHZT3KHBK1QC7K3XB3/INPUT69-source-freeze-tuple-v1.json SHA8368278817ac5fc74da15e61d0f8ae069d8b9767849ee8ef4cac0cecd86f8511; native message/op01M702WV4KPHZ3DF0D0VCKWM2P; cleanup f8c4ee50a9106000785b477bbb0a20ddf716a679616e99873110920da99511af
-report:
-  summary: Landed signed 637cb234d93d08d0c8fcfb820b7e48f9538bc0e1 with shared domain-specific observe_or_terminal handling, complete callsite inventory, 27 per-site supplied-error/real-original-settlement controls and bypass mutants, and a standalone formal companion. The exact required four-command chain and canonical make land both exited 0; all 446 native/pinned-Java graphs and named verdicts matched. ONE post-land INPUT69 was compiled/audited and sent (83682788…8511; runtime_approved=false, no builder run); owned build cleanup retained proofs/tools/inputs and left 30,160,269,312 bytes available. Full report committed as 626e0a130f60e77002136b41e0143cebae4c37cc.
-  commit: 637cb234d93d08d0c8fcfb820b7e48f9538bc0e1
-  reported_by: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
-  op_id: 01M703GR7CAEH3719N86P89W33
-  verify_revision: 0
-  report: '[[reports/2026-11-08-dream-systematic-exit-race.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 provenance:
   digest: sha256:876efbb90d7e060e5147bfd34b80df82afb23dc928d5e89e35fdecd9f0c7e52c
-  frontmatter_digest: sha256:e27ca196ab08d44eb7e942c0373c7dd12521e26ebfa34051459a285b61275e32
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: 2pnfr4NA1I97SqT/lePNtuFt5v97OtJhNOT+a9Zd5rgSPYgA+mkZVV6mcZvYQ3BfLTTxXFREluwOylMgLXuEAg==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150997
+  frontmatter_digest: sha256:c150b260ae1866557504444e098617619f9017a878c5457a7f1a331368f678f6
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: 2H71pQ3L6KjUTHyfYBa0SGVLwNETqiscYBxccmRtnp+ihc9XciAdlJ9mvZfhgyb9hsXsfMiNSfQqfXmXB0BcBw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1438
   event:
-    id: 01M703H338GXW3HRWNY5RW98Y0
-    sequence: 150997
-    hash: eb85616da4bf94b48a32ae9a39ca7519c93ca8220e9bdd71146151f68dd724b1
+    id: 01M85CFXNK2CZXKAEFZKJKKJ2W
+    sequence: 1438
+    hash: 005d84f1a8f4f32a60b63d1fba3020eb3d189f4acaefd1b35f0b5e92c5961f03
 ---
 ROLE: EXECUTOR
 

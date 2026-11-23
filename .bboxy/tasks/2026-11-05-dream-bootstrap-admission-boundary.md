@@ -1,8 +1,4 @@
 ---
-type: task
-title: Resolve parent/child bootstrap admission and rest handoff without wire change
-role: architect
-worktree: /Users/feral/mydev/bboxy450-term-dream-c1
 allowed_paths:
 - decisions/*dream*bootstrap*
 - specs/dream-term-c1.md
@@ -11,22 +7,6 @@ allowed_paths:
 - interfaces/dreaming-mcp.md
 - reports/2026-11-05-dream-bootstrap-admission-boundary.md
 - reports/2026-11-05-dream-bootstrap-admission-clarifications.md
-verify: git diff --check
-id: 01M6PMHSG5D9K9MASMV3N3WHCS
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T20:43:12.743Z
-created: 2026-11-05T19:56:42.042Z
-number: 93377961365163
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
 artifacts:
 - '[[01M6PN39YK2VME3EQ3Q71EM33M]]'
 - '[[01M6PN3B7SY88K5E29SPMF0W2M]]'
@@ -38,9 +18,37 @@ artifacts:
 - '[[01M6PN3B7SY88K5E29SPMF0W2M]]'
 - '[[01M6PN47MCF26PB6FT4SX8KNN7]]'
 - '[[01M6PPYCWAE244DMWEAZ6VS04D]]'
+assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CE5SW6PMXCNEYKTV11CXG
+created: 2026-11-05T19:56:42.042Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+id: 01M6PMHSG5D9K9MASMV3N3WHCS
+number: 93377961365163
+report:
+  commit: null
+  op_id: 01M6PPYE0JHPEVFB4GYQ8G75AG
+  report: '[[reports/2026-11-05-dream-bootstrap-admission-clarifications.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: 'Superseding supplement synchronizes exactly Oracle rulings65255/65259 into65166 and current C1/MCP spec/ICD: explicit-null source-free probe binding with permanent ALL-Start rejection, full-context-only real jobs, and only the two final prepared public-proof+transfer handoffs as inclusive≤1ms control without recursive work debt. Seven16KiB rows/fixed actor/file/revision/provider bounds, one check/attempt, isolated owner/independent controls and fail-closed original-effect custody remain explicit; other setup/guards/source work keep original accounting. All five complete readbacks match and exact reverse edits preserve prior bodies/frontmatter; initial report unchanged. git diff --check exited0; no source/build/tests/runtime actions. Two existing MCP artifact-claim projections were terminally refused as pending (original operation queries confirmed no retry); document writes/readbacks succeeded and refusals are recorded. Component implementation/final gates remain unproven.'
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Resolve parent/child bootstrap admission and rest handoff without wire change
+type: task
+updated: 2026-11-23T23:39:11.386Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Exact Oracle probe context and final public admission synchronization
     reference: decisions/d93377961365166-dream-bootstrap-private-permit-handoff.md 293a94ff; references unchanged65255/65259
@@ -48,19 +56,18 @@ verify_result:
     reference: reports/2026-11-05-dream-bootstrap-admission-clarifications.md — exact five-record table, initial report52e9b2ed preserved, supersedes metadata
   - criterion: Actual check/source evidence, no expanded runtime claims
     reference: reports/2026-11-05-dream-bootstrap-admission-clarifications.md — exit0 at20:35Z; status.rs/registry prepared guard bounds and Runtime::new source; two terminal artifact projection refusals
-report:
-  summary: 'Superseding supplement synchronizes exactly Oracle rulings65255/65259 into65166 and current C1/MCP spec/ICD: explicit-null source-free probe binding with permanent ALL-Start rejection, full-context-only real jobs, and only the two final prepared public-proof+transfer handoffs as inclusive≤1ms control without recursive work debt. Seven16KiB rows/fixed actor/file/revision/provider bounds, one check/attempt, isolated owner/independent controls and fail-closed original-effect custody remain explicit; other setup/guards/source work keep original accounting. All five complete readbacks match and exact reverse edits preserve prior bodies/frontmatter; initial report unchanged. git diff --check exited0; no source/build/tests/runtime actions. Two existing MCP artifact-claim projections were terminally refused as pending (original operation queries confirmed no retry); document writes/readbacks succeeded and refusals are recorded. Component implementation/final gates remain unproven.'
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6PPYE0JHPEVFB4GYQ8G75AG
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-bootstrap-admission-clarifications.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-term-dream-c1
 provenance:
   digest: sha256:c5d4d2c12462a78fab6b46aa10bd3e100c93dad97d19bcae1e3b2411076773a5
-  frontmatter_digest: sha256:c85ef598e493c9a28f26032a6e90859cd8a0c6ac405f05f2c6a0534521cd448a
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: JBxKLEC1tF4R+fua+PZAliE54VXXPAsbcjFqRmNUgMvZmVtjy++bQJyaqyo9AEQKqpJ7HQMAvRi6hVJclCm1DA==
-  log: .bboxy/log/2026-11-05.jsonl#142484
+  frontmatter_digest: sha256:208984bbd7a59a5aad89856d56b503151cc7e93269a76842eb33a44eea276765
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: K6Vqf2O16pA7aoS3nsrtaWCLhN0WuF3EIbRm9knjmzTIcVXN87fdY848pHoN0Cxaj2rz+pkDZMFROfQIJ3I7Ag==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1366
+  event:
+    id: 01M85CE7TMN1PRE9Y4MDTYB7XQ
+    sequence: 1366
+    hash: edb115dcbc0085af0922ed188121dea056073ca94942eb1b4b406b4ac49adc6a
 ---
 ROLE: ARCHITECT
 

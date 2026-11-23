@@ -1,9 +1,9 @@
 ---
-type: task
-title: Keep harness status titles concise and diagnose GUI-only compatibility refusal
-role: executor
-parent: 01M6KEVVYNZW5H21RPTFW1RVDR
-worktree: /Users/feral/mydev/bboxy450-term-ui-status
+acceptance:
+- Thinking/status presentation remains clean; multiline raw commands cannot escape header/sidebar geometry
+- Raw command details remain in tool content, while pane/status titles are concise bounded single-line labels
+- Read-only preserve-backend refusal distinguishes schema/version/PATH mismatches without leaking secrets or weakening guards
+- Focused geometry/parser/readonly diagnostic tests and affected compilation pass; no backend restart or operator input
 allowed_paths:
 - crates/bboxy450-harness-wake-up/src/observe.rs
 - crates/bboxy450-harness-wake-up/src/harness_log.rs
@@ -18,30 +18,38 @@ allowed_paths:
 - Makefile
 - .bboxy/reports/**
 - .bboxy/runs/codex-ui-status.json
-verify: make verify-ui-status
-acceptance:
-- Thinking/status presentation remains clean; multiline raw commands cannot escape header/sidebar geometry
-- Raw command details remain in tool content, while pane/status titles are concise bounded single-line labels
-- Read-only preserve-backend refusal distinguishes schema/version/PATH mismatches without leaking secrets or weakening guards
-- Focused geometry/parser/readonly diagnostic tests and affected compilation pass; no backend restart or operator input
-id: 01M6KGR1300A1GX09F02F0WX1F
-status: accepted
-delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T15:18:39.802Z
-created: 2026-11-04T14:52:27.762Z
-number: 93377961359734
-created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-updated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-authorship:
-  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  kind: seat
-  public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
-  process_generation: '1'
 assignee: seat:01M6KGM9DJ6TH7222SFTQM2D0Y
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CE33S5R294YHHD64DP6BD
+created: 2026-11-04T14:52:27.762Z
+created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+id: 01M6KGR1300A1GX09F02F0WX1F
+number: 93377961359734
+parent: 01M6KEVVYNZW5H21RPTFW1RVDR
+report:
+  commit: 8743dae8c1e6c977d32e0ca538526cbb423d48b6
+  op_id: 01M6KHZZ2YP8PZKSAYDGQ6GTH6
+  report: '[[reports/2026-11-04-ui-status-delivery.md]]'
+  reported_by: seat:01M6KGM9DJ6TH7222SFTQM2D0Y
+  summary: 'Implemented bounded single-line harness operation captions and clipped sidebar/strip text while retaining Thinking, raw tool details and action geometry; added allowlisted expected/observed compatibility diagnostics without changing preservation guards. Signed source 727ee898740e31f38d59461c4f157547b1495cd4 and exact indexed report 8743dae8c1e6c977d32e0ca538526cbb423d48b6; both signatures verified, worktree clean. make verify-ui-status exit 0 (14 harness + 5 app tests and affected strict compile); make test-licenses exit 0. Bounded public production probe intentionally refused with exit 1: PATH fingerprint expected 78c1d194ec384ba9, observed d74860b838acf725; all five versions match. No refresh/restart/detach/install/integration performed. Indexed report #93377961360452 carries evidence; compact receipt is .bboxy/runs/codex-ui-status.json. Artifact responsibility claim was terminally rejected as held/artifact record projection pending (operation 01M6KHYG08RGYMKW7H6QBFT0EP, confirmed by operation_status); no claim was assumed or retried.'
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Keep harness status titles concise and diagnose GUI-only compatibility refusal
+type: task
+updated: 2026-11-23T23:39:09.119Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make verify-ui-status
 verify_result:
   command: make verify-ui-status
-  exit_code: 0
   evidence:
   - criterion: Thinking/status presentation remains clean; multiline raw commands cannot escape header/sidebar geometry
     reference: crates/bboxy450-term/src/scene.rs:2613; native layout and existing view_switch_header_geometry_and_hits passed
@@ -51,19 +59,18 @@ verify_result:
     reference: crates/bboxy450-term/src/cockpit/gui_handoff.rs:317; crates/bboxy450-term/src/cockpit/gui_handoff.rs:372; .bboxy/runs/codex-ui-status.json production_probe
   - criterion: Focused geometry/parser/readonly diagnostic tests and affected compilation pass; no backend restart or operator input
     reference: make verify-ui-status exit 0; /tmp/codex-ui-status-verify-passed.log sha256:842cfbc72b8bcb2ad2dbe9956ba567b8c99816e52501ac91524ea6d42087d6c2; crates/bboxy450-term/tests/ui_status_probe.rs:15
-report:
-  summary: 'Implemented bounded single-line harness operation captions and clipped sidebar/strip text while retaining Thinking, raw tool details and action geometry; added allowlisted expected/observed compatibility diagnostics without changing preservation guards. Signed source 727ee898740e31f38d59461c4f157547b1495cd4 and exact indexed report 8743dae8c1e6c977d32e0ca538526cbb423d48b6; both signatures verified, worktree clean. make verify-ui-status exit 0 (14 harness + 5 app tests and affected strict compile); make test-licenses exit 0. Bounded public production probe intentionally refused with exit 1: PATH fingerprint expected 78c1d194ec384ba9, observed d74860b838acf725; all five versions match. No refresh/restart/detach/install/integration performed. Indexed report #93377961360452 carries evidence; compact receipt is .bboxy/runs/codex-ui-status.json. Artifact responsibility claim was terminally rejected as held/artifact record projection pending (operation 01M6KHYG08RGYMKW7H6QBFT0EP, confirmed by operation_status); no claim was assumed or retried.'
-  commit: 8743dae8c1e6c977d32e0ca538526cbb423d48b6
-  reported_by: seat:01M6KGM9DJ6TH7222SFTQM2D0Y
-  op_id: 01M6KHZZ2YP8PZKSAYDGQ6GTH6
-  verify_revision: 0
-  report: '[[reports/2026-11-04-ui-status-delivery.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-term-ui-status
 provenance:
   digest: sha256:488b92d3e77f3160d74d786f005ab3ab6f915832f4559847116185d51af71538
-  frontmatter_digest: sha256:fa89d31a5ddff97b2a2bfddbd2569b8969530f59768b81628c3f23e1f3ffc26f
-  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  sig: KG2HOzcqTp/5Se9ubl+cThjBUqN/k7lG1su1OCrhdNStCpYC3AjcYzS8Fzzfy9nH9E3ROksOrloBV5gGinIwBg==
-  log: .bboxy/log/2026-11-04.jsonl#119475
+  frontmatter_digest: sha256:840436943a773486b80b1d587c6350482dd0c4a615825ef04e665cba47f086ee
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: arjNfEb2WA5KABW838yFg3iN+UmbFPTYrvJkJATIIa98H4oNmNIXIuosPA0xKy2K8lbbKajVPSZFUqgn8R8vAA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1364
+  event:
+    id: 01M85CE5JFXHNNEZG3QH899S8T
+    sequence: 1364
+    hash: 64a1be7b12aea1f49ec8e52414732801a3294f166298481167249124ba027a74
 ---
 ROLE: EXECUTOR. Real bboxy450-harness/Codex ACP worker seat01M6KGM9DJ6TH7222SFTQM2D0Y. First orient and read this signed task. Own worktree /Users/feral/mydev/bboxy450-term-ui-status, branch codex-ui-status-20261104, basecadf6700cbdb3d3575b9fc0dad7567cb5c96f0c9 (all current term main and Oracle-owned commits, harness pind0e0c9a). Oracle owns ALL Git main updates/integration; do not fetch/pull/rebase/merge/cherry-pick, update pins, publish or install. Implement only the bounded source fixes and signed commits. Another producer worker owns GUI tool-card/profile/ACP model-effort code; no overlapping producer changes here.
 

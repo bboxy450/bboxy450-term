@@ -1,6 +1,4 @@
 ---
-type: task
-title: Research current Dreaming systems and design useful nested-harness MCP access
 allowed_paths:
 - research/dreaming-services-mcp.md
 - research/dreaming-services-mcp/vendor-apis.md
@@ -10,26 +8,40 @@ allowed_paths:
 - interfaces/dreaming-mcp.md
 - tasks/2026-11-05-dream-mcp-*.md
 - reports/2026-11-05-dreaming-sota-mcp-design.md
-verify: git diff --check
-id: 01M6P0K2WNQAT187215T2P8V3J
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T14:53:56.828Z
-created: 2026-11-05T14:07:49.498Z
-number: 93377961364646
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-role: architect
 assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CFDR0EB57V65YK2P4TZCG
+created: 2026-11-05T14:07:49.498Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+id: 01M6P0K2WNQAT187215T2P8V3J
+number: 93377961364646
+rejection:
+  by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+  reason: 'Research and staged tools-first direction are useful, but fix one implementation-blocking proof mismatch before acceptance. interfaces/dreaming-mcp ObservationProof requires source:EventPin for both episode and cluster. Actual producer src/dream/c1_wire.rs:359-375 gives an origin only to Episode; Cluster aggregates repo/fingerprint/count/times, and d0.rs:950-1001 can merge episodes across selected sessions. One event pin cannot certify an aggregate and no actual cluster event exists. Keep C1 wire unchanged: define exact result-page+row provenance for every observation (manifest/result/page digest and row index or equivalent canonical binding), episode-only origin nullable/typed variant, and bounded optional member links/coverage if offered; do not fabricate origins or imply one representative proves all members. Update Q1 draft/schema controls and concrete two-session aggregate example demonstrating tamper/membership/omitted-coverage behavior, without source rereplay or raw transcript export. Clarify Q1 is metadata/fingerprint investigation and Q2/Q3 supply reusable lesson guidance; no symptom-language matching from hashes. Also correct report''s malformed source-path attribution for ACP relay and precise task-extension negotiation wording against official current spec if needed. Append-only superseding report, full readbacks, same git diff --check. No source/code/new implementation or C1 scope changes.'
+report:
+  commit: null
+  op_id: 01M6P35BHQ6VPDSPDR5BF1MT6C
+  report: '[[reports/2026-11-05-dreaming-sota-mcp-design-review.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: 'Corrected the rejected observation proof: all rows bind exact C1 manifest/descriptor/page hashes and row index; only episodes retain EventPin origins, while clusters have bounded optional membership and explicit omitted coverage. Updated ICD/spec/Q1 controls and a two-session aggregate fixture prescription, with no C1 wire/source change or source rereplay. Q1 is literal metadata/fingerprint investigation; Q2/Q3 supply reusable lesson guidance. Corrected embedded-harness ACP relay paths and exact current MCP task negotiation. Fetched and added Mem0 dedicated Dream config/update, no-write preview, run/activity and source-lineage APIs with plan/limit uncertainty. All five updated artifacts and superseding report fully read back; git diff --check exited0, main342faefd and embedded harnessa2ca8f39 unchanged. Q1 remains open/unassigned; no tests/builds/service/account/credential/implementation actions.'
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Research current Dreaming systems and design useful nested-harness MCP access
+type: task
+updated: 2026-11-23T23:39:51.407Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Correct episode/cluster row provenance and bounded membership/coverage
     reference: interfaces/dreaming-mcp.md — ObservationProof/ResultRowPin/ClusterMembers; Two-session aggregate conformance case
@@ -39,22 +51,17 @@ verify_result:
     reference: research/dreaming-services-mcp.md; research/dreaming-services-mcp/harness-capabilities.md; interfaces/dreaming-mcp.md
   - criterion: Append-only superseding report, full readbacks, source hashes and actual check
     reference: reports/2026-11-05-dreaming-sota-mcp-design-review.md
-report:
-  summary: 'Corrected the rejected observation proof: all rows bind exact C1 manifest/descriptor/page hashes and row index; only episodes retain EventPin origins, while clusters have bounded optional membership and explicit omitted coverage. Updated ICD/spec/Q1 controls and a two-session aggregate fixture prescription, with no C1 wire/source change or source rereplay. Q1 is literal metadata/fingerprint investigation; Q2/Q3 supply reusable lesson guidance. Corrected embedded-harness ACP relay paths and exact current MCP task negotiation. Fetched and added Mem0 dedicated Dream config/update, no-write preview, run/activity and source-lineage APIs with plan/limit uncertainty. All five updated artifacts and superseding report fully read back; git diff --check exited0, main342faefd and embedded harnessa2ca8f39 unchanged. Q1 remains open/unassigned; no tests/builds/service/account/credential/implementation actions.'
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6P35BHQ6VPDSPDR5BF1MT6C
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dreaming-sota-mcp-design-review.md]]'
-rejection:
-  reason: 'Research and staged tools-first direction are useful, but fix one implementation-blocking proof mismatch before acceptance. interfaces/dreaming-mcp ObservationProof requires source:EventPin for both episode and cluster. Actual producer src/dream/c1_wire.rs:359-375 gives an origin only to Episode; Cluster aggregates repo/fingerprint/count/times, and d0.rs:950-1001 can merge episodes across selected sessions. One event pin cannot certify an aggregate and no actual cluster event exists. Keep C1 wire unchanged: define exact result-page+row provenance for every observation (manifest/result/page digest and row index or equivalent canonical binding), episode-only origin nullable/typed variant, and bounded optional member links/coverage if offered; do not fabricate origins or imply one representative proves all members. Update Q1 draft/schema controls and concrete two-session aggregate example demonstrating tamper/membership/omitted-coverage behavior, without source rereplay or raw transcript export. Clarify Q1 is metadata/fingerprint investigation and Q2/Q3 supply reusable lesson guidance; no symptom-language matching from hashes. Also correct report''s malformed source-path attribution for ACP relay and precise task-extension negotiation wording against official current spec if needed. Append-only superseding report, full readbacks, same git diff --check. No source/code/new implementation or C1 scope changes.'
-  by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+  exit_code: 0
 provenance:
   digest: sha256:7f41898026ed035fe27b440db2b002223c03cd8b4e5cae88befd7fe8a334cf3b
-  frontmatter_digest: sha256:1234fd6faef09a7196429124a2866b02e47d886a2de1d8a501b2153b929633f1
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: lFg8QgjqIYCYYZd3ufH+1DURzq5LtfpEcFA0Hliydt6TBbNVl6m7WgUSjpsFTugBtNSljhrQ7OPqJNnXvyB2Bw==
-  log: .bboxy/log/2026-11-05.jsonl#136991
+  frontmatter_digest: sha256:68360a7a79963860b1093ff857f38f8b5f523ec03d30ca990b33064dac03e261
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: jawiQEgaKeHBwvmY+lxKaMrp9n/oUvt095SqHocxgyA2cUealDBn8vySXjRynMXMFTl6Iu3b1eFZ4hX4iZ4uBg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1414
+  event:
+    id: 01M85CFEVHHQ31X5B6ZWKM0DX1
+    sequence: 1414
+    hash: 68dd2d6f1602f09f8756daddf7f69a34e04214bf3cc7f84ee90c4a9d6e6cd901
 ---
 ROLE: ARCHITECT
 

@@ -1,7 +1,4 @@
 ---
-type: task
-title: GUI process burns ~71% CPU in steady state; logic holds 1.2 GiB RSS
-role: executor
 allowed_paths:
 - crates/bboxy450-term/src/
 - crates/bbt-ui/src/
@@ -18,26 +15,37 @@ allowed_paths:
 - LAND.md
 - .bboxy/tasks/2026-11-06-gui-process-cpu.md
 - crates/bbt-doc/tests/corpus/correction_fixtures.rs
-verify: cargo nextest run -p bboxy450-term -p bboxy450-ui -E 'test(/idle|frame|redraw/)' && make test-formal-contracts
-status: accepted
-id: 01M6S4G4371KJKEN71AN5Y0AAQ
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-07T13:09:41.220Z
-created: 2026-11-06T19:13:50.090Z
-number: 93377961366091
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
 assignee: seat:01M6TQ312P1ZD2JPS1NQS3Y8JD
-verify_revision: 1
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CFG67TW7PMXX0HE030TXW
+created: 2026-11-06T19:13:50.090Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+id: 01M6S4G4371KJKEN71AN5Y0AAQ
+number: 93377961366091
+report:
+  commit: 8ced58cb2ed3e710d0351ce114469c3b8d6296ea
+  op_id: 01M6V21F204QX875YT931C99YS
+  report: '[[reports/2026-11-06-gui-process-cpu.md]]'
+  reported_by: seat:01M6TQ312P1ZD2JPS1NQS3Y8JD
+  summary: 'Landed signed commits 8d7c331a05e8a21388a88e9de54a4a659ac18c8e (implementation) and 8ced58cb2ed3e710d0351ce114469c3b8d6296ea (exact committed KB report export); HEAD equals origin/main and the worktree is clean. Six-seat native measurements: quiet 0.10% core/0 frames, visible waiting 5.17%/24.97 retained fps/0 full frames, occluded 0%/0 frames; all three real redraw controls refute their budgets. Lean landing, 460 app tests, corpus checks, affected-dependent checks, licenses, explicit native gate and 681-model native/TLC parity pass; final formal receipt f5e81d4f88bd322d6a79a68184b9c7b719b40a65950f0b75cbf69163518ab7be verifies clean current HEAD. Report includes private sample/vmmap evidence and the per-structure RSS inventory: fresh logic allocation plateau is stable, aggregate workspace indexes lack eviction bounds, and the original 1.2 GiB remains unattributed. No reinstall. Workflow gap: artifact_claim returned artifact_not_committed twice for the committed KB checkpoint; no explicit claim was recorded.'
+  verify_revision: 1
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: GUI process burns ~71% CPU in steady state; logic holds 1.2 GiB RSS
+type: task
+updated: 2026-11-23T23:39:54.027Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: cargo nextest run -p bboxy450-term -p bboxy450-ui -E 'test(/idle|frame|redraw/)' && make test-formal-contracts
 verify_result:
   command: cargo nextest run -p bboxy450-term -p bboxy450-ui -E 'test(/idle|frame|redraw/)' && make test-formal-contracts
-  exit_code: 0
   evidence:
   - criterion: Profile six private seats without touching the operator app
     reference: /tmp/bboxy-idle-cpu-0dtepapd/gui.sample.txt:55 — unchanged-frame App::redraw/solve_ui/layout work; /tmp/bboxy-idle-cpu-wp5oombf/gui.sample.txt:59 — retained draw_attention. All six sample/vmmap status records per fixture exit 0.
@@ -53,23 +61,18 @@ verify_result:
     reference: /tmp/gui-cpu-land-final.log — LANDED 8ced58cb2ed3e710d0351ce114469c3b8d6296ea, exit 0; both commits verify key 9B07E849480C68328CA20684844ECC0587DE7AB0; HEAD == origin/main, clean git status; report SHA256 229c3a8572d7ee91ca79ca715b51fdeb2e92fea7fe1c04510e7ee57057a99139 matches committed KB checkpoint 45c607204b9fd7736ee43f1a307b0a1f1e122c31.
   - criterion: Artifact responsibility workflow limitation
     reference: knowledge_fetch reports publication_state committed and checkpoint 01M6V0T4068W85A45XCK4SB3NF; provenance_get records produced_by this seat. artifact_claim operations 01M6V0TC3PHX8GWRN40HYCF691 and 01M6V0V4BSYZ35FP1CNMRA7SMS both refused artifact_not_committed; no bypass/retry after the second refusal.
-report:
-  summary: 'Landed signed commits 8d7c331a05e8a21388a88e9de54a4a659ac18c8e (implementation) and 8ced58cb2ed3e710d0351ce114469c3b8d6296ea (exact committed KB report export); HEAD equals origin/main and the worktree is clean. Six-seat native measurements: quiet 0.10% core/0 frames, visible waiting 5.17%/24.97 retained fps/0 full frames, occluded 0%/0 frames; all three real redraw controls refute their budgets. Lean landing, 460 app tests, corpus checks, affected-dependent checks, licenses, explicit native gate and 681-model native/TLC parity pass; final formal receipt f5e81d4f88bd322d6a79a68184b9c7b719b40a65950f0b75cbf69163518ab7be verifies clean current HEAD. Report includes private sample/vmmap evidence and the per-structure RSS inventory: fresh logic allocation plateau is stable, aggregate workspace indexes lack eviction bounds, and the original 1.2 GiB remains unattributed. No reinstall. Workflow gap: artifact_claim returned artifact_not_committed twice for the committed KB checkpoint; no explicit claim was recorded.'
-  commit: 8ced58cb2ed3e710d0351ce114469c3b8d6296ea
-  reported_by: seat:01M6TQ312P1ZD2JPS1NQS3Y8JD
-  op_id: 01M6V21F204QX875YT931C99YS
-  verify_revision: 1
-  report: '[[reports/2026-11-06-gui-process-cpu.md]]'
+  exit_code: 0
+verify_revision: 1
 provenance:
   digest: sha256:90f531c0572b7a83e6285a81deca67fc72f4a691b52dbd0e81a29d3510634b7b
-  frontmatter_digest: sha256:69b8a3256ea81254731e1be94b59d61725a41879fe133d1590076876ecbae642
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: fPFgwccCbx4MjITKMNsHVxPwrHquWWf+b6T9Vw8EfNd/cEdG46UTMT2UQQ6sbu3WWRphO8mwKN0s/JHtdrmEAw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150348
+  frontmatter_digest: sha256:940e7d709ea4b68a9dd53d0cbe31cf38ebcd319cbeb1bc49bebad44721e4fb98
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: 16f+juW07YnDdexWf2VVd05/ILpuK22vKmHYXga7FmLfoWXKadDljdXwUOsjQ2qZmALlMVsavsFi4dkUdCkuAw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1418
   event:
-    id: 01M6V222TE2FMPNHMYT9R4QHFZ
-    sequence: 150348
-    hash: c2d1761c9765aed93c71529e355920e889abfb283e50ff6c4a19484b51c90891
+    id: 01M85CFHDBE3BEJ0HP05JKYN3P
+    sequence: 1418
+    hash: 9481268f0750a3dba4050b100cc591a01f348e44e76158e84bbdbae8a18e1c12
 ---
 # The GUI process is a large CPU consumer on its own
 

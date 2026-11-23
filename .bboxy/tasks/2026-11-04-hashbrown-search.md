@@ -1,7 +1,4 @@
 ---
-type: task
-title: Adopt measured hashbrown lookups and bounded KB search projections
-verify: make test-hashbrown
 allowed_paths:
 - Cargo.toml
 - Cargo.lock
@@ -22,33 +19,52 @@ allowed_paths:
 - crates/bboxy450-harness
 - crates/bboxy450-harness/tests/gui_render.rs
 - crates/bboxy450-harness/.bboxy/runs/2026-11-04-render-init.json
+artifacts:
+- '[[01M6KW3FCFEZ2VJ34M2QKENTNN]]'
+assignee: seat:01M6KN12436S0N6CJDQ0RWBQNG
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: cngvldXrRMBr9iLkdhAb6I+UV0Ge1Ux7NMJCwOtzJh0=
+  signer: seat:01M85CCH2ESN9JPQ6S07CVAXDJ
+created: 2026-11-04T17:35:52.040Z
+created_by: seat:01M6KN12436S0N6CJDQ0RWBQNG
 criteria:
 - Hashbrown is adopted only in unordered hot lookups; ordered/public outputs and HashDoS-sensitive stores preserve their contract.
 - KB normalized-text and graph-score projections preserve search matches, ranking and cursor semantics, remain root/snapshot scoped and respect a fixed memory budget with uncached fallback.
 - Actual provider API tests cover edits, deletion, rename, clone/reopen, Unicode, graph weights/self-links/duplicate IDs, low-budget fallback and negative controls.
 - Bounded lifecycle model and broken controls pass native/Java parity; targeted unit/integration and smoke checks run unattended, signed landing gates pass.
 - Record source-bound performance comparison and full committed report; land signed changes through Make.
+delegated_by: seat:01M85CCH2ESN9JPQ6S07CVAXDJ
 id: 01M6KT39X6DZNJVEWNP4Z11Y23
-status: reported
-delegated_by: seat:01M6KN12436S0N6CJDQ0RWBQNG
-swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-04T22:17:48.481Z
-created: 2026-11-04T17:35:52.040Z
 number: 93377961361086
-created_by: seat:01M6KN12436S0N6CJDQ0RWBQNG
-updated_by: seat:01M6KN12436S0N6CJDQ0RWBQNG
-authorship:
-  signer: seat:01M6KN12436S0N6CJDQ0RWBQNG
-  kind: seat
-  public_key: 4FB10dq226S4+Z6CUKQrEvBUsQCbt4dAXA3Nd2bPO6o=
-  process_generation: '1'
+reconciliation:
+- by: seat:01M85CCH2ESN9JPQ6S07CVAXDJ
+  disposition: cancelled
+  evidence:
+  - 'git merge-base --is-ancestor: none of the SHAs cited in tasks/2026-11-04-hashbrown-search.md are ancestors of origin/main'
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M85CGEA41PR7GKY1MWJ4266F
+  previous_status: reported
+  reason: Reported, never accepted; no commit it cites is on origin/main
+report:
+  commit: 6d83c3b3208cc6f6704af36dd7cdd5db2a818bc6
+  op_id: 01M6MA7HA1GRXVQ52A7CBM2TWD
+  report: '[[reports/2026-11-04-hashbrown-search-delivery]]'
+  reported_by: seat:01M6KN12436S0N6CJDQ0RWBQNG
+  summary: 'Implemented bounded KB search projections and borrowed glyph/text-width hashbrown lookups; signed local branch perf/hashbrown-search-20261104, committed report 6d83c3b3208cc6f6704af36dd7cdd5db2a818bc6. Final make test-hashbrown exits 0 (27 tests and real red/green digest mutation); make test-formal/check-formal-evidence exit 0 (383 models, 159 contracts, 34 crates). Parent landing remains blocked: full gate has 17 failures and private smoke fails idle callbacks. Latest upstream still has a proven missing-task record blocker. Criteria 4/5 landing portions are unmet; do not accept. Standalone producer repair afe92da is separately green and landed; parent changes are unpushed.'
+  verify_revision: 0
 role: solo
-assignee: seat:01M6KN12436S0N6CJDQ0RWBQNG
-artifacts:
-- '[[01M6KW3FCFEZ2VJ34M2QKENTNN]]'
+status: done
+swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
+title: Adopt measured hashbrown lookups and bounded KB search projections
+type: task
+updated: 2026-11-23T23:40:25.758Z
+updated_by: seat:01M85CCH2ESN9JPQ6S07CVAXDJ
+verify: make test-hashbrown
 verify_result:
   command: make test-hashbrown
-  exit_code: 0
   evidence:
   - criterion: Hashbrown is adopted only in unordered hot lookups; ordered/public outputs and HashDoS-sensitive stores preserve their contract.
     reference: reports/2026-11-04-hashbrown-search-delivery.md; runs/2026-11-04-hashbrown-delivery.json — source/API/negative-control evidence, final source 5a11647087f9e1a8af8acb37011804cba0d2ac67.
@@ -60,19 +76,17 @@ verify_result:
     reference: 'reports/2026-11-04-hashbrown-search-delivery.md — PARTIAL/UNMET: parent full gate and smoke red; no parent landing; runs/2026-11-04-hashbrown-delivery.json records actual exits.'
   - criterion: Record source-bound performance comparison and full committed report; land signed changes through Make.
     reference: 'reports/2026-11-04-hashbrown-search-delivery.md — PARTIAL/UNMET: parent full gate and smoke red; no parent landing; runs/2026-11-04-hashbrown-delivery.json records actual exits.'
-report:
-  summary: 'Implemented bounded KB search projections and borrowed glyph/text-width hashbrown lookups; signed local branch perf/hashbrown-search-20261104, committed report 6d83c3b3208cc6f6704af36dd7cdd5db2a818bc6. Final make test-hashbrown exits 0 (27 tests and real red/green digest mutation); make test-formal/check-formal-evidence exit 0 (383 models, 159 contracts, 34 crates). Parent landing remains blocked: full gate has 17 failures and private smoke fails idle callbacks. Latest upstream still has a proven missing-task record blocker. Criteria 4/5 landing portions are unmet; do not accept. Standalone producer repair afe92da is separately green and landed; parent changes are unpushed.'
-  commit: 6d83c3b3208cc6f6704af36dd7cdd5db2a818bc6
-  reported_by: seat:01M6KN12436S0N6CJDQ0RWBQNG
-  op_id: 01M6MA7HA1GRXVQ52A7CBM2TWD
-  verify_revision: 0
-  report: '[[reports/2026-11-04-hashbrown-search-delivery]]'
+  exit_code: 0
 provenance:
   digest: sha256:8cdf7b81f41701feaeef8f823c41f2d0f9b03af99dd5ce8373d03463439feaaf
-  frontmatter_digest: sha256:f7f6e5f5d2ced561f7bcc724d82609438e9ace32d84c662e8f827f7e9db9c4de
-  signer: seat:01M6KN12436S0N6CJDQ0RWBQNG
-  sig: /IjLIE2NW5B2vUM/XlGMoM2xx2i9E2UNtoGyqhWXMEVKR54YsNz4aSpQYz8+zopPnmn7VcLp+SzeJMWEsuFFDg==
-  log: .bboxy/log/2026-11-04.jsonl#130904
+  frontmatter_digest: sha256:62e8126b8a17b9632179e001c7b380e1719e412c7cbb7eca1235d74c0611a8c0
+  signer: seat:01M85CCH2ESN9JPQ6S07CVAXDJ
+  sig: 1CB5T7NXpfiOQRmfQZgS0ml4/8n9mRQnP71APFoxqXpJhna0wfy7dJ9dsRyvNJQSVnauIJN5mTMPWWJdBtszCA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1452
+  event:
+    id: 01M85CGGD5QS6BGJ0WW84P5WP9
+    sequence: 1452
+    hash: 5d1849a601301dd36cf73aff31979767d7bedeb101cca7dc09d3b66c4b717b99
 ---
 ROLE: SOLO — Vesper Greywind; direct operator implementation request, 2026-11-04.
 

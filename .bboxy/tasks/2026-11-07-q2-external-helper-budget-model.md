@@ -1,31 +1,40 @@
 ---
-type: task
-title: 'DESIGN: should external background-QoS helper processes be 1 ms-sliced at all? (5 qualification rounds failed on physical timing)'
-role: architect
 allowed_paths:
 - .bboxy/decisions/
 - .bboxy/specs/
 - .bboxy/interfaces/
 - .bboxy/reports/
-verify: test -n "$(ls .bboxy/decisions/*helper*budget* .bboxy/decisions/*external-helper* 2>/dev/null)"
-status: accepted
-id: 01M6VASDCG1SJBSGRVB2ACJMYJ
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-07T15:55:08.982Z
-created: 2026-11-07T15:42:14.881Z
-number: 93377961366277
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
 assignee: seat:01M6VASNV9NAZRZ5JHQ7ER9PPX
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CFNEANPQ5027GX2FCET9X
+created: 2026-11-07T15:42:14.881Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+id: 01M6VASDCG1SJBSGRVB2ACJMYJ
+number: 93377961366277
+report:
+  commit: null
+  op_id: 01M6VBG5YVDCTA2ET6Z0TBZG13
+  report: '[[reports/2026-11-07-q2-external-helper-budget-model]]'
+  reported_by: seat:01M6VASNV9NAZRZ5JHQ7ER9PPX
+  summary: 'Chose option (b), recorded in decision d93377961366280-dream-q2-external-helper-budget. External Git/GPG helpers are no longer sliced into 1 ms grants. The new law: posix_spawn with SETPGROUP and background QoS, with an observed priority of 4 as a hard gate. CPU caps are ≤250 ms per command and ≤3 s per job, enforced by live RI reads with SIGKILL, and the leader''s own wait4 is the terminal verdict. The job pays 9× rest debt on that CPU after the reap. Wall time is bounded by the existing 30 s deadline. Memory keeps the existing shares plus a terminal ru_maxrss ≤16 MiB. Foreground is a single SIGSTOP pause inside the existing 100 ms gate. The 65086 1 ms law is unchanged for all work on our own threads. The 65126 per-grant section is superseded, and 65489 and 66236 are superseded for external helpers, including 66236''s clarifications 1 and 2, T and N_reaped. The decision''s clause table lists what stays. The reason: in run 4 the controller spent more CPU (3.10 ms) supervising than the helper spent working (2.36 ms), and slicing measures the run queue, not UI responsiveness. Settlement_unknown ruling: an expected exit race, misrecorded by a probe bug. kill(-pgid) returns EPERM on a zombie-only group, observed on this machine. The probe at :4383-4389 discards the errno and never retracts the unknown after its own reap and group-gone. The fix is to apply 66050''s pending-terminal state to the final kill. Run 4 stays FAILED. I updated the spec paragraph and its verification row and the ICD lifetime paragraphs through knowledge_write. Both bodies diff equal against the expected replacements. The new model Q2HelperTotalBudget has 5 invariants and 8 broken controls, each with a real witness. Nothing was implemented or committed. One host defect found: knowledge_write drops created/created_by on update unless they are resupplied; I restored them on the spec.'
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: 'DESIGN: should external background-QoS helper processes be 1 ms-sliced at all? (5 qualification rounds failed on physical timing)'
+type: task
+updated: 2026-11-23T23:39:59.259Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: test -n "$(ls .bboxy/decisions/*helper*budget* .bboxy/decisions/*external-helper* 2>/dev/null)"
 verify_result:
   command: test -n "$(ls .bboxy/decisions/*helper*budget* .bboxy/decisions/*external-helper* 2>/dev/null)"
-  exit_code: 0
   evidence:
   - criterion: Decision written under .bboxy/decisions
     reference: .bboxy/decisions/d93377961366280-dream-q2-external-helper-budget.md
@@ -37,23 +46,17 @@ verify_result:
     reference: specs/dreaming-mcp.md digest fbf88448; interfaces/dreaming-mcp.md digest ab56be9c; both bodies diff-equal to expected
   - criterion: Gates and broken controls
     reference: d93377961366280 section 'Verification' (Q2HelperTotalBudget, 8 controls)
-report:
-  summary: 'Chose option (b), recorded in decision d93377961366280-dream-q2-external-helper-budget. External Git/GPG helpers are no longer sliced into 1 ms grants. The new law: posix_spawn with SETPGROUP and background QoS, with an observed priority of 4 as a hard gate. CPU caps are ≤250 ms per command and ≤3 s per job, enforced by live RI reads with SIGKILL, and the leader''s own wait4 is the terminal verdict. The job pays 9× rest debt on that CPU after the reap. Wall time is bounded by the existing 30 s deadline. Memory keeps the existing shares plus a terminal ru_maxrss ≤16 MiB. Foreground is a single SIGSTOP pause inside the existing 100 ms gate. The 65086 1 ms law is unchanged for all work on our own threads. The 65126 per-grant section is superseded, and 65489 and 66236 are superseded for external helpers, including 66236''s clarifications 1 and 2, T and N_reaped. The decision''s clause table lists what stays. The reason: in run 4 the controller spent more CPU (3.10 ms) supervising than the helper spent working (2.36 ms), and slicing measures the run queue, not UI responsiveness. Settlement_unknown ruling: an expected exit race, misrecorded by a probe bug. kill(-pgid) returns EPERM on a zombie-only group, observed on this machine. The probe at :4383-4389 discards the errno and never retracts the unknown after its own reap and group-gone. The fix is to apply 66050''s pending-terminal state to the final kill. Run 4 stays FAILED. I updated the spec paragraph and its verification row and the ICD lifetime paragraphs through knowledge_write. Both bodies diff equal against the expected replacements. The new model Q2HelperTotalBudget has 5 invariants and 8 broken controls, each with a real witness. Nothing was implemented or committed. One host defect found: knowledge_write drops created/created_by on update unless they are resupplied; I restored them on the spec.'
-  commit: null
-  reported_by: seat:01M6VASNV9NAZRZ5JHQ7ER9PPX
-  op_id: 01M6VBG5YVDCTA2ET6Z0TBZG13
-  verify_revision: 0
-  report: '[[reports/2026-11-07-q2-external-helper-budget-model]]'
+  exit_code: 0
 provenance:
   digest: sha256:8a7f0d84f4dcb86515ab610c11989e7fa8c7fd12073b43fef9e8193c7cd689bf
-  frontmatter_digest: sha256:16dc3c21b5ca9c46ceab4326509531ec06a780bec0a07db719816fac056f5fea
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: x88ZR+3gQYCsdYYynFdaXDfWjCen2IrIErRG08AtcSkS6AvEy7JCQvJWFzv6UANu84h4xG3uHH4jL6jM/vcmDQ==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150387
+  frontmatter_digest: sha256:421c5f7536a7450c39e7af9ad1be0b47f3338ec5641b0664a427ca5e601b79bd
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: 7hDA7Tob+xtC29vIIfzNZfybnbQOo4zHnITrjI/OiowPSH3qyDSbF61shozXIhOxAHXijHIyZBCCRzbFLImrDA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1426
   event:
-    id: 01M6VBH1WQRX03NC5NAHF5Y8PQ
-    sequence: 150387
-    hash: 725dc4b1a1e0537406e9e25e3c133c8eb310695c7d92acd10ebf5cc99c262258
+    id: 01M85CFPGTMNBRP36XXBS2492H
+    sequence: 1426
+    hash: 074f0021003ab7ebfca9262f9d714fbeb4f70a32d442f2a94838710944182106
 ---
 # Is per-grant 1 ms slicing of an external helper process the right model?
 

@@ -1,9 +1,9 @@
 ---
-type: task
-title: Compact tool cards and highlight expandable Python snippets
-role: executor
-parent: '[[01M6KEVVYNZW5H21RPTFW1RVDR]]'
-worktree: /Users/feral/mydev/bboxy450-harness-land
+acceptance:
+- ACP commands and MCP tool names use concise bounded headings without repeated raw scripts
+- Unambiguous Python snippets use the shared highlighted Markdown code renderer and retain the exact original command
+- Compact and expanded command/output panes retain full accessible content at narrow and wide sizes
+- Focused native realistic MCP expansion, code highlighting and geometry checks plus affected strict compile pass
 allowed_paths:
 - src/frontends/gui/face.rs
 - src/frontends/gui/face_rows.rs
@@ -17,32 +17,40 @@ allowed_paths:
 - .bboxy/reports/**
 - .bboxy/runs/codex-quiet-code-cards.json
 - .bboxy/tasks/2026-11-04-quiet-code-cards.md
-verify: make verify-quiet-code-cards
-acceptance:
-- ACP commands and MCP tool names use concise bounded headings without repeated raw scripts
-- Unambiguous Python snippets use the shared highlighted Markdown code renderer and retain the exact original command
-- Compact and expanded command/output panes retain full accessible content at narrow and wide sizes
-- Focused native realistic MCP expansion, code highlighting and geometry checks plus affected strict compile pass
-id: 01M6KKT8V4RPMB0PDYQH15S5A7
-status: accepted
-delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T16:29:24.142Z
-created: 2026-11-04T15:46:04.710Z
-number: 93377961360920
-created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-updated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-authorship:
-  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  kind: seat
-  public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
-  process_generation: '1'
-assignee: seat:01M6KF1JD34QA47CQP34FRJN5Z
 artifacts:
 - '[[01M6KN9D9R3SPM5FGY43QVTDEM]]'
+assignee: seat:01M6KF1JD34QA47CQP34FRJN5Z
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CE0C1N9QCQ4EC7VXPJJZQ
+created: 2026-11-04T15:46:04.710Z
+created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+id: 01M6KKT8V4RPMB0PDYQH15S5A7
+number: 93377961360920
+parent: '[[01M6KEVVYNZW5H21RPTFW1RVDR]]'
+report:
+  commit: e557d3641205afe475b89ee1edc67118b7ae255f
+  op_id: 01M6KND3CDJ53XC3MX5T6DVJTG
+  report: '[[reports/2026-11-04-quiet-code-cards-delivery.md]]'
+  reported_by: seat:01M6KF1JD34QA47CQP34FRJN5Z
+  summary: 'Amended handoff clarification completed in signed record-only commit e557d3641205afe475b89ee1edc67118b7ae255f: copied the exact indexed task snapshot (sha256:9647c6897a85e3f01d2d9ee5a85338361d91847411ebd9b9e5b24439259ab6fd) into the explicitly authorized local task path. Source 0c5b221 and report 5c230a7 are unchanged; all 81 recorded source hashes, three exit-0 command logs and exact report bytes were rechecked successfully. Reused the existing make verify-quiet-code-cards exit-0 evidence as instructed; no suites rerun or source changes. Signature verification and git diff --check exited 0; worktree clean.'
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Compact tool cards and highlight expandable Python snippets
+type: task
+updated: 2026-11-23T23:39:04.732Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make verify-quiet-code-cards
 verify_result:
   command: make verify-quiet-code-cards
-  exit_code: 0
   evidence:
   - criterion: ACP commands and MCP tool names use concise bounded headings without repeated raw scripts
     reference: reports/2026-11-04-quiet-code-cards-delivery.md; src/frontends/gui/face.rs:1135; src/frontends/gui/face_rows.rs:909; tests/gui_rich.rs:2017; target/quiet-code-cards/native-name-title-geometry-and-mcp-raster.log (exit 0).
@@ -52,19 +60,18 @@ verify_result:
     reference: reports/2026-11-04-quiet-code-cards-delivery.md; tests/gui_rich.rs:1821,2017,2201; 280/1120px and 90/100/160% compact/expanded geometry plus first/last source/output and two-axis scrolling; 280/640px real MCP captures and output tail.
   - criterion: Focused native realistic MCP expansion, code highlighting and geometry checks plus affected strict compile pass
     reference: '.bboxy/runs/codex-quiet-code-cards.json sha256:02707cc2a5be32439d46a69b020c9419ec6f530eccd655da693d932ce4360865; make verify-quiet-code-cards exit 0: three unit checks, three native checks, strict embedded clippy; three hashed command logs and two hashed Metal raster captures.'
-report:
-  summary: 'Amended handoff clarification completed in signed record-only commit e557d3641205afe475b89ee1edc67118b7ae255f: copied the exact indexed task snapshot (sha256:9647c6897a85e3f01d2d9ee5a85338361d91847411ebd9b9e5b24439259ab6fd) into the explicitly authorized local task path. Source 0c5b221 and report 5c230a7 are unchanged; all 81 recorded source hashes, three exit-0 command logs and exact report bytes were rechecked successfully. Reused the existing make verify-quiet-code-cards exit-0 evidence as instructed; no suites rerun or source changes. Signature verification and git diff --check exited 0; worktree clean.'
-  commit: e557d3641205afe475b89ee1edc67118b7ae255f
-  reported_by: seat:01M6KF1JD34QA47CQP34FRJN5Z
-  op_id: 01M6KND3CDJ53XC3MX5T6DVJTG
-  verify_revision: 0
-  report: '[[reports/2026-11-04-quiet-code-cards-delivery.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-land
 provenance:
   digest: sha256:cb99d176fb4d87f309b6daaabb236a4d333cbe032dd1346a02bcca4c5633766e
-  frontmatter_digest: sha256:715374f8a7f0bd224b54db2e30c12d8cd45ae17ea938008d18eaec3032ca061b
-  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  sig: rtecf/C+kHdMcU2DETU2PdFlkXAwqfh2RsFg+YyHiM3aEAxoXmyKbyDj2ca+QqFa+VC6mk4SjLhQ6RAHF60xAQ==
-  log: .bboxy/log/2026-11-04.jsonl#121142
+  frontmatter_digest: sha256:235ba4ff73d2100054e27430eeed706047109c2d4aac047688536680544c0f5a
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: ZwukUr2dAfDqAcUSwbx5lWGKhkM2WuXFT+MUtBT+1E0JQCvPCX2qxBkdwdMk4mJfp1hVOINqsH0KuyQCIY4GAQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1360
+  event:
+    id: 01M85CE1AB4CVNYJY0DX0AKGBP
+    sequence: 1360
+    hash: 566d9f8a5a2ff739b7bcfcae380fd623e61fde6923a91dc75874663ed8968f14
 ---
 ROLE: EXECUTOR.
 

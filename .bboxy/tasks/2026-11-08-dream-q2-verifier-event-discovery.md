@@ -1,8 +1,4 @@
 ---
-type: task
-title: Q2 event-driven verifier discovery (kqueue NOTE_FORK) for GS1 custody, hand off INPUT62
-role: executor
-worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 allowed_paths:
 - tests/fixtures/dream-read/proof-helper-probe.c
 - tests/fixtures/dream-read/private-engine-controls.c
@@ -16,28 +12,40 @@ allowed_paths:
 - verification/corpus.toml
 - verification/coverage.toml
 - reports/2026-11-08-dream-verifier-event-discovery.md
-verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
+assignee: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CFZDVS9SS2R34HCEND3FS
+created: 2026-11-08T10:00:57.503Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 derived_from:
 - '[[decisions/d93377961366280-dream-q2-external-helper-budget]]'
 - '[[tasks/2026-11-08-dream-q2-live-sample-esrch-race]]'
 id: 01M6X9N6ZW1BT2K65JJ4265RS8
-status: accepted
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-08T11:34:08.197Z
-created: 2026-11-08T10:00:57.503Z
 number: 93377961366356
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
-assignee: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+report:
+  commit: 7ab80fac868b53b1dfc690ef774fc3bfabbb18b8
+  op_id: 01M6XEZEVWFNXBJS0WS1CYMHM8
+  report: '[[reports/2026-11-08-dream-verifier-event-discovery.md]]'
+  reported_by: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+  summary: Landed signed7ab80fac868b53b1dfc690ef774fc3bfabbb18b8 (including signed4967eb4378e3166aa7532630ee427b69d41a7dae) on main. Owned leader kqueue watch now precedes controlled continuation; fork notifications immediately service the existing census/current-token child watch/sampler, with exact missed-fork versus no-verifier refusals and charged queue custody through original settlement. Four typed ledger diagnostics added; terminal fields/caps/debt/GS1GS2 unchanged. Current canonical C83/54mutants/56compiles/125commands0, exact model test1pass, full440-model/94-contract native-Java graph/verdict parity0, exact required four-chain ONCE0, literal make land0 and fresh remote/clean/signatures0. C24 original1.676834ms measured-witness outer1 preserved; authenticated amendedTask162e70d5 explicitly accepts actual between-poll lifetime, no narrow baseline timing retry. INPUT62 stored1448 with signed10-input/compiler/997-check325-header audit tuple; report committed KBb2e71b1d5e20d4e6623a5e513f36bd8326bdc2ee. Runtimefalse/no builder;26 historical deferrals and tool/whole-private30s gaps remain unproven.
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Q2 event-driven verifier discovery (kqueue NOTE_FORK) for GS1 custody, hand off INPUT62
+type: task
+updated: 2026-11-23T23:40:09.085Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
 verify_result:
   command: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
-  exit_code: 0
   evidence:
   - criterion: Leader watch before controlled continuation; bounded event wait; immediate strict census and child exec/exit watch; original queue custody and charged close
     reference: reports/2026-11-08-dream-verifier-event-discovery.md; proof-helper-probe.c SHA01e8578163768f9d463f70f1a1cc698a8f073e0ea91f911a7dd8c51465a5496d at2516/2552/2895/2919/3232/3286/3409; current C receipt677aab9ad9df97573aec9a29e0ddc09c10c5da7b3b6989a281b5eed35eab1eda,83/54/56/125 actual0
@@ -53,23 +61,18 @@ verify_result:
     reference: Stored1448/id01M6XEN9XDZ52N5XSD6DK948M3; tupleed5a20501df0327296578e30095521815b7125c78edd3fc5dc91e633d073c09b; receipt889764ffa41be7bbf486be80afb49e74e5b58d9f81a522a1516609043468dd1d; executablebab19b967fed5adc1ac82f278bc5869657fc54242ef522c0e4fe897a6b09523c; audit207d4db89f1789fb2c69fef6ee5aea88ff67f60ee50413dae8e61875f99786a5 actual997checks325headers0 with sys/event.h pinned
   - criterion: Full new committed report with actual failures/amendment/limits preserved
     reference: 'reports/2026-11-08-dream-verifier-event-discovery.md #93377961366359; KBb2e71b1d5e20d4e6623a5e513f36bd8326bdc2ee;26unchanged historicalignorednonpasses; no narrow baseline timing retry; runtimefalse,toolqualification/wholeprivate30sfit unproven'
-report:
-  summary: Landed signed7ab80fac868b53b1dfc690ef774fc3bfabbb18b8 (including signed4967eb4378e3166aa7532630ee427b69d41a7dae) on main. Owned leader kqueue watch now precedes controlled continuation; fork notifications immediately service the existing census/current-token child watch/sampler, with exact missed-fork versus no-verifier refusals and charged queue custody through original settlement. Four typed ledger diagnostics added; terminal fields/caps/debt/GS1GS2 unchanged. Current canonical C83/54mutants/56compiles/125commands0, exact model test1pass, full440-model/94-contract native-Java graph/verdict parity0, exact required four-chain ONCE0, literal make land0 and fresh remote/clean/signatures0. C24 original1.676834ms measured-witness outer1 preserved; authenticated amendedTask162e70d5 explicitly accepts actual between-poll lifetime, no narrow baseline timing retry. INPUT62 stored1448 with signed10-input/compiler/997-check325-header audit tuple; report committed KBb2e71b1d5e20d4e6623a5e513f36bd8326bdc2ee. Runtimefalse/no builder;26 historical deferrals and tool/whole-private30s gaps remain unproven.
-  commit: 7ab80fac868b53b1dfc690ef774fc3bfabbb18b8
-  reported_by: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
-  op_id: 01M6XEZEVWFNXBJS0WS1CYMHM8
-  verify_revision: 0
-  report: '[[reports/2026-11-08-dream-verifier-event-discovery.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-read-q2
 provenance:
   digest: sha256:b365e85216b7468246df12c5b40725c909a119c47c057c8d9f9cbfd143cc24cc
-  frontmatter_digest: sha256:1edca19bdd663260038a8f18fcd4c05f3d4373c842d4cbdc57b5289693e42146
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: qrX6qYZk/ofJRhk58VwZlxUckQzi84W1yFhUOO18LS8ha3AGRDc9RvKlz+/R/dR5BPo2UrHx5d//7NbOfFh5Cw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150658
+  frontmatter_digest: sha256:50526c48cdb7e730983a2b7446e95585b26234f16b4c58483e32b87ccb5621d3
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: zI6B9Awxr0SVKgrTogeMXSQOYhsiB+jKIwjOGx/s0IrLZ16QoeL4Kxdf89LIbVN/He0sIErU1Nqz/t7W136+Dw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1442
   event:
-    id: 01M6XEZV61ZR3044EGHJGNAE7D
-    sequence: 150658
-    hash: d5cb98be1db66e28bb38ae1a220a1e6212bd128a5fb377e3a4ddd5277fc52e35
+    id: 01M85CG049WFYBS23NQMWT8WGC
+    sequence: 1442
+    hash: 03026714e77c0fbbf603c0238466a24dfa5587c8ec9fdfcaa957ea62e2e0d1ce
 ---
 ROLE: EXECUTOR
 

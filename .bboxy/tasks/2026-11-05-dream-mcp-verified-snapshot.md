@@ -1,7 +1,4 @@
 ---
-type: task
-title: Q2 implement bounded already-published verified Dream read snapshots
-role: executor
 allowed_paths:
 - tests/fixtures/dream-bootstrap/process.rs
 - verification/upstream/scripts-test-formal.py
@@ -48,31 +45,42 @@ allowed_paths:
 - src/gateway/unix.rs
 - src/engine/mod.rs
 - tests/seat_process.rs
-verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
+assignee: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CEZG0KMTN77QEY370WP9C
+created: 2026-11-05T14:27:22.336Z
+created_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+depends_on:
+- '[[tasks/2026-11-05-dream-c1-producer]]'
 derived_from:
 - '[[research/dreaming-services-mcp]]'
 - '[[specs/dreaming-mcp]]'
-depends_on:
-- '[[tasks/2026-11-05-dream-c1-producer]]'
 id: 01M6P1PTMD3SDRJ4JQFFV2AXV8
-status: accepted
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-08T05:54:52.670Z
-created: 2026-11-05T14:27:22.336Z
 number: 93377961364661
-created_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
-verify_revision: 2
-assignee: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+report:
+  commit: af5de27c33d46cdcb04510e863ef95fdc835c3ec
+  op_id: 01M6WVHRA8H1YVX0HCJKDHY6ZR
+  report: '[[reports/2026-11-08-dream-mcp-strict-tree-peel-correction-landed.md]]'
+  reported_by: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
+  summary: 'Landed signed af5de27c33d46cdcb04510e863ef95fdc835c3ec on origin/main, clean, including strict parser cut a7c08e65df64c8ed8a4a0ce3ad9daf96cba90373. Only registered terminal ^{tree} stays literal; unknown/malformed braces refuse. Current C17 canonical suite0: 68 baselines, 41 source mutants, 43 compiles, 88 commands. The EXACT task verify command actually returned0 (log e6646b37dc28299dbd2dd4462a7de277e3667bed77978df67fc1367d4a63f8cf), followed by current canonical strict/nextest/C1-integration/validator/signature/push0. Fresh432-model/93-contract native/TLC parity and immutable6e73 archive are retained; actual worker profiles and same-inode observers preserved. Input59/message1415 ten blobs remain unchanged by source60''s single authorized readiness-wall ignore;26 task-specific deferrals are non-passes. Source59 exact-chain2 and C16 RED remain preserved. Full private30s fit/qualification remain UNPROVEN, runtime_approved=false, no genuine builder births. Full correction report committed at native checkpoint847218b1339621278bdb8833aae64b32404b5ae6.'
+  verify_revision: 2
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Q2 implement bounded already-published verified Dream read snapshots
+type: task
+updated: 2026-11-23T23:39:36.306Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
 verify_result:
   command: make test-dream-c1 && make test-dream-mcp && make test-formal-parity && make check-embedded-build
-  exit_code: 0
   evidence:
   - criterion: Distinct prepare-read wire, exact context/manifest binding and bounded immutable pages/descriptor.
     reference: reports/2026-11-08-dream-mcp-strict-tree-peel-correction-landed.md; target/dream-read-q2-restart-01M6RZZXSHZT3KHBK1QC7K3XB3/source60-current-acceptance-source-map.json#wire; src/frontends/headless.rs:32; exact current four-chain0 log SHA256 e6646b37dc28299dbd2dd4462a7de277e3667bed77978df67fc1367d4a63f8cf; current receipt SHA256 481b7d186542a5def4e83183d75a98f66d61502ba6b6e9ba76e6bda11f0f580a;26 explicit deferrals/qualification limits retained
@@ -102,23 +110,18 @@ verify_result:
     reference: reports/2026-11-08-dream-mcp-strict-tree-peel-correction-landed.md; target/dream-read-q2-restart-01M6RZZXSHZT3KHBK1QC7K3XB3/source60-current-acceptance-source-map.json#provenance; src/dream/read.rs:2648; exact current four-chain0 log SHA256 e6646b37dc28299dbd2dd4462a7de277e3667bed77978df67fc1367d4a63f8cf; current receipt SHA256 481b7d186542a5def4e83183d75a98f66d61502ba6b6e9ba76e6bda11f0f580a;26 explicit deferrals/qualification limits retained
   - criterion: Canonical current-source gates and remote main containment before final handoff.
     reference: reports/2026-11-08-dream-mcp-strict-tree-peel-correction-landed.md; target/dream-read-q2-restart-01M6RZZXSHZT3KHBK1QC7K3XB3/source60-current-acceptance-source-map.json#landing; scripts/land.py:112; exact current four-chain0 log SHA256 e6646b37dc28299dbd2dd4462a7de277e3667bed77978df67fc1367d4a63f8cf; current receipt SHA256 481b7d186542a5def4e83183d75a98f66d61502ba6b6e9ba76e6bda11f0f580a;26 explicit deferrals/qualification limits retained
-report:
-  summary: 'Landed signed af5de27c33d46cdcb04510e863ef95fdc835c3ec on origin/main, clean, including strict parser cut a7c08e65df64c8ed8a4a0ce3ad9daf96cba90373. Only registered terminal ^{tree} stays literal; unknown/malformed braces refuse. Current C17 canonical suite0: 68 baselines, 41 source mutants, 43 compiles, 88 commands. The EXACT task verify command actually returned0 (log e6646b37dc28299dbd2dd4462a7de277e3667bed77978df67fc1367d4a63f8cf), followed by current canonical strict/nextest/C1-integration/validator/signature/push0. Fresh432-model/93-contract native/TLC parity and immutable6e73 archive are retained; actual worker profiles and same-inode observers preserved. Input59/message1415 ten blobs remain unchanged by source60''s single authorized readiness-wall ignore;26 task-specific deferrals are non-passes. Source59 exact-chain2 and C16 RED remain preserved. Full private30s fit/qualification remain UNPROVEN, runtime_approved=false, no genuine builder births. Full correction report committed at native checkpoint847218b1339621278bdb8833aae64b32404b5ae6.'
-  commit: af5de27c33d46cdcb04510e863ef95fdc835c3ec
-  reported_by: seat:01M6RZZXSHZT3KHBK1QC7K3XB3
-  op_id: 01M6WVHRA8H1YVX0HCJKDHY6ZR
-  verify_revision: 2
-  report: '[[reports/2026-11-08-dream-mcp-strict-tree-peel-correction-landed.md]]'
+  exit_code: 0
+verify_revision: 2
 provenance:
   digest: sha256:1f776b509fe24ccb961d0aa9bfa08f5756fd17b7e3b0aea138e16f7111eb03fc
-  frontmatter_digest: sha256:040e41d8b4a6e464432de822c81b7807965d32f8eea9ce63f721365cae68f7ba
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: 2+172TMJPc1XZir2eJo4mrcKgkOrYv46ZGPXu+WEiKj2x5oFs9Xws1yv4KQFwD1Ww7wOlefmPOoHqHnTZTavBg==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150569
+  frontmatter_digest: sha256:365bb2c3c7eca05acdaba329e49a617b6bcde34acde9cea5d59aad2cd052e063
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: 8cqTG62acRMFgiK7rDFZe1XmoMdAVTJ2tx7l+OCgXehITivRiAfQK/j8Y0o9HI56lWW00MD4grIrdMXp3YjrDQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1398
   event:
-    id: 01M6WVJMPX6QW8CM1QEKGSDT1Y
-    sequence: 150569
-    hash: 11f1cf8203c6fc5f6efee6d01864a168d966d2eee873ed93451aa73de1286a4b
+    id: 01M85CF03W89R12G1GHG8M05MA
+    sequence: 1398
+    hash: 6efd4beb147ab4999e320c8834c1d67a75306d566c5126152b260a7e5a43037a
 ---
 ROLE: EXECUTOR
 

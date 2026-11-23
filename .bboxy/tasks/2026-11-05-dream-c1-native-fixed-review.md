@@ -1,31 +1,39 @@
 ---
-type: task
-title: Review fixed C1 native/debt producer ownership and metric boundary
-role: architect
-worktree: /Users/feral/mydev/bboxy450-harness-dream-native-c1
 allowed_paths:
 - reports/2026-11-05-dream-c1-native-fixed-review.md
-verify: git diff --check
-id: 01M6PKX5R6Z3X2H8J63XW3S9NA
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-05T19:56:38.031Z
-created: 2026-11-05T19:45:27.205Z
-number: 93377961365142
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
 artifacts:
 - '[[01M6PMD4RH6C36W0X43F4NY5RR]]'
+assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CEPD3728BNGXR4F1YZ9G0
+created: 2026-11-05T19:45:27.205Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+id: 01M6PKX5R6Z3X2H8J63XW3S9NA
+number: 93377961365142
+report:
+  commit: null
+  op_id: 01M6PMD5YW18W1QT5GC2BGMD8P
+  report: '[[reports/2026-11-05-dream-c1-native-fixed-review.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: Completed fixed16d7406 producer interaction review against accepted47182320/current C1 law. Confirmed parked owner, native/app/control separation, post-end debt, original publication custody, immutable pre-descriptor cutoff and retained ordinary worker provenance. Report keeps known cleanup-clock defect plus new tail-cost/MAX acceptance and unprimed Paused-frame RTT findings explicit; both new findings were sent to author/Rook with bounded controls. Actual retained focused/formal logs record exit0 and four real completions/reaps, but RTT causality is unproven, formal receipt names f1b6, and later4575 corrections are not certified. git diff --check exited0; full report readback matched. No source edits/builds/tests/replays or consumer/component acceptance.
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Review fixed C1 native/debt producer ownership and metric boundary
+type: task
+updated: 2026-11-23T23:39:27.014Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Fixed cutoff/source hashes and actionable findings
     reference: reports/2026-11-05-dream-c1-native-fixed-review.md — F1–F3, exact16d object hashes and four feedback message IDs
@@ -33,19 +41,18 @@ verify_result:
     reference: reports/2026-11-05-dream-c1-native-fixed-review.md — Boundary mechanisms and consumer metric acceptance requirements
   - criterion: Actual evidence separated from claims and later source
     reference: reports/2026-11-05-dream-c1-native-fixed-review.md — retained12ec ordinary binary/test log; ceaf formal receipt atf1b6; later4575 excluded; no reruns
-report:
-  summary: Completed fixed16d7406 producer interaction review against accepted47182320/current C1 law. Confirmed parked owner, native/app/control separation, post-end debt, original publication custody, immutable pre-descriptor cutoff and retained ordinary worker provenance. Report keeps known cleanup-clock defect plus new tail-cost/MAX acceptance and unprimed Paused-frame RTT findings explicit; both new findings were sent to author/Rook with bounded controls. Actual retained focused/formal logs record exit0 and four real completions/reaps, but RTT causality is unproven, formal receipt names f1b6, and later4575 corrections are not certified. git diff --check exited0; full report readback matched. No source edits/builds/tests/replays or consumer/component acceptance.
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6PMD5YW18W1QT5GC2BGMD8P
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-c1-native-fixed-review.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-native-c1
 provenance:
   digest: sha256:7da0cbbfbc55b8e3ed7b66d2d2740fd54f81fb904720d1d1cb027ab2ab6695fb
-  frontmatter_digest: sha256:f78d9d9309db1d167bd223656523df0f25351191a40303a960efe319a8cdb765
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: 5ddur4FmLndHmPE8KZIzHoiLFYmJLF5zAxp5Ob0TSr+p9UqDwoOuTicnLIrqMDlYXnrH8VkUyHAN93EpQB/MDQ==
-  log: .bboxy/log/2026-11-05.jsonl#141197
+  frontmatter_digest: sha256:1bd84a0f803c2904b641c1b4eb09c5bdba4334b28f6b675a882ef2460f2e6429
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: g/j2KKbRn23vilw9z4coulQOZnCgW+D/IIsFLnXtzdUSFEAakfURFyaiX2OwqSFHKG7Pf6+xy0ZCSDem/rnkCg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1384
+  event:
+    id: 01M85CEQ1HWJFQXSZFX3V0D53N
+    sequence: 1384
+    hash: a687c0992c4b59ce2659f7af7962b35c0592b5bd87925d34ba71e5647ef05a20
 ---
 ROLE: ARCHITECT
 

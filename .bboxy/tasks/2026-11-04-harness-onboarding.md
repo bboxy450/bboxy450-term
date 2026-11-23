@@ -1,9 +1,10 @@
 ---
-type: task
-title: Discover installed ACP harnesses, offer interactive setup, and render user Markdown
-role: executor
-parent: '[[01M6KEVVYNZW5H21RPTFW1RVDR]]'
-worktree: /Users/feral/mydev/bboxy450-term-onboarding
+acceptance:
+- Installed supported harnesses receive editable ACP profiles automatically, later installations are detected, and existing profile bytes are preserved
+- Welcome setup distinguishes missing CLI and adapter and offers verified platform-appropriate install choices with responsive progress and honest failure recovery
+- Installation runs only after an explicit UI action through fixed supported commands and private unattended tests prove ownership, cancellation and duplicate guards
+- Durable and queued user messages render Markdown with bounded themed layout while prior history, attachment content and causal delivery state remain intact
+- Focused private discovery, profile, installer, Markdown and native GUI checks plus affected strict compilation and license verification pass without backend restart or operator input
 allowed_paths:
 - crates/bboxy450-harness/src/provider/**
 - crates/bboxy450-harness/src/frontends/**
@@ -26,34 +27,41 @@ allowed_paths:
 - plugins/**/ATTRIBUTION.md
 - crates/bboxy450-term-desktop-core/src/lib.rs
 - crates/bboxy450-term-desktop-core/tests/app_menu.rs
-verify: make verify-harness-onboarding
-acceptance:
-- Installed supported harnesses receive editable ACP profiles automatically, later installations are detected, and existing profile bytes are preserved
-- Welcome setup distinguishes missing CLI and adapter and offers verified platform-appropriate install choices with responsive progress and honest failure recovery
-- Installation runs only after an explicit UI action through fixed supported commands and private unattended tests prove ownership, cancellation and duplicate guards
-- Durable and queued user messages render Markdown with bounded themed layout while prior history, attachment content and causal delivery state remain intact
-- Focused private discovery, profile, installer, Markdown and native GUI checks plus affected strict compilation and license verification pass without backend restart or operator input
-id: 01M6KT6ZT468RVV2SZ4ANS42KX
-status: accepted
-delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T19:15:39.625Z
-created: 2026-11-04T17:37:53.334Z
-number: 93377961361112
-created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-updated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-authorship:
-  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  kind: seat
-  public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
-  process_generation: '1'
-assignee: seat:01M6KYK93CXV3YMNFVM5WJ3Y3V
 artifacts:
 - '[[01M6KX8FDQ7X9VZV4YS2BSQ8X3]]'
 - '[[01M6KZJVFW9EPZ44F2HK11FNMV]]'
+assignee: seat:01M6KYK93CXV3YMNFVM5WJ3Y3V
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CDWAXWJQKWYK3FJ49V1GN
+created: 2026-11-04T17:37:53.334Z
+created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+id: 01M6KT6ZT468RVV2SZ4ANS42KX
+number: 93377961361112
+parent: '[[01M6KEVVYNZW5H21RPTFW1RVDR]]'
+report:
+  commit: 5b43c78346a08ec3b55cc36bf4546f3c5a9db7ce
+  op_id: 01M6KZMG8Y8AT3GGQWVZJCVB93
+  report: '[[reports/2026-11-04-harness-onboarding-loader-followup.md]]'
+  reported_by: seat:01M6KYK93CXV3YMNFVM5WJ3Y3V
+  summary: 'Restored the centered loading portrait first in signed 278f451; signed producer f1d3a3f (via f9ed639) adds settled welcome routing, compact centered setup with working details and independent scroll, preserved startup diagnostics and Goose discovery. Signed parent 5b43c783 contains runtime app menu naming and the exact indexed superseding report/task mirrors, attribution copies and source-bound receipt. make verify-harness-onboarding exited 0: 5 focused integration cases, 5 library witnesses, existing menu checks, strict affected compilation and license checks. Unchanged installer/finite-model evidence was source/hash checked and reused; 84 current source hashes held after commit. Producer clean; only the intentional parent gitlink remains unstaged. Oracle retains all integration/push/bundle/install actions.'
+  verify_revision: 0
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Discover installed ACP harnesses, offer interactive setup, and render user Markdown
+type: task
+updated: 2026-11-23T23:39:00.713Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: make verify-harness-onboarding
 verify_result:
   command: make verify-harness-onboarding
-  exit_code: 0
   evidence:
   - criterion: Installed supported harnesses receive editable ACP profiles automatically, later installations are detected, and existing profile bytes are preserved
     reference: reports/2026-11-04-harness-onboarding-loader-followup.md; crates/bboxy450-harness/tests/harness_onboarding.rs:26 — private absent/later Goose, exact goose acp argv and edited-profile byte preservation; final integration exit 0.
@@ -65,19 +73,18 @@ verify_result:
     reference: reports/2026-11-04-harness-onboarding-loader-followup.md; target/harness-onboarding/followup-markdown-history-pending-new-session.log — 5 library witnesses passed, including retained Markdown/history/pending/causal tests; unchanged Markdown implementation and captures retained.
   - criterion: Focused private discovery, profile, installer, Markdown and native GUI checks plus affected strict compilation and license verification pass without backend restart or operator input
     reference: .bboxy/runs/codex-harness-onboarding.json — final make exit 0; all nine command/log hashes and 84 source hashes checked, 8 capture hashes and 2 private startup records; signed commits verified; no backend restart or operator input.
-report:
-  summary: 'Restored the centered loading portrait first in signed 278f451; signed producer f1d3a3f (via f9ed639) adds settled welcome routing, compact centered setup with working details and independent scroll, preserved startup diagnostics and Goose discovery. Signed parent 5b43c783 contains runtime app menu naming and the exact indexed superseding report/task mirrors, attribution copies and source-bound receipt. make verify-harness-onboarding exited 0: 5 focused integration cases, 5 library witnesses, existing menu checks, strict affected compilation and license checks. Unchanged installer/finite-model evidence was source/hash checked and reused; 84 current source hashes held after commit. Producer clean; only the intentional parent gitlink remains unstaged. Oracle retains all integration/push/bundle/install actions.'
-  commit: 5b43c78346a08ec3b55cc36bf4546f3c5a9db7ce
-  reported_by: seat:01M6KYK93CXV3YMNFVM5WJ3Y3V
-  op_id: 01M6KZMG8Y8AT3GGQWVZJCVB93
-  verify_revision: 0
-  report: '[[reports/2026-11-04-harness-onboarding-loader-followup.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-term-onboarding
 provenance:
   digest: sha256:07acd018348036ad5184123c33ab2330a0a457649fa21a1dcc5fc880824cf901
-  frontmatter_digest: sha256:9acfa5b2199ec209d4322c94fa9505f1af2134d686461da98c1f576aedc3144b
-  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  sig: tWaPHPhavObIcc6U4GP9kXtHA8DkDWr9GOE3FCnLDWRoumL2PXti79FsyAVuMK7pyb1lSi4nPekDeQM+ch32Aw==
-  log: .bboxy/log/2026-11-04.jsonl#129965
+  frontmatter_digest: sha256:b7d3f07347da6e0d73fa7b18f1873be0c0b9beaeb3884293e9352fcee617e389
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: tbY03fidSlc/f13AKK5KzEVSBkUSJDtKHYuHqEHR5ZWIqrD+XPicDg9kWwvpk5oF7eByDEdGfc1hZNaH0Z66AQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1354
+  event:
+    id: 01M85CDXC5QBE9G5ZSNNRSZJ9V
+    sequence: 1354
+    hash: 921aa479ea481a4f973050868c3065803cd63e29025e3e3f38d6ed67fadc5406
 ---
 ROLE: EXECUTOR.
 

@@ -1,8 +1,4 @@
 ---
-type: task
-title: Pin Libksba and define canonical private candidate probe qualification
-role: architect
-worktree: /Users/feral/mydev/bboxy450-harness-dream-proof-tools
 allowed_paths:
 - decisions/dream-ksba-private-probe-boundary.md
 - interfaces/dream-proof-tool-qualification.md
@@ -10,34 +6,46 @@ allowed_paths:
 - specs/dreaming-mcp.md
 - reports/2026-11-05-dream-ksba-private-probe-boundary.md
 - reports/2026-11-05-dream-private-pretest-inner-schema.md
-verify: git diff --check
-derived_from:
-- '[[interfaces/dream-proof-tool-qualification]]'
-- '[[tasks/2026-11-05-dream-proof-tools-provisioner]]'
-id: 01M6Q2M3ZERDWZS67K8Q3MQZTD
-status: accepted
-delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-06T00:44:45.893Z
-created: 2026-11-06T00:02:34.969Z
-number: 93377961365800
-created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
-  process_generation: '1'
-assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
 artifacts:
 - '[[01M6Q3BPGCVXRP9T1VMP4V96AX]]'
 - '[[01M6Q3BQPHAWY9QJGEM44ZCG84]]'
 - '[[01M6PZJAZH085RWKVRDX3XRFAN]]'
 - '[[01M6Q3BPGCVXRP9T1VMP4V96AX]]'
 - '[[01M6Q4VCNAQESH0R0PD6ZBGRFZ]]'
+assignee: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: qxL/3a47UEqef+6VNGve7zFPxAJ4V2xtFwav0ldZ+l0=
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+closed:
+  by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  op_id: 01M85CETA6QMVGA5EQ4MZTKCCC
+created: 2026-11-06T00:02:34.969Z
+created_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+delegated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+derived_from:
+- '[[interfaces/dream-proof-tool-qualification]]'
+- '[[tasks/2026-11-05-dream-proof-tools-provisioner]]'
+id: 01M6Q2M3ZERDWZS67K8Q3MQZTD
+number: 93377961365800
+report:
+  commit: null
+  op_id: 01M6Q4WPE4M0RCFG4VRFFFKPW2
+  report: '[[reports/2026-11-05-dream-private-pretest-inner-schema.md]]'
+  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  summary: 'Amended inner-schema completion ready: decision65875 and builder ICD now freeze ONE strict private-pretest-basis/1 file with six identical fixed-projection pins, exact required fields/canonical hashes/counts/coverage and pre-birth tuple/currentness checks, canonical aarch64 with only Darwin arm64 capture alias, explicit conditional source/compiler/platform premises and acyclic host-supplied probe binding. Outer-only inputs remain review_unbound; normal git81/private runtime_approved=false/public DTO/runtime limits unchanged. Complete explicitly fictional typed Basis+outer example and in-memory size/hash arithmetic retained (112269B illustrative combined budget); no build/probe/auth/performance verdict. Four docs fully continuation-read back exact; correction report fc66d1478a994342a93f5c56f07022bea6ec7990254e6c8ae58f70446afc21ca fully read back, supersedes original only for completion. Exact source HEAD/dirty races/hash cutoff/actual git diff --check exit0 and remaining implementation proofs recorded. Frozen handoff stored to builder/Q2/Root, only Root amends live source scope. Artifact claims succeeded for builder ICD/decision/report; auxiliary MCP spec/ICD claims were terminally rejected held/artifact record projection pending (original ops01M6Q4V6XXFBV5H4ZMR767KHDB and01M6Q4VA9NPY0YWZ6DA3CC965A; operation_status confirmed no retry); their knowledge writes/full readbacks succeeded.'
+  verify_revision: 0
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Pin Libksba and define canonical private candidate probe qualification
+type: task
+updated: 2026-11-23T23:39:31.284Z
+updated_by: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+verify: git diff --check
 verify_result:
   command: git diff --check
-  exit_code: 0
   evidence:
   - criterion: Strict inner fields/projection coverage/canonical byte and pre-birth binding contract
     reference: interfaces/dream-proof-tool-qualification.md#strict-pre-test-basis-one-manifest-six-fixed-projections
@@ -47,19 +55,18 @@ verify_result:
     reference: reports/2026-11-05-dream-private-pretest-inner-schema.md#complete-typed-worked-input
   - criterion: Actual source/hash/race/command exit, full doc readbacks, owner handoff and unresolved real evidence
     reference: reports/2026-11-05-dream-private-pretest-inner-schema.md
-report:
-  summary: 'Amended inner-schema completion ready: decision65875 and builder ICD now freeze ONE strict private-pretest-basis/1 file with six identical fixed-projection pins, exact required fields/canonical hashes/counts/coverage and pre-birth tuple/currentness checks, canonical aarch64 with only Darwin arm64 capture alias, explicit conditional source/compiler/platform premises and acyclic host-supplied probe binding. Outer-only inputs remain review_unbound; normal git81/private runtime_approved=false/public DTO/runtime limits unchanged. Complete explicitly fictional typed Basis+outer example and in-memory size/hash arithmetic retained (112269B illustrative combined budget); no build/probe/auth/performance verdict. Four docs fully continuation-read back exact; correction report fc66d1478a994342a93f5c56f07022bea6ec7990254e6c8ae58f70446afc21ca fully read back, supersedes original only for completion. Exact source HEAD/dirty races/hash cutoff/actual git diff --check exit0 and remaining implementation proofs recorded. Frozen handoff stored to builder/Q2/Root, only Root amends live source scope. Artifact claims succeeded for builder ICD/decision/report; auxiliary MCP spec/ICD claims were terminally rejected held/artifact record projection pending (original ops01M6Q4V6XXFBV5H4ZMR767KHDB and01M6Q4VA9NPY0YWZ6DA3CC965A; operation_status confirmed no retry); their knowledge writes/full readbacks succeeded.'
-  commit: null
-  reported_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  op_id: 01M6Q4WPE4M0RCFG4VRFFFKPW2
-  verify_revision: 0
-  report: '[[reports/2026-11-05-dream-private-pretest-inner-schema.md]]'
+  exit_code: 0
+worktree: /Users/feral/mydev/bboxy450-harness-dream-proof-tools
 provenance:
   digest: sha256:a1e246db6f7ed98b13fde41a710f689228119de0692d05d0c470ca1d7c368bdc
-  frontmatter_digest: sha256:67789bfe7a1c983b50b576337af0a189624dfe451f246427990317d69917ddd9
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: ToL+zDnf8T8PK6E+3jiKw0EXYNSgEyZ20CwY0MY1z5cNC7eS6P80g9sn0kCohXES8yHqBGhs/5mzDeuoG18ZDw==
-  log: .bboxy/log/2026-11-06.jsonl#147938
+  frontmatter_digest: sha256:52873843601a663c3d498a25299ff5c3157c305c8b26b22570227add57090e28
+  signer: seat:01M85C5BC8Y3ETPJDDSZRJN6EB
+  sig: 1jEhdoZ3D1J0fjXtgnyPDCfshwBQcCF+2/SBwlizHEb/k6ouAP9UPusaS8+hCV7k3DZ8yXuDDh1opDQhL3MjBg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1390
+  event:
+    id: 01M85CEV6H64CWJB793AJSS11H
+    sequence: 1390
+    hash: dd6f61795fb5038c9f288e9965c20df102a10cc32567d309877415e3454270f7
 ---
 ROLE: ARCHITECT
 
