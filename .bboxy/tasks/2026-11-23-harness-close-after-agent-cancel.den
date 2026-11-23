@@ -1,0 +1,42 @@
+module tasks.`2026-11-23-harness-close-after-agent-cancel`
+
+task HarnessCloseAfterAgentCancel {
+  title "Find who sends the harness Close 1-14 ms before TurnEnded on an agent-side cancel; tell the delegator once when a claimed seat's agent exits"
+  verify $ make test-boundaries && make test-formal
+  paths "crates/bboxy450-harness", "crates/bbt-mux", "verification"
+  brief """
+    Our stand: subtract before you add; report what you removed.
+
+    Follow-up to `tasks/2026-11-20-codex-seat-exits-mid-gate.den` (report `reports/2026-11-23-codex-seat-exits-mid-gate-recovery.den`).
+    That task made the harness reload the same ACP session after the agent exits during recovery (harness ab591d0).
+    It did not explain the incidents themselves.
+
+    ## Evidence
+    - Six cancellation logs: `SessionClosed` 5-15 ms after the failed turn; the Close op ULID was minted 1-14 ms
+      BEFORE `TurnEnded` was written. kb-index: `~/.bboxy450-harness/sessions/01M82YGBZS5SH367NMA23V2AR3.jsonl:1718-1719`,
+      Close cause `01M832FHVBA1Z9B5SN1FQYKD3E`. `crates/bboxy450-harness/src/backend/acp_agent.rs:819` admits `Op::Close`;
+      the logs omit its caller.
+    - codex-acp 2.7.0 `dist/index.js:56063` shuts down on client stdin closure; line 55177 returns Cancelled for an interrupted turn.
+
+    ## Do
+    1. Record the caller of every admitted `Op::Close` in the session log (origin field on the existing event; no new event type).
+    2. Reproduce in a fresh Codex seat on the installed build with one long foreground command; find the sender from that record. Cite file:line.
+    3. Make a Close that races an agent-side cancel not end a recoverable seat (or show why it must), with a process witness and a broken control.
+    4. A seat whose agent exits while it holds a claimed task sends its delegator one message: last tool call and exit cause.
+    5. Update the interrupt model for the Close race, with its negative control.
+  """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"fgYs3Jd+beq/s5D5diFvgriRUbSwNInePdVVdEFsH1I=\",\"signer\":\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\"}"
+    created = json"\"2026-11-23T18:40:46.560Z\""
+    created_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
+    delegated_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
+    id = json"\"01M84VBSSXY2BP2TW4JHFSEV5Y\""
+    number = json"1794292861627817"
+    status = Open
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-23T18:40:46.560Z\""
+    updated_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
+    provenance = json"{\"digest\":\"sha256:ecf2cb61a953b5d68d2fb14f10d90d8a2cd6bfe9a70e60a2cc2800fa700db358\",\"frontmatter_digest\":\"sha256:d3f75d6aa264732c0503cb253a5fe645980372fa583dae71c309840f450473c7\",\"signer\":\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\",\"sig\":\"oqJO+2Sq/g3CWL23+emL3i6TU45VHFaLj5wsDTi75p6EkJbkdFY3WUwUyRXgHciC9BdcBMEN4t75dwbmk/YGCg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1286\",\"event\":{\"id\":\"01M84VBTJWK1C90T3BQV16MNFA\",\"sequence\":1286,\"hash\":\"36d906fa2cea2f78dbf59880342c8ba3f7595baabd03411e00c221cbd887a29a\"}}"
+  }
+}

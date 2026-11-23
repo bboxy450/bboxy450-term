@@ -2,8 +2,8 @@ module tasks.`2026-11-20-codex-seat-exits-mid-gate`
 
 task CodexSeatExitsMidGate {
   title "Codex executor seats exit on their own during long gates (adapter 'exit 0', no report)"
-  verify $ make test-boundaries
-  paths "crates/bboxy450-harness", "crates/bbt-mux"
+  verify $ make test-boundaries && make test-formal
+  paths "crates/bboxy450-harness", "crates/bbt-mux", "verification"
   brief """
     Our stand: subtract before you add; report what you removed.
 
@@ -23,20 +23,72 @@ task CodexSeatExitsMidGate {
     ## Evidence added 2026-11-22 07:50 (cause discovery, reports/2026-11-21-interrupt-cause-discovery)
     - Six of the seven dead executor seats end with an ACP **`Cancelled`** turn followed by `SessionClosed` (adapter exit 0): spawn-fix, ui-kit-land, svg, interrupt, rust-1-100 (`*.jsonl` ending lines in the report); rust-1-100-x and inbox end `EndTurn` then `SessionClosed`. None crashed. Combined with the detached-command result (rust-1-100b survived), the turn is cancelled from the agent side during a long foreground tool call.
     - **Do:** determine who sends the cancel (codex-acp tool-call timeout, Codex CLI, or the harness) from those session lines and the codex-acp source/config; prefer raising/removing that limit at its source. Check that the landed Interrupt does **not** treat an agent-side `Cancelled` like an operator cancel: an agent-initiated cancel of a running turn should be an interrupt (`agent.cancelled`) with auto-continue, an operator Esc should not. Verify after the final install with one long foreground command in a fresh Codex seat.
+
+    ## Evidence added 2026-11-23 (Oracle Vesper Greywind, seat 01M84K5EHF7BQJ40CKYQ4DVZ6T): auto-continue cannot fire
+    - kb-index seat 01M82YG6PNPXPNFYB8CCAXTTY3, session `~/.bboxy450-harness/sessions/01M82YGBZS5SH367NMA23V2AR3.jsonl` (codex-acp 2.7.0, gpt-6.2-sol, context 310397/475000):
+      - seq 1718, ts 1795399599982: `turn_ended {reason: error, class: cancelled, message: "The agent cancelled the prompt", interrupt: {cause: agent.cancelled, attempt: 1, deadline_ms: 1795399659982}}`
+      - seq 1719, ts 1795399599997: `session_closed`, 15 ms later and 60 s before the auto-continue deadline. The agent session is gone, so the landed Interrupt auto-continue (a05e43aef / harness c50a9767) has nothing to resume. The classification is right (`agent.cancelled`, not operator); the recovery is wrong.
+    - The same seat then stayed `closed_grace` past its deadline; a second `seat_close` was refused "native target authority changed before attempt" (window-close path). It closed on 2026-11-23 after the restart (installed a1af1b3b4).
+
+    ## Do (2026-11-23)
+    1. Find who closes the session right after an agent-side `Cancelled`: codex-acp exiting by itself, or the harness closing the ACP connection on a cancelled `turn_ended`. Cite file:line.
+    2. An `agent.cancelled` interrupt with auto-continue must keep or reload the agent session (same session id) and send the continue prompt before the deadline. Process witness: a fake ACP agent that cancels its own turn and exits; the harness resumes and the turn continues. Broken control: without the resume the witness fails.
+    3. If the cancel comes from a codex-acp per-tool-call limit, raise or remove it in the configuration we pass, and say where.
+    4. Update the Interrupt model in `verification/` for agent exit after cancel, with its negative control.
+
+    ## Report from seat:01M84KDHS4VQ9277FW350CFJWX
+
+    [[Implement]] Same-session ACP recovery passed the real-process regression and both required Make gates. The harness now loads the retained ACP session ID and sends one automatic Continue after the load reply. This removes the fresh-session text handoff for load-capable agents. Rust and Java TLC matched all 1,000 models, including the broken no-reload control. Historical logs show a separate harness Close whose caller remains unidentified. The installed-seat check and the delegator exit notice remain open. The full report is indexed in the machine-local KB. Its checkpoint attempt exited 1 because reports are Git-ignored.
+
+    ```json
+    {
+      "op_id": "01M84V9DW8D0YGHDEQMNQB1TPV",
+      "commit": "86375aa14e25df1450ff3107f3824abcaffc219f",
+      "report": "[[reports/2026-11-23-codex-seat-exits-mid-gate-recovery.den]]",
+      "verify_result": {
+        "command": "make test-boundaries && make test-formal",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "A fake ACP agent cancels with a tool open, exits, and receives one automatic Continue after same-ID reload",
+            "reference": "crates/bboxy450-harness/tests/acp_agent.rs:2010; target/codex-exits/verification.log (39 passed)"
+          },
+          {
+            "criterion": "Without reload the process witness and formal control both fail",
+            "reference": "target/codex-exits/no-reload-process.log (exit 101); BrokenHarnessInterruptNoReload (liveness, 48,582 states and 233,340 edges matched)"
+          },
+          {
+            "criterion": "Process boundaries and current-source formal parity pass",
+            "reference": "target/codex-exits/verification-final.log; formal receipt d2794c7a42040acf8f791f73ebab2078e949b94a59857797a13cc3e2b2b1a3e7"
+          },
+          {
+            "criterion": "Historical harness Close distinguished from child EOF",
+            "reference": "crates/bboxy450-harness/src/backend/acp_agent.rs:1031 and :1840; target/codex-exits/incident-observations.json"
+          }
+        ]
+      }
+    }
+    ```
     """
 
   managed {
-    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"rYfaNArK5+cM3H57EoxFBlfNLEqHQzRISfRoopxCK5A=\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\"}"
+    assignee = json"\"seat:01M84KDHS4VQ9277FW350CFJWX\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"fgYs3Jd+beq/s5D5diFvgriRUbSwNInePdVVdEFsH1I=\",\"signer\":\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\"}"
+    closed = json"{\"by\":\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\",\"op_id\":\"01M84Z7YM8NEHNC7JT8VQERKQC\"}"
     created = json"\"2026-11-20T19:37:58.626Z\""
     created_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
-    delegated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
+    delegated_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
     id = json"\"01M7X7ECB2C4J11J5MATQTWT7Q\""
     number = json"1794292861627629"
-    status = Open
+    report = json"{\"commit\":\"86375aa14e25df1450ff3107f3824abcaffc219f\",\"op_id\":\"01M84V9DW8D0YGHDEQMNQB1TPV\",\"report\":\"[[reports/2026-11-23-codex-seat-exits-mid-gate-recovery.den]]\",\"reported_by\":\"seat:01M84KDHS4VQ9277FW350CFJWX\",\"summary\":\"[[Implement]] Same-session ACP recovery passed the real-process regression and both required Make gates. The harness now loads the retained ACP session ID and sends one automatic Continue after the load reply. This removes the fresh-session text handoff for load-capable agents. Rust and Java TLC matched all 1,000 models, including the broken no-reload control. Historical logs show a separate harness Close whose caller remains unidentified. The installed-seat check and the delegator exit notice remain open. The full report is indexed in the machine-local KB. Its checkpoint attempt exited 1 because reports are Git-ignored.\",\"verify_revision\":1}"
+    role = json"\"executor\""
+    status = Done
     swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
-    updated = json"\"2026-11-22T15:38:40.346Z\""
-    updated_by = json"\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\""
-    provenance = json"{\"digest\":\"sha256:888d1090e8a3bd4ffb335d62414e494bca727583878b84459f420b13f050384d\",\"frontmatter_digest\":\"sha256:83293faf90e44858354c27eb2ef6d5f9724709b3ef81b5c7e947f8efcb0f5965\",\"signer\":\"seat:01M7VC8EK2C7DQXBNCE9V0J0MH\",\"sig\":\"BPiErI7ty7ILhaZOQQcqmi4k2Hz8P3usswrsFiQWPYxyyVzo0dEH8F0HhaT48/uu9xtLuiyoaaiKhDeV8PatDg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/999\",\"event\":{\"id\":\"01M81YHNJSWCEYM8TSTPYYFPJ7\",\"sequence\":999,\"hash\":\"4441434b57d38829da0353136d50099927f7f108cacb3c0f32bedb8acf6df0c9\"}}"
+    updated = json"\"2026-11-23T19:48:35.160Z\""
+    updated_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
+    verify_result = json"{\"command\":\"make test-boundaries && make test-formal\",\"evidence\":[{\"criterion\":\"A fake ACP agent cancels with a tool open, exits, and receives one automatic Continue after same-ID reload\",\"reference\":\"crates/bboxy450-harness/tests/acp_agent.rs:2010; target/codex-exits/verification.log (39 passed)\"},{\"criterion\":\"Without reload the process witness and formal control both fail\",\"reference\":\"target/codex-exits/no-reload-process.log (exit 101); BrokenHarnessInterruptNoReload (liveness, 48,582 states and 233,340 edges matched)\"},{\"criterion\":\"Process boundaries and current-source formal parity pass\",\"reference\":\"target/codex-exits/verification-final.log; formal receipt d2794c7a42040acf8f791f73ebab2078e949b94a59857797a13cc3e2b2b1a3e7\"},{\"criterion\":\"Historical harness Close distinguished from child EOF\",\"reference\":\"crates/bboxy450-harness/src/backend/acp_agent.rs:1031 and :1840; target/codex-exits/incident-observations.json\"}],\"exit_code\":0}"
+    verify_revision = json"1"
+    provenance = json"{\"digest\":\"sha256:5e042e81953e6f68c437d81ef2c357811ec69b8e2e259d0d9ee4bf82e0eab654\",\"frontmatter_digest\":\"sha256:cea7f59473cf9fd2394d7a742989a49e4ba62f7b4a33197ab3bd6fce0aeff7b1\",\"signer\":\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\",\"sig\":\"/NgOeGc2C7IsBIdMvxuOiiEPYkSUAEM7etpnlq07Lsgb+lwMoxUU2RkmxUEYpVYrH0+vxZlb/4m0THOvsCGdAQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1292\",\"event\":{\"id\":\"01M84Z7ZTPDEPJ521E4ZG8EZZN\",\"sequence\":1292,\"hash\":\"0b8dde4e15dcc7ace1e7d88c4fc9717d8889030b9c6dc580417360ffcbeeaccd\"}}"
     body_tail = json"\"\\n\""
   }
 }

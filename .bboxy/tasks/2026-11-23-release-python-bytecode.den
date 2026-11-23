@@ -1,0 +1,38 @@
+module tasks.`2026-11-23-release-python-bytecode`
+
+task ReleasePythonBytecode {
+  title "workspace_release refuses every checkout where a script ran: scripts/__pycache__ counts as private data"
+  verify $ make test-boundaries
+  paths "crates/bbt-mux", "scripts", "Makefile"
+  brief """
+    Our stand: subtract before you add; report what you removed.
+
+    ## Evidence (2026-11-23, Oracle)
+    - Managed checkouts 01M828HT…, 01M82G0K…, 01M82JAA… and 01M84KD1… (twice) were refused `workspace_dirty` holding only
+      generated, gitignored output: `scripts/__pycache__/`, submodule `target/`, harness `.bboxy/runs` and `verification/evidence`.
+      Removing it by hand let each release succeed.
+    - After `make land` returns, a detached `python3 -I scripts/formal.py --prune-evidence` (pid 70026) held 01M84KD1… open
+      about 3 minutes and re-created `scripts/__pycache__`.
+    - 01M83BDYJEMCBGNQRGDD9SBXT6 is still refused `workspace_dirty` while `git status --ignored` is empty in it and every submodule.
+
+    ## Do
+    1. Stop writing the cache: our Python entry points already run with `-I`; add `-B`, or set `PYTHONDONTWRITEBYTECODE=1` once in the Make/land environment.
+    2. Treat ignored build output inside submodules (`target/`, `__pycache__/`) as the parent's declared ignore rules are treated;
+       keep refusing real private data. Process witness and a broken control.
+    3. Find why 01M83BDY… is refused while git sees it clean, and release it.
+  """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"fgYs3Jd+beq/s5D5diFvgriRUbSwNInePdVVdEFsH1I=\",\"signer\":\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\"}"
+    created = json"\"2026-11-23T20:04:08.448Z\""
+    created_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
+    delegated_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
+    id = json"\"01M8504ETPG6AM1EAZW5F8E08A\""
+    number = json"1794292861627819"
+    status = Open
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-23T20:04:08.448Z\""
+    updated_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
+    provenance = json"{\"digest\":\"sha256:63aa930b9719e2913d14ce41d119681382bbf6ea23b98c7e1860c6a52aace2ff\",\"frontmatter_digest\":\"sha256:0dba4ec1ed519c85fce1c9b07ffda7d66ffd9e94426a20e8c3bfef7038e6121d\",\"signer\":\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\",\"sig\":\"AoqhuYY2jk+VpT1yCJcTSYQ8PppLvcLNULFzSJbDZ/54/6uBY2BZ6r3Gvse+aCTtsOhbxJiIbak6WD1DLYUABw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1294\",\"event\":{\"id\":\"01M8504F7D9H2NX7F0EAFGXV6Q\",\"sequence\":1294,\"hash\":\"0b802dc9dd6dfa72fb824fd2729eedd4f17921a6feb6495b551ae305631bec47\"}}"
+  }
+}

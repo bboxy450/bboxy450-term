@@ -1,0 +1,39 @@
+module tasks.`2026-11-23-svg-loop-fresh-checkout`
+
+task SvgLoopFreshCheckout {
+  title "make svg-loop fails on a fresh checkout: phase-a-inspected.json is read but never written"
+  verify $ make svg-loop
+  paths "crates/bboxy450-svg", "Makefile"
+  brief """
+    Our stand: subtract before you add; report what you removed.
+
+    ## Evidence (2026-11-23, Oracle Vesper Greywind)
+    - Fresh worktree `~/mydev/bbx-live-checks` at origin/main debec2374: `make svg-loop` exit 2.
+      Chrome/158.0.8127.37 pinned, 81 runs, unit tests OK, then
+      `crates/bboxy450-svg/review.py:130` raises FileNotFoundError on `target/svg-loop/phase-a-inspected.json`.
+    - No source writes that file; `git log -S phase-a-inspected` shows only d949b0eb8, which added the reader.
+      The gate passes only in a target dir that still holds an earlier, hand-made inspection record.
+
+    ## Do
+    Make the gate unattended and reproducible from a clean checkout. Either produce the inspection record
+    from a checked step inside `make svg-loop` (a script that inspects the actual images and writes the digests),
+    or keep the reviewed record as a tracked fixture beside `fixtures/advisories.json` and check its digests
+    against the current images. Missing or stale inspection must still fail. Add a negative control:
+    a changed image with an unchanged record must fail. Run `make svg-loop` twice in a fresh worktree; both exit 0.
+    Name what you removed.
+  """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"fgYs3Jd+beq/s5D5diFvgriRUbSwNInePdVVdEFsH1I=\",\"signer\":\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\"}"
+    created = json"\"2026-11-23T16:25:22.724Z\""
+    created_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
+    delegated_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
+    id = json"\"01M84KKWJAM54JB3RQTW8H09D3\""
+    number = json"1794292861627810"
+    status = Open
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-23T16:25:22.724Z\""
+    updated_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
+    provenance = json"{\"digest\":\"sha256:520c0070c8b8282788a02f8d2351a57d40dbc7511cb1f560a1561d4b7344bcd1\",\"frontmatter_digest\":\"sha256:e95531f5adfeb1b3570d2c1a61b7fcd0bac291f7014324323e6d77f6c742ddce\",\"signer\":\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\",\"sig\":\"5lyvYPVOGLBiSO78lJ0XtkopQae37gMXnr0BIvgMBhdlt/g+e8yzWWI4vAHfUIHvYKim30QzePfIBrVmNHr4Cg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1264\",\"event\":{\"id\":\"01M84KKX8J52QBJ22WQCWP98PF\",\"sequence\":1264,\"hash\":\"0c4aee45fd5c96edad5f46fdfb1f5f5570c90ff9275c91b9b7aa9e1a133e6ca1\"}}"
+  }
+}
