@@ -190,3 +190,139 @@ fn den_task_is_written_read_searched_verified_and_run_through_its_lifecycle() {
     assert_eq!(document.body, "Brief: keep this body.\n");
     assert_item_signature(&document, f.oracle.id);
 }
+
+#[test]
+fn knowledge_index_follows_external_git_checkout_and_removal() {
+    const LOCATOR: &str = "specs/external-git";
+    const RECORD: &str = ".bboxy/specs/external-git.den";
+    let git = |repository: &std::path::Path, args: &[&str]| {
+        let output = std::process::Command::new("git")
+            .arg("-C")
+            .arg(repository)
+            .args([
+                "-c",
+                "core.hooksPath=/dev/null",
+                "-c",
+                "commit.gpgsign=false",
+            ])
+            .args(args)
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_AUTHOR_NAME", "Knowledge Fixture")
+            .env("GIT_AUTHOR_EMAIL", "knowledge@example.invalid")
+            .env("GIT_COMMITTER_NAME", "Knowledge Fixture")
+            .env("GIT_COMMITTER_EMAIL", "knowledge@example.invalid")
+            .stdin(std::process::Stdio::null())
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{args:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    };
+    let f = Fixture::open_seeded(false, false, |repository, _| {
+        git(
+            repository,
+            &["init", "--quiet", "--initial-branch=main", "--template="],
+        );
+        std::fs::create_dir(repository.join(".bboxy/specs")).unwrap();
+        std::fs::write(
+            repository.join(".bboxy/specs/keep.md"),
+            "---\ntype: spec\nnumber: 8764\n---\nExisting spec\n",
+        )
+        .unwrap();
+        // Machine-local artifacts can claim the same number as an incoming tracked spec.
+        std::fs::create_dir(repository.join(".bboxy/artifacts")).unwrap();
+        std::fs::write(
+            repository.join(".bboxy/artifacts/local.md"),
+            "---\ntype: artifact\nnumber: 8765\n---\nLocal artifact\n",
+        )
+        .unwrap();
+        git(repository, &["add", "-f", ".bboxy/specs/keep.md"]);
+        git(repository, &["commit", "--quiet", "-m", "Seed"]);
+        std::fs::write(
+            repository.join(RECORD),
+            r#"module specs.`external-git`
+
+spec ExternalGit {
+  title "Git checkout witness"
+  intent "Observe Git writing a record to a mounted root."
+  body "Arrived from Git."
+  managed {
+    id = json"\"01M00000000000000000000001\""
+    number = json"8765"
+  }
+}
+"#,
+        )
+        .unwrap();
+        git(repository, &["add", "-f", RECORD]);
+        git(repository, &["commit", "--quiet", "-m", "Add the Den spec"]);
+        git(repository, &["branch", "with-record"]);
+        git(repository, &["checkout", "--quiet", "--detach", "HEAD^"]);
+    });
+    let fetch = |locator: &str| {
+        f.call(
+            f.oracle.id,
+            Ulid::new(),
+            "knowledge_fetch",
+            json!({"locator":locator}),
+        )
+    };
+    let wait_for = |present: bool| {
+        let deadline = Instant::now() + Duration::from_secs(6);
+        loop {
+            let response = fetch(LOCATOR);
+            let value = &response["structuredContent"];
+            if present && response["isError"] == false {
+                assert_eq!(value["body"], "Arrived from Git.");
+                assert_eq!(value["parse_error"], Value::Null);
+                return;
+            }
+            if !present && value["error"]["code"] == "not_found" {
+                return;
+            }
+            assert_eq!(value["error"]["code"], "not_found", "{response}");
+            assert!(Instant::now() < deadline, "present={present}: {response}");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    };
+    data(fetch("specs/keep"));
+    wait_for(false);
+    git(
+        &f.config.repository,
+        &["checkout", "--quiet", "with-record"],
+    );
+    assert!(f.config.repository.join(RECORD).is_file());
+    wait_for(true);
+    let search = || {
+        data(f.call(
+            f.oracle.id,
+            Ulid::new(),
+            "knowledge_search",
+            json!({"query":"Git checkout witness"}),
+        ))
+    };
+    assert_eq!(search()["items"][0]["ref"]["path"], "specs/external-git.den");
+    knowledge_denied(fetch("#8765"), "number_conflict");
+    git(
+        &f.config.repository,
+        &["checkout", "--quiet", "--detach", "HEAD^"],
+    );
+    assert!(!f.config.repository.join(RECORD).exists());
+    let deadline = Instant::now() + Duration::from_secs(6);
+    loop {
+        let hits = search();
+        if hits["items"] == json!([]) {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "deleted spec still indexed: {hits}"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    wait_for(false);
+    assert_eq!(data(fetch("#8765"))["path"], "artifacts/local.md");
+}

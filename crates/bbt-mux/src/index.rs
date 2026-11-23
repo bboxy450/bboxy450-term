@@ -131,12 +131,6 @@ fn record_number(metadata: &Value) -> Option<u64> {
         .filter(|number| *number > 0)
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-struct FileState {
-    len: u64,
-    modified: std::time::SystemTime,
-}
-
 /// Inode, size, mtime and ctime of an unchanged file. A write, rename or
 /// in-place edit changes at least one, so a matching stamp needs no re-parse.
 type Stamp = (u64, u64, u64, i64, i64, i64, i64);
@@ -397,7 +391,8 @@ pub struct Index {
     pub graphs: Arc<BTreeMap<GraphKind, DiGraph<String, Link>>>,
     // A reopened index cold-reconciles its root. Persisted documents alone do
     // not prove that an on-disk file still has the same contents.
-    file_states: BTreeMap<String, FileState>,
+    file_states: BTreeMap<String, Stamp>,
+    directories: Arc<Vec<(PathBuf, Stamp)>>,
     // Shared by clones of this root; each entry is checked against a fresh stat.
     numbers: Arc<Mutex<NumberCache>>,
     #[cfg(test)]
@@ -472,6 +467,7 @@ impl Index {
             documents: Arc::default(),
             graphs: Arc::default(),
             file_states: BTreeMap::new(),
+            directories: Arc::default(),
             numbers: Arc::default(),
             #[cfg(test)]
             document_reads: 0,
@@ -487,8 +483,26 @@ impl Index {
     pub fn scan(&mut self) -> Result<Vec<Draft>> {
         bbt_rt::assert_not_ui_thread();
         let mut paths = Vec::new();
-        collect(&self.root, &mut paths)?;
-        self.reconcile_files(paths, None)
+        let mut directories = Vec::new();
+        collect_in(
+            &self.root,
+            &self.root,
+            &mut paths,
+            &mut Some(&mut directories),
+        )?;
+        let events = self.reconcile_files(paths, None)?;
+        self.directories = Arc::new(directories);
+        Ok(events)
+    }
+    /// A silent watcher can miss additions and removals. Probe the directories
+    /// visited by the last full scan, without listing or statting their files.
+    pub(crate) fn namespace_changed(&self) -> bool {
+        bbt_rt::assert_not_ui_thread();
+        self.directories.iter().any(|(directory, stamp)| {
+            !directory
+                .symlink_metadata()
+                .is_ok_and(|metadata| metadata.is_dir() && file_stamp(&metadata) == *stamp)
+        })
     }
     /// Re-read only the final filesystem state of dirty record paths. Unknown
     /// namespace changes fall back to the existing complete reconciliation.
@@ -502,14 +516,14 @@ impl Index {
                     .components()
                     .any(|part| !matches!(part, Component::Normal(_)))
             {
-                return self.reconcile_all();
+                return self.scan();
             }
             let mut path = self.root.clone();
             let mut metadata = None;
             for component in relative_path.components() {
                 path.push(component);
                 match path.symlink_metadata() {
-                    Ok(current) if current.file_type().is_symlink() => return self.reconcile_all(),
+                    Ok(current) if current.file_type().is_symlink() => return self.scan(),
                     Ok(current) => metadata = Some(current),
                     Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
                         metadata = None;
@@ -525,7 +539,7 @@ impl Index {
                     .next()
                     .is_some_and(|(name, _)| name.starts_with(&format!("{relative}/")))
             {
-                return self.reconcile_all();
+                return self.scan();
             }
             if let Some(metadata) = metadata.filter(|metadata| {
                 metadata.is_file()
@@ -552,10 +566,7 @@ impl Index {
             if generated_log_path(Path::new(&relative)) {
                 continue;
             }
-            let state = FileState {
-                len: metadata.len(),
-                modified: metadata.modified()?,
-            };
+            let state = file_stamp(&metadata);
             if self.file_states.get(&relative) == Some(&state) {
                 seen.insert(relative);
                 continue;
@@ -696,10 +707,6 @@ impl Index {
     /// Called only after the bus confirms append; retry uses the same event ID.
     pub fn acknowledge(&self, event: Ulid) -> Result<()> {
         self.outbox().acknowledge(event)
-    }
-    pub(crate) fn reconcile_all(&mut self) -> Result<Vec<Draft>> {
-        self.file_states.clear();
-        self.scan()
     }
     pub fn rebuild_graphs(&mut self) {
         self.graphs = Arc::new(
@@ -1386,14 +1393,22 @@ fn oversized(path: &Path, bytes: u64) {
 }
 
 fn collect(directory: &Path, paths: &mut Vec<(PathBuf, std::fs::Metadata)>) -> Result<()> {
-    collect_in(directory, directory, paths)
+    collect_in(directory, directory, paths, &mut None)
 }
 
 fn collect_in(
     root: &Path,
     directory: &Path,
     paths: &mut Vec<(PathBuf, std::fs::Metadata)>,
+    directories: &mut Option<&mut Vec<(PathBuf, Stamp)>>,
 ) -> Result<()> {
+    if let Some(directories) = directories {
+        // Sample before enumeration so changes racing the scan remain visible.
+        directories.push((
+            directory.to_owned(),
+            file_stamp(&directory.symlink_metadata()?),
+        ));
+    }
     for entry in std::fs::read_dir(directory)? {
         let entry = entry?;
         if generated_log_path(entry.path().strip_prefix(root)?) {
@@ -1414,7 +1429,7 @@ fn collect_in(
             {
                 continue;
             }
-            collect_in(root, &entry.path(), paths)?;
+            collect_in(root, &entry.path(), paths, directories)?;
         } else if record_file(&entry.path()) {
             let metadata = entry.metadata()?;
             if metadata.len() > MAX_DOCUMENT {
@@ -1571,17 +1586,22 @@ mod tests {
         assert_eq!(index.documents.len(), 100);
         assert_eq!(index.documents["1.md"].body, "new body\n");
         assert_eq!(index.documents["2.md"].body, "old body\n");
-        // Overflow/full recovery discards explicit hints: it must bypass stamps
-        // even when a replacement restores both length and modification time.
+        // A full scan skips unchanged bytes and detects a same-length edit
+        // even when the original modification time was restored.
         let path = root.join("2.md");
         let stamp = path.metadata().unwrap().modified().unwrap();
         std::fs::write(&path, "---\nnumber: 2\ntype: research\n---\nnew body\n").unwrap();
         std::fs::File::options().write(true).open(&path).unwrap()
             .set_times(std::fs::FileTimes::new().set_modified(stamp)).unwrap();
-        index.reconcile_all().unwrap();
+        index.scan().unwrap();
+        assert_eq!(index.document_reads, 2);
         assert_eq!(index.documents["2.md"].body, "new body\n");
+        assert!(!index.namespace_changed());
         std::fs::remove_file(root.join("1.md")).unwrap();
-        index.scan_paths(&BTreeSet::from(["1.md".into()])).unwrap();
+        assert!(index.namespace_changed());
+        index.scan().unwrap();
+        assert!(!index.namespace_changed());
+        assert_eq!(index.document_reads, 2);
         assert_eq!(index.documents.len(), 99);
         assert!(!index.documents.contains_key("1.md"));
         assert!(index.documents.contains_key("2.md"));

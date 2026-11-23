@@ -8,6 +8,7 @@ use super::*;
 use crate::store::Events;
 use crate::{
     identity::IdentityRuntime,
+    index::ScanBatch,
     mcp::{Actor, Call, SeatActor},
 };
 use serde_json::{Value, json};
@@ -163,9 +164,9 @@ fn deferred_scan_caps_workers_and_replays_changes_arriving_after_preparation() {
         .root_mut(&a.binding.root_id)
         .unwrap()
         .watch
-        .mark_paths(std::collections::BTreeSet::from(
-            ["research/late.md".into()],
-        ));
+        .mark(ScanBatch::Paths(std::collections::BTreeSet::from([
+            "research/late.md".into(),
+        ])));
     fixture
         .worker
         .workspaces

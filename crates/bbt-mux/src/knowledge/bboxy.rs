@@ -892,9 +892,15 @@ impl DataSource for BboxySource<'_> {
             .documents
             .get(resolved.record.path)
             .expect("resolver uses this catalogue");
-        // NUM2 remains the fresh source of number uniqueness. There is no
-        // second #N parser, matching algorithm or allocation state here.
-        let current = if let Some(number) = resolved.record.markdown.frontmatter.number() {
+        // A numeric selector still checks live number custody. A slug, path or
+        // ID already identifies the file, even if an unrelated file claims its number.
+        let number = resolved
+            .record
+            .markdown
+            .frontmatter
+            .number()
+            .filter(|_| bbt_doc::links::locator(&request.locator).starts_with('#'));
+        let current = if let Some(number) = number {
             self.index.by_number(number).map_err(number_error)?
         } else {
             self.index.current(&cached.path).map_err(command_io)?

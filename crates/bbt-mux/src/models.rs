@@ -21,7 +21,7 @@ mod managed_workspace;
 mod transport_launch;
 mod workspace_ready;
 
-pub fn families() -> [fn(bool) -> Model; 19] {
+pub fn families() -> [fn(bool) -> Model; 20] {
     [
         plugin_activation,
         plugin_connection,
@@ -32,6 +32,7 @@ pub fn families() -> [fn(bool) -> Model; 19] {
         transport_launch::plugin_transport_launch,
         transport_launch::plugin_transport_progress,
         workspace_ready::workspace_ready,
+        crate::mcp::canvas::store_migration_model,
         crate::mcp::live_models::live_catalogue,
         crate::mcp::live_models::delegation_pointer,
         crate::mcp::live_models::absent_seat_close,

@@ -120,6 +120,9 @@ impl Workspace {
                     "workspace root changed during preparation",
                 ));
             }
+            if let Err(error) = crate::mcp::canvas::move_legacy_store(index.knowledge_root()) {
+                eprintln!("CanvasStoreMigration [{}]: {error}", root.display());
+            }
             index.set_issued_by(config.issued_by.clone());
             if let Some(bus) = &config.activity {
                 if store == "index" {
@@ -218,7 +221,9 @@ impl Workspace {
         let result = self
             .provenance
             .step(self.index.clone(), bus, runtime, identity, active);
-        self.watch.mark_paths(self.provenance.take_refreshed());
+        if let Some(batch) = self.provenance.take_refresh() {
+            self.watch.mark(batch);
+        }
         result
     }
     pub fn close(&self) {

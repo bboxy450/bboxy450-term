@@ -161,13 +161,11 @@ impl FileWatch {
             Err(TryLockError::WouldBlock) => None,
         }
     }
-    pub(crate) fn mark_paths(&self, paths: BTreeSet<String>) {
-        if !paths.is_empty() {
-            self.pending
-                .lock()
-                .unwrap_or_else(|error| error.into_inner())
-                .push(ScanBatch::Paths(paths), Instant::now());
-        }
+    pub(crate) fn mark(&self, batch: ScanBatch) {
+        self.pending
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .push(batch, Instant::now());
     }
 }
 

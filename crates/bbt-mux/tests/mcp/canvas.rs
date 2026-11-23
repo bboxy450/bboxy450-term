@@ -519,3 +519,75 @@ fn canvas_read_reports_extents_skips_elements_on_request_and_keeps_a_frame_first
         json!({"origin":[0.,0.],"size":[400.,200.]})
     );
 }
+
+#[test]
+fn canvas_moves_nested_records_and_archives_before_serving_mcp() {
+    use bboxy450_canvas::{CanvasRecord, store::Store};
+    let active = Ulid::new().to_string();
+    let archived = Ulid::new().to_string();
+    let mut f = Fixture::open_seeded(false, false, |repository, seat| {
+        let root = repository.join(".bboxy");
+        let legacy = Store::new(root.join(".bboxy/canvases"));
+        std::fs::create_dir_all(root.join(".bboxy/tasks")).unwrap();
+        std::fs::write(root.join(".bboxy/tasks/untouched.md"), "Oracle custody").unwrap();
+        let metadata = |title: &str| CanvasRecord {
+            title: title.into(),
+            swarm: seat.swarm.to_string(),
+            creator: format!("seat:{}", seat.id),
+            tags: vec![],
+            task: None,
+        };
+        let open = legacy.create(&active, metadata("Active")).unwrap();
+        legacy
+            .append(
+                &open.record,
+                "legacy-batch",
+                &open.record.creator,
+                Some(0),
+                &[serde_json::from_value(add(0)).unwrap()],
+            )
+            .unwrap();
+        let closed = legacy.create(&archived, metadata("Archived")).unwrap();
+        legacy.close(&closed.record).unwrap();
+    });
+    let root = f.config.repository.join(".bboxy");
+    assert!(!root.join(".bboxy/canvases").exists());
+    assert_eq!(
+        std::fs::read_to_string(root.join(".bboxy/tasks/untouched.md")).unwrap(),
+        "Oracle custody"
+    );
+    let read =
+        |f: &Fixture| data(f.call(f.own.id, Ulid::new(), "canvas_read", json!({"id":active})));
+    let before = read(&f);
+    assert_eq!(before["seq"], 1);
+    assert_eq!(before["elements"][0]["id"], "node-0");
+    let closed = data(f.call(f.own.id, Ulid::new(), "canvas_archived_list", json!({})));
+    assert_eq!(closed["canvases"][0]["id"], archived);
+    f.restart();
+    assert_eq!(read(&f)["digest"], before["digest"]);
+
+    let open = data(f.call(f.own.id, Ulid::new(), "canvas_open", json!({"title":"New"})));
+    let file = format!("{}.md", open["slug"].as_str().unwrap());
+    assert!(root.join("canvases").join(&file).is_file());
+    assert!(!root.join(".bboxy/canvases").exists());
+}
+
+#[test]
+fn canvas_startup_preserves_both_directories_on_migration_conflict() {
+    let f = Fixture::open_seeded(false, false, |repository, _| {
+        let root = repository.join(".bboxy");
+        std::fs::create_dir(root.join("canvases")).unwrap();
+        let legacy = root.join(".bboxy/canvases");
+        std::fs::create_dir_all(&legacy).unwrap();
+        std::fs::write(legacy.join("preserve"), "legacy contents").unwrap();
+    });
+    let root = f.config.repository.join(".bboxy");
+    let listed = data(f.call(f.own.id, Ulid::new(), "canvas_list", json!({})));
+    assert_eq!(listed["canvases"], json!([]));
+    assert!(root.join("canvases").is_dir());
+    assert_eq!(
+        std::fs::read_to_string(root.join(".bboxy/canvases/preserve")).unwrap(),
+        "legacy contents"
+    );
+    assert!(!root.join("canvases/preserve").exists());
+}

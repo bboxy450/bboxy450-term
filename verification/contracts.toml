@@ -1068,9 +1068,9 @@ checks = ["make test-formal", "make test"]
 name = "WatcherChanges"
 title = "Prepared scan completion preserves newer pending changes"
 models = ["WatcherChanges", "BrokenWatcherChanges"]
-sources = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/index/watch.rs", "crates/bbt-mux/src/knowledge/routing.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
-implementation_tests = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/knowledge/routing_tests.rs", "crates/bbt-mux/tests/provenance.rs"]
-assumptions = "One path, two filesystem revisions, atomic hint/capture/completion and eventual scan IO under weakly fair capture/completion. Native witnesses retain an edit arriving after preparation, reread restored-mtime bytes on full reconciliation, replace failed watchers before scanning, and preserve root/base identity fences. Eventual convergence is not an atomic filesystem snapshot; unbounded external failure, graph memory cost and arbitrary Rust refinement are unmodeled."
+sources = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/index/watch.rs", "crates/bbt-mux/src/knowledge/routing.rs", "crates/bbt-mux/src/provenance/worker.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/knowledge/routing_tests.rs", "crates/bbt-mux/tests/provenance.rs", "crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/tests/mcp/den_records.rs"]
+assumptions = "One path, two filesystem revisions, atomic hint/capture/completion and eventual scan IO under weakly fair capture/completion. Native witnesses retain an edit arriving after preparation, reread restored-mtime bytes on full reconciliation, replace failed watchers before scanning, and preserve root/base identity fences. A detected directory stamp change enters the existing full-hint transition. The live Git subprocess and external Markdown write witnesses check additions and removals while the same Logic host stays up. Directory metadata behavior and OS notification delivery are implementation-only. Eventual convergence is not an atomic filesystem snapshot; unbounded external failure, graph memory cost and arbitrary Rust refinement are unmodeled."
 property = "No stable filesystem change is left without a running or pending reconciliation, and each stable revision eventually becomes visible or superseded. The broken completion clears dirtiness belonging to a newer change and violates safety."
 checks = ["make test-formal", "make test"]
 
@@ -1998,6 +1998,17 @@ property = "OnlySameOfferEvidenceAndOriginalRequest; OriginalOperationAtMostOneR
 checks = ["make test-formal", "make test"]
 focused_checks = ["make test-dream-mcp", "make test-formal-contracts"]
 
+
+[[contract]]
+name = "CanvasStoreMigration"
+title = "Startup moves the legacy canvas store as a directory and preserves an existing home"
+models = ["CanvasStoreMigration", "BrokenCanvasStoreMigration"]
+controls = [{ name = "BrokenCanvasStoreMigration", expected = "safety" }]
+sources = ["crates/bbt-mux/src/mcp/canvas.rs", "crates/bbt-mux/src/knowledge/workspaces.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp/canvas.rs"]
+assumptions = "One legacy directory, one possible preexisting canonical directory and one mount owner. Rename is atomic on the same filesystem. The owner can stop or retry before or after a rename. The nonempty destination is also protected by filesystem rename semantics if another process populates it. Concurrent creation of an empty directory between the preflight check and rename, external edits, filesystem failures and power-loss behavior are outside the model."
+property = "Exactly one directory holds the legacy store, and an existing canonical store survives startup. Removing the destination check permits replacing an empty canonical directory and violates safety. Native MCP fixtures check replay of a moved log, listing of a moved archive, retry on restart and refusal when both directories exist."
+checks = ["make test-formal", "make test"]
 
 [[contract]]
 name = "CanvasConvergence"

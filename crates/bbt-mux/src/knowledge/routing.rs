@@ -468,7 +468,7 @@ impl Router {
                         }
                         let index = Arc::make_mut(&mut index);
                         match batch {
-                            ScanBatch::Full => index.reconcile_all(),
+                            ScanBatch::Full => index.scan(),
                             ScanBatch::Paths(paths) => index.scan_paths(&paths),
                         }
                         .map(|_| ())

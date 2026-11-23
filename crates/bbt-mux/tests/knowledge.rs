@@ -140,18 +140,21 @@ fn duplicate_numbers_are_scoped_conflicts_and_do_not_poison_healthy_reads() {
     assert_eq!(f.resolve("#396").path, "notes/healthy.md");
     assert_eq!(f.resolve("notes/healthy.md").number, Some(396));
     let source = BboxySource::new(&f.index);
-    for locator in [
-        "#365",
-        "artifacts/collision.md",
-        "decisions/d365-collision.md",
+    let error = source
+        .resolve(d::ResolveRequest {
+            locator: "[[#365|duplicate number]]".into(),
+        })
+        .unwrap_err();
+    assert_eq!(error.code, "number_conflict", "{error}");
+    assert!(!error.message.contains(f.root.to_str().unwrap()));
+    for (locator, path) in [
+        ("artifacts/collision.md", "artifacts/collision.md"),
+        ("decisions/d365-collision", "decisions/d365-collision.md"),
+        (&Ulid(366).to_string(), "decisions/d365-collision.md"),
     ] {
-        let error = source
-            .resolve(d::ResolveRequest {
-                locator: locator.into(),
-            })
-            .unwrap_err();
-        assert_eq!(error.code, "number_conflict", "{error}");
-        assert!(!error.message.contains(f.root.to_str().unwrap()));
+        let record = f.resolve(locator);
+        assert_eq!(record.path, path);
+        assert_eq!(record.number, Some(365));
     }
     f.seed(397, "notes/next.md", json!({}), "next");
     assert_eq!(f.resolve("notes/next.md").number, Some(397));

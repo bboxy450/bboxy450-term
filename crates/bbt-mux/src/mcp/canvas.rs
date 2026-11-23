@@ -249,6 +249,74 @@ pub(crate) fn present(
     }
     value["content"][0]["text"] = json!(value["structuredContent"].to_string());
 }
+/// Move the old store as one directory so records, logs and archives stay paired.
+pub(crate) fn move_legacy_store(root: &Path) -> std::io::Result<()> {
+    use std::{fs, io};
+    bbt_rt::assert_not_ui_thread();
+    let nested = root.join(".bboxy");
+    let legacy = nested.join("canvases");
+    if !nested.symlink_metadata().is_ok_and(|m| m.is_dir())
+        || !legacy.symlink_metadata().is_ok_and(|m| m.is_dir())
+    {
+        return Ok(());
+    }
+    let destination = root.join("canvases");
+    if destination.symlink_metadata().is_ok() {
+        return Err(io::Error::new(
+            io::ErrorKind::AlreadyExists,
+            format!(
+                "canvas stores at {} and {}; preserve both for manual reconciliation",
+                legacy.display(),
+                destination.display()
+            ),
+        ));
+    }
+    fs::rename(&legacy, destination)?;
+    fs::File::open(&nested)?.sync_all()?;
+    fs::File::open(root)?.sync_all()
+}
+
+#[cfg(feature = "model")]
+pub(crate) fn store_migration_model(broken: bool) -> bboxy450_tlc::Model {
+    use bboxy450_tlc::{
+        Expr::Int,
+        build::{action, eq, implies, model, ne, safe},
+    };
+    let (legacy, canonical, incumbent) = (0, 1, 2);
+    let mut contract = model(
+        "CanvasStoreMigration",
+        broken,
+        &[("legacy", 1, 1), ("canonical", 2, 0), ("incumbent", 1, 0)],
+    );
+    action(
+        &mut contract,
+        "CreateCanonicalFirst",
+        eq(canonical, 0),
+        &[(canonical, Int(2)), (incumbent, Int(1))],
+    );
+    let mut can_move = eq(legacy, 1);
+    if !broken {
+        can_move = can_move.and(eq(canonical, 0));
+    }
+    action(
+        &mut contract,
+        "MoveAtMount",
+        can_move,
+        &[(legacy, Int(0)), (canonical, Int(1))],
+    );
+    safe(
+        &mut contract,
+        "LegacyHasOneHome",
+        eq(legacy, 1).eq(ne(canonical, 1)),
+    );
+    safe(
+        &mut contract,
+        "IncumbentSurvives",
+        implies(eq(incumbent, 1), eq(canonical, 2)),
+    );
+    contract
+}
+
 /// Root and swarm come from admission, never from a caller-controlled path.
 /// Image bytes are kept outside structuredContent and appended as MCP content.
 pub(crate) fn execute(
@@ -259,13 +327,7 @@ pub(crate) fn execute(
     call: &Call,
     #[cfg(feature = "canvas-image")] artifacts: &super::artifacts::CanvasReads<'_>,
 ) -> d::Result<Value> {
-    let directory = if root.join(".bboxy").is_dir() {
-        root.join(".bboxy")
-    } else {
-        root.to_owned()
-    }
-    .join("canvases");
-    let store = Store::new(directory);
+    let store = Store::new(root.join("canvases"));
     #[cfg(feature = "canvas-image")]
     let mut image = None;
     #[cfg(feature = "canvas-image")]
