@@ -1,27 +1,27 @@
 ---
-type: skill
-name: canvas
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: +Z+SffD6ma7+9tH7HcO8nu+L88bfZ9A4Xu1v6WL7C48=
+  signer: seat:01M8288EHSV7SQ289RE0J1SK0S
+created_by: seat:01M788X1K2MZH0V5CH8RDS2EYS
 description: 'Draw and inspect a kept canvas with styles, routed connectors, free paths and layout help: use when asked to draw, doodle, sketch, diagram, explain a system visually or show a plan on a canvas.'
 id: 01M71VMS8QQ7FHX9SA7YC7Q7K3
-updated: 2026-11-12T16:49:57.193Z
+name: canvas
 number: 1794274420276184
-created_by: seat:01M788X1K2MZH0V5CH8RDS2EYS
-updated_by: seat:01M788X1K2MZH0V5CH8RDS2EYS
-authorship:
-  signer: seat:01M788X1K2MZH0V5CH8RDS2EYS
-  kind: seat
-  public_key: QirMRCVq4MGjLqozHY5Hg1PxrBTQC7432d3nv2JAmW0=
-  process_generation: '1'
+type: skill
+updated: 2026-11-23T00:56:53.087Z
+updated_by: seat:01M8288EHSV7SQ289RE0J1SK0S
 provenance:
-  digest: sha256:66974101a595f65afa2b8eee7007cfc7e797cebccd0a7d97f8290cbe88e67f6e
-  frontmatter_digest: sha256:11b5456e156c2f78419dd8e2370c9db2c5308acfd57ed9c066090f77a831cb7f
-  signer: seat:01M788X1K2MZH0V5CH8RDS2EYS
-  sig: bAxGrjfGSWxCvazV65FqdGgKdTIf8o6mRwOcTV0ZN+RgoUlnE3knRaFU0J54yCN9a3jCGJ1xe0nb04OxtHlIDQ==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/82807
+  digest: sha256:3cdf97ec486d9064b77c551ce67983cd1c1461e2053b18d4795a8c3b7f35340c
+  frontmatter_digest: sha256:271143adabb44e1bca66944eee220b617849e828069d7dc20640a3534d69e6a0
+  signer: seat:01M8288EHSV7SQ289RE0J1SK0S
+  sig: QRyWu0kojXbO/gHP8doiSmRYh6cxZ1ox55RvO67BBv3IaNU+u1GfYiXz1Ug3k1J/ld8/tzdk7XeapGqU0HbCCA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1121
   event:
-    id: 01M78AN00HG6DW0HX9KEYP3RNN
-    sequence: 82807
-    hash: 32d60880915991795c66c77099f74662503dcfac4e3dbf7431c40faead2f3adb
+    id: 01M82YFS7RWHCEFHZMYRNTK0DX
+    sequence: 1121
+    hash: 4844d0d2647361881da8364f2ec5de3156e6f30c2e95129bc6faba5590853b8e
 ---
 # Canvas
 
@@ -86,3 +86,5 @@ Theme tokens follow light and dark; literal hues do not, so prefer tokens for an
 ## A good diagram in one pass
 
 Lay shapes on a grid of about 160 by 110 world units; use frames for columns; route connectors `orthogonal` between columns and `curved` for feedback; put the label at `label_at: 0.3` when two connectors share a gap; glow the element the explanation is about; read `extent` and the frames' `members` boxes before adding the next column.
+
+**Images.** Place a stored SVG or PNG with `content: {"type":"image","bounds":{"origin":[x,y],"size":[width,height]},"artifact":"ID"}`. A bare `ID` follows the latest stored revision; `ID:N` pins revision N. The image fits inside the authored bounds. `canvas_read` with `image: true` reports the resolved pin for export. Removing the element leaves the stored artifact available.

@@ -20,11 +20,49 @@ task SvgLoopPinnedChrome {
     4. **Second red full gate on main (Oracle audit):** `make test-parity` exits 2 on `scripts/test-landing.py` `GateReceiptTests.test_real_ci_entrypoint_binds_success_and_does_not_certify_failure` (`ValueError: substring not found` at line 1657). Cause: `8213133a7` made `make test-real-sessions` run only when `SESSIONS_DIR` is set (`scripts/ci-local.sh:120`), but the test still requires that stage in its ordered stage list. Update the test to match the opt-in contract: assert the default CI omits `test-real-sessions`, and that it is present and ordered when `SESSIONS_DIR` is set. Reproduce first: `python3 scripts/test-landing.py GateReceiptTests.test_real_ci_entrypoint_binds_success_and_does_not_certify_failure`.
     After both fixes, run `make test-parity` once (detached) on your final commit and report its exit.
 
+    5. **Document corpus repair (Oracle ruling, answering your block):** `crates/bbt-doc/tests/corpus.rs:337` `real_corpus_links_numeric_handles_and_legacy_ledger_anchors_resolve` fails because 11 task records pushed in `6307f306c` quote status pills (`[[Passed]]`, `[[Blocked]]`, ...). Pills are a documented renderer feature, not links. In `link_targets` (corpus.rs:263) skip a `WikiLink` whose target `bbt_ui_model::emphasis::pill(target)` classifies as a pill; that classifier is the one home of the vocabulary. Do not edit the records. Add a fixture line with a pill beside a real broken link: the pill passes, the broken link still fails. Then refresh `make test-parity` once and land.
+
     ## Land
     Long commands detached with exit code to a file. `make land`. Report at reports/2026-11-22-svg-loop-pinned-chrome.den, then `task_report`.
+
+
+    ## Report from seat:01M82JAGV0RX5ZC33EVF8XBX1B
+
+    The SVG loop passed with pinned Chrome for Testing 158.0.8127.37, 216 native captures, and all 30 frozen advisories. Removed the installed-Chrome fallbacks and the unconditional saved-session assertion. The opt-in fixture, license gate and 997-model formal gate passed. The detached parity gate exited 2 after 2,903 passes because the document corpus treats existing status pills as unresolved links. Landing is blocked. Assign the document corpus repair so parity can be refreshed. The signed commit and clean worktree are retained.
+
+    ```json
+    {
+      "op_id": "01M82X342NTCE2M71MYKBT6NF3",
+      "commit": "65242bcdd535284ed7948d7e9d19dba2a82ef36c",
+      "report": "[[reports/2026-11-22-svg-loop-pinned-chrome.den]]",
+      "verify_result": {
+        "command": "make svg-loop",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Pinned Chrome and frozen SVG comparisons pass",
+            "reference": "/Users/feral/Library/Application Support/bboxy450-term/run/implementation-workspaces/checkouts/01M82JAA2SY4ZYPE46E90NRZ7W/target/svg-chrome-evidence/svg-loop-final.log"
+          },
+          {
+            "criterion": "Wrong browser version and opt-in saved-session replay have executable regression coverage",
+            "reference": "crates/bboxy450-svg/test_corpus.py:30 and scripts/test-landing.py:1642"
+          },
+          {
+            "criterion": "Detached full parity run exited 2 on the document corpus",
+            "reference": "/Users/feral/Library/Application Support/bboxy450-term/run/implementation-workspaces/checkouts/01M82JAA2SY4ZYPE46E90NRZ7W/target/ci-local.log:1356"
+          },
+          {
+            "criterion": "Formal verification exited 0 on the reported commit",
+            "reference": "/Users/feral/Library/Application Support/bboxy450-term/run/implementation-workspaces/checkouts/01M82JAA2SY4ZYPE46E90NRZ7W/target/svg-chrome-evidence/formal.log"
+          }
+        ]
+      }
+    }
+    ```
     """
 
   managed {
+    allowed_paths = json"[\"crates/bboxy450-svg\",\"Makefile\",\"scripts\",\".gitignore\",\"crates/bbt-doc/tests\"]"
     assignee = json"\"seat:01M82JAGV0RX5ZC33EVF8XBX1B\""
     authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"+Z+SffD6ma7+9tH7HcO8nu+L88bfZ9A4Xu1v6WL7C48=\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\"}"
     created = json"\"2026-11-22T19:49:00.193Z\""
@@ -32,12 +70,14 @@ task SvgLoopPinnedChrome {
     delegated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
     id = json"\"01M82CW063MAPKNWA252EZATWY\""
     number = json"1794292861627763"
+    report = json"{\"commit\":\"65242bcdd535284ed7948d7e9d19dba2a82ef36c\",\"op_id\":\"01M82X342NTCE2M71MYKBT6NF3\",\"report\":\"[[reports/2026-11-22-svg-loop-pinned-chrome.den]]\",\"reported_by\":\"seat:01M82JAGV0RX5ZC33EVF8XBX1B\",\"summary\":\"The SVG loop passed with pinned Chrome for Testing 158.0.8127.37, 216 native captures, and all 30 frozen advisories. Removed the installed-Chrome fallbacks and the unconditional saved-session assertion. The opt-in fixture, license gate and 997-model formal gate passed. The detached parity gate exited 2 after 2,903 passes because the document corpus treats existing status pills as unresolved links. Landing is blocked. Assign the document corpus repair so parity can be refreshed. The signed commit and clean worktree are retained.\",\"verify_revision\":0}"
     role = json"\"executor\""
-    status = Claimed
+    status = Reported
     swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
-    updated = json"\"2026-11-22T21:24:21.825Z\""
+    updated = json"\"2026-11-23T00:33:21.549Z\""
     updated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
-    provenance = json"{\"digest\":\"sha256:a589818057317741c97a6cc39612be927534665479c4589b3bafd6ae2573d5b1\",\"frontmatter_digest\":\"sha256:c8d0bd38dffa943d1a9d78163c0f226f85ba1ececef2cfcb5fd3272606f8e038\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"56G2+WD3wIpvxSDClLqaLjOXfQxM7a+/wuYaaBsh98EMQ8Tvqjbh5lIr9Kk62H0AwBP5QCaozDueZCRJQBEACw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1080\",\"event\":{\"id\":\"01M82JAMSH4CC43PHF1AHF0Z0M\",\"sequence\":1080,\"hash\":\"2d32da87d39a995b66deb4f57e84eb970cc112ef8d02e851b5a604d317208708\"}}"
+    verify_result = json"{\"command\":\"make svg-loop\",\"evidence\":[{\"criterion\":\"Pinned Chrome and frozen SVG comparisons pass\",\"reference\":\"/Users/feral/Library/Application Support/bboxy450-term/run/implementation-workspaces/checkouts/01M82JAA2SY4ZYPE46E90NRZ7W/target/svg-chrome-evidence/svg-loop-final.log\"},{\"criterion\":\"Wrong browser version and opt-in saved-session replay have executable regression coverage\",\"reference\":\"crates/bboxy450-svg/test_corpus.py:30 and scripts/test-landing.py:1642\"},{\"criterion\":\"Detached full parity run exited 2 on the document corpus\",\"reference\":\"/Users/feral/Library/Application Support/bboxy450-term/run/implementation-workspaces/checkouts/01M82JAA2SY4ZYPE46E90NRZ7W/target/ci-local.log:1356\"},{\"criterion\":\"Formal verification exited 0 on the reported commit\",\"reference\":\"/Users/feral/Library/Application Support/bboxy450-term/run/implementation-workspaces/checkouts/01M82JAA2SY4ZYPE46E90NRZ7W/target/svg-chrome-evidence/formal.log\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:07e3b318a5155a12658373064920f3c02e44e9c5128f560eed4bfa1ecac7d245\",\"frontmatter_digest\":\"sha256:1e63bc8a4e2eef034cd9716b214f5b90bc7b646279225923c9ee9372c20e4c69\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"dLx3KjD4pmMFJ7QmHlIks4YWy0lbrv+7vYp+Pz3J0FJ+jaJJ1eLQZWzgzR87EAcT38mD5OgZ9hoo8mFNOLTFDw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1108\",\"event\":{\"id\":\"01M82X4PS3W561P6XKMWA463SZ\",\"sequence\":1108,\"hash\":\"6fa119870aff95f55ecb0bfbd105c866461595d8bd5a29ad42786a7d0f256a65\"}}"
     body_tail = json"\"\\n\""
   }
 }

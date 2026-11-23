@@ -24,22 +24,64 @@ task ChartRuntimeInstalled {
 
     ## Land
     Long commands detached with exit code to a file. `make land`. Report at reports/2026-11-22-chart-runtime.den, then `task_report`.
+
+
+    ## Report from seat:01M82G2ST0JY0HD8CX6BD6FGNH
+
+    The private unsigned install provisioned CPython 3.12.14 and painted the stored Matplotlib line and Altair bars in the transcript. `make test-chart-artifacts` passed all 36 checks, including historical pins, canvas geometry and junk-seat fixture isolation. Removed the chart test PATH override and canvas revision captions. Formal parity passed for 997 models, and both signed commits landed on main. The report is indexed machine-locally and includes both artifact IDs, actual command exits and the canvas skill paragraph.
+
+    ```json
+    {
+      "op_id": "01M82YE1872QS3B7ADK2SB0VM4",
+      "commit": "da36f460f5c7b977e00473bf53db18ea93cc25be",
+      "report": "[[reports/2026-11-22-chart-runtime.den]]",
+      "verify_result": {
+        "command": "make test-chart-artifacts",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Installed hash-locked Python, Matplotlib and Altair transcript paint",
+            "reference": "/tmp/bboxy-chart-runtime-evidence-0svs12fy/chart-recheck.log:23,252–253"
+          },
+          {
+            "criterion": "Historical image pins and media-type rejection",
+            "reference": "/tmp/bboxy-chart-runtime-evidence-0svs12fy/chart-recheck.log:239 and crates/bbt-mux/tests/mcp/python_execution.rs:585"
+          },
+          {
+            "criterion": "Canvas image bounds and preserved export pins",
+            "reference": "/tmp/bboxy-chart-runtime-evidence-0svs12fy/chart-recheck.log:185,255–263 and crates/bbt-mux/src/mcp/canvas/render.rs:150"
+          },
+          {
+            "criterion": "Hermetic harness fixture with inherited junk seat context",
+            "reference": "/tmp/bboxy-chart-runtime-evidence-0svs12fy/chart-recheck.log:68 and Makefile:2923"
+          },
+          {
+            "criterion": "Signed main landing and current-source formal verification",
+            "reference": "da36f460f5c7b977e00473bf53db18ea93cc25be, 91cd7a0554e50ac433ec5c7e4c3611964b38917d, formal receipt f2afb76b15600a9499775f90460030f716861049bb9ef5cd88643528d54b7ee5"
+          }
+        ]
+      }
+    }
+    ```
     """
 
   managed {
     assignee = json"\"seat:01M82G2ST0JY0HD8CX6BD6FGNH\""
     authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"+Z+SffD6ma7+9tH7HcO8nu+L88bfZ9A4Xu1v6WL7C48=\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\"}"
+    closed = json"{\"by\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"op_id\":\"01M82YEY7ZK9PH4CMNN0AMG7CY\"}"
     created = json"\"2026-11-22T18:40:37.179Z\""
     created_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
     delegated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
     id = json"\"01M828YSP5S3N5CZH239TDJDW2\""
     number = json"1794292861627759"
+    report = json"{\"commit\":\"da36f460f5c7b977e00473bf53db18ea93cc25be\",\"op_id\":\"01M82YE1872QS3B7ADK2SB0VM4\",\"report\":\"[[reports/2026-11-22-chart-runtime.den]]\",\"reported_by\":\"seat:01M82G2ST0JY0HD8CX6BD6FGNH\",\"summary\":\"The private unsigned install provisioned CPython 3.12.14 and painted the stored Matplotlib line and Altair bars in the transcript. `make test-chart-artifacts` passed all 36 checks, including historical pins, canvas geometry and junk-seat fixture isolation. Removed the chart test PATH override and canvas revision captions. Formal parity passed for 997 models, and both signed commits landed on main. The report is indexed machine-locally and includes both artifact IDs, actual command exits and the canvas skill paragraph.\",\"verify_revision\":0}"
     role = json"\"executor\""
-    status = Claimed
+    status = Done
     swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
-    updated = json"\"2026-11-22T20:45:10.310Z\""
+    updated = json"\"2026-11-23T00:56:35.435Z\""
     updated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
-    provenance = json"{\"digest\":\"sha256:3a418e8feb4cb7feafb12f5e8e3151a0dd59cf2eb400c43ae86424e7deffb270\",\"frontmatter_digest\":\"sha256:7edde48e383319929a67c4b77a530945e3e749c66a64362dd18ad14689949978\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"y4zRED7gi2n28ohkXgU4WbogFNYvxGGUv0dc+qNOiYCsn3D2j6eQQSHIRXMu760wf0f6O/zd3PR6V6/3aMRcAA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1067\",\"event\":{\"id\":\"01M82G2WDWA1WW9XRK9MVB6M51\",\"sequence\":1067,\"hash\":\"4399f5bc69b3a45b5a7133ba61506705ec6b2661ed25eca604eb10e375585809\"}}"
+    verify_result = json"{\"command\":\"make test-chart-artifacts\",\"evidence\":[{\"criterion\":\"Installed hash-locked Python, Matplotlib and Altair transcript paint\",\"reference\":\"/tmp/bboxy-chart-runtime-evidence-0svs12fy/chart-recheck.log:23,252–253\"},{\"criterion\":\"Historical image pins and media-type rejection\",\"reference\":\"/tmp/bboxy-chart-runtime-evidence-0svs12fy/chart-recheck.log:239 and crates/bbt-mux/tests/mcp/python_execution.rs:585\"},{\"criterion\":\"Canvas image bounds and preserved export pins\",\"reference\":\"/tmp/bboxy-chart-runtime-evidence-0svs12fy/chart-recheck.log:185,255–263 and crates/bbt-mux/src/mcp/canvas/render.rs:150\"},{\"criterion\":\"Hermetic harness fixture with inherited junk seat context\",\"reference\":\"/tmp/bboxy-chart-runtime-evidence-0svs12fy/chart-recheck.log:68 and Makefile:2923\"},{\"criterion\":\"Signed main landing and current-source formal verification\",\"reference\":\"da36f460f5c7b977e00473bf53db18ea93cc25be, 91cd7a0554e50ac433ec5c7e4c3611964b38917d, formal receipt f2afb76b15600a9499775f90460030f716861049bb9ef5cd88643528d54b7ee5\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:bc63d8fb57fad562b9875c52778eebc9570a675eedfe7ef139af3cd654d3636f\",\"frontmatter_digest\":\"sha256:34073bd66c20841bd811203f4e6fbc77f995317c73db74b09ff63d8728bb2af2\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"GDIOOExel/h8oGI0IqD0nl5n86uMMwGjxgeXAfKFhXFreZGYowhXZ4bWBFCFPsZaEJ8LgQngIUD9wYYgGsyVBQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1119\",\"event\":{\"id\":\"01M82YF7ZT4KCKV9F3RFN3BHXQ\",\"sequence\":1119,\"hash\":\"ed5feb01418334cb790e628e616e9b7fd1de84427668c0ec66df27507e92a4df\"}}"
     body_tail = json"\"\\n\""
   }
 }
