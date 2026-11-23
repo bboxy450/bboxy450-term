@@ -515,6 +515,137 @@ fn hold_private_legacy_read(runtime: &Path, seat: crate::Ulid) -> std::io::Resul
     Ok(true)
 }
 
+#[derive(Debug, serde::Deserialize)]
+pub(super) struct AgentExit {
+    pub id: Ulid,
+    pub cause: String,
+    pub last_tool: Option<ExitTool>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub(super) struct ExitTool {
+    pub name: String,
+    pub call_id: String,
+}
+
+impl AgentExit {
+    pub(super) fn message(
+        &self,
+        recipient: bbt_proto::messaging::Recipient,
+    ) -> Option<bbt_proto::messaging::SendRequest> {
+        use bbt_proto::messaging::{Recipient, SendRequest};
+        use sha2::{Digest, Sha256};
+        let destination = match recipient {
+            Recipient::Seat(id) => format!("seats/{id}/inbox"),
+            Recipient::Operator(_) | Recipient::OperatorLocal(_) => "operator/inbox".into(),
+            Recipient::Plugin(_) => return None,
+        };
+        let tool = self.last_tool.as_ref().map_or_else(
+            || "none recorded".to_owned(),
+            |tool| format!("{} ({})", tool.name, tool.call_id),
+        );
+        let mut message = SendRequest::text(
+            destination,
+            format!(
+                "ACP agent exited while this seat held a claimed task.\n\nExit cause: {}\nLast tool call: {tool}",
+                self.cause,
+            ),
+        );
+        // The durable notice item identifies one exit. Replays reuse the same
+        // message ID for each delegator and let the existing ledger deduplicate.
+        let target: String = recipient.into();
+        let digest = Sha256::new()
+            .chain_update(b"ACP agent exit")
+            .chain_update(self.id.to_bytes())
+            .chain_update(target)
+            .finalize();
+        message.id = Ulid::from_bytes(digest[..16].try_into().expect("digest contains 16 bytes"));
+        Some(message)
+    }
+}
+
+fn agent_exit(event: &serde_json::Value, session: &str) -> Option<AgentExit> {
+    let body = &event["event"];
+    let mut loss = event["ext"]["agent_exit"].clone();
+    if body["type"] != "item_completed"
+        || body["body"]["kind"] != "notice"
+        || loss["session"] != session
+    {
+        return None;
+    }
+    loss["id"] = body["item"].clone();
+    serde_json::from_value(loss).ok()
+}
+
+async fn watch_agent_exits(
+    client: &LogicClient,
+    binding: &Binding,
+    socket: &std::path::Path,
+    session: &str,
+    cursor: &mut Option<(u64, u64)>,
+) -> Result<()> {
+    use tokio::io::{AsyncWriteExt, BufReader};
+    let (mut reader, _writer, epoch) = tokio::time::timeout(Duration::from_millis(250), async {
+        let mut stream = tokio::net::UnixStream::connect(socket).await?;
+        let peer = stream.peer_cred()?;
+        if peer.pid().map(|pid| pid as u32) != Some(binding.pid)
+            || peer.uid() != unsafe { libc::geteuid() }
+        {
+            return Err(invalid("agent exit source process mismatch"));
+        }
+        let subscribe = serde_json::json!({
+            "v": {"major": 1, "minor": 1},
+            "subscribe": {"session": session, "after": *cursor, "ephemeral": false},
+        });
+        stream
+            .write_all(format!("{subscribe}\n").as_bytes())
+            .await?;
+        let (read, write) = stream.into_split();
+        let mut reader = BufReader::new(read);
+        let hello = crate::seat_socket::read_line(&mut reader)
+            .await?
+            .ok_or_else(|| invalid("agent exit source closed before Hello"))?;
+        let hello: serde_json::Value = serde_json::from_slice(&hello)?;
+        if hello["meta"]["session"] != session || hello["v"]["major"] != 1 {
+            return Err(invalid("agent exit source session mismatch"));
+        }
+        let epoch = hello["epoch"]
+            .as_u64()
+            .ok_or_else(|| invalid("agent exit source epoch missing"))?;
+        Ok((reader, write, epoch))
+    })
+    .await??;
+    while let Some(frame) = crate::seat_socket::read_line(&mut reader).await? {
+        let event: serde_json::Value = serde_json::from_slice(&frame)?;
+        if event["session"] != session || event["v"]["major"] != 1 {
+            return Err(invalid("agent exit event session mismatch"));
+        }
+        match event["event"]["type"].as_str() {
+            Some("reset") => {
+                *cursor = None;
+                return Err(invalid("agent exit source cursor reset"));
+            }
+            Some("lagged") => return Err(invalid("agent exit source needs replay")),
+            _ => {}
+        }
+        if event["epoch"].as_u64() != Some(epoch) {
+            continue;
+        }
+        let Some(seq) = event["seq"].as_u64() else {
+            continue;
+        };
+        if let Some(loss) = agent_exit(&event, session) {
+            client
+                .tx
+                .send(Command::HarnessAgentExit(binding.clone(), loss))
+                .await
+                .map_err(|_| invalid("logic stopped"))?;
+        }
+        *cursor = Some((epoch, seq));
+    }
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)] // The follower owns distinct source and retirement endpoints.
 pub(super) async fn run(
     client: LogicClient,
@@ -580,6 +711,8 @@ pub(super) async fn run(
         None
     };
     let mut previous = binding.session.clone();
+    let mut last_exit_session = String::new();
+    let mut exit_cursor = None;
     loop {
         let session = match match &endpoint {
             Some(path) => harness_log::discover_socket(path, None, &binding).await,
@@ -602,6 +735,18 @@ pub(super) async fn run(
         let socket = endpoint
             .clone()
             .unwrap_or_else(|| root.join("run").join(format!("{session}.sock")));
+        if session != last_exit_session {
+            last_exit_session.clone_from(&session);
+            exit_cursor = None;
+        }
+        let mut exit_reader = std::pin::pin!(watch_agent_exits(
+            &client,
+            &binding,
+            &socket,
+            &session,
+            &mut exit_cursor
+        ));
+        let mut exit_reader_open = true;
         let mut discovery_at = Instant::now() + Duration::from_secs(15);
         loop {
             #[cfg(debug_assertions)]
@@ -651,7 +796,13 @@ pub(super) async fn run(
                 }
                 discovery_at = Instant::now() + Duration::from_secs(15);
             }
-            tokio::time::sleep(Duration::from_millis(200)).await;
+            tokio::select! {
+                _ = tokio::time::sleep(Duration::from_millis(200)) => {}
+                _ = &mut exit_reader, if exit_reader_open => exit_reader_open = false,
+            }
+            if !exit_reader_open {
+                break;
+            }
         }
         tokio::time::sleep(Duration::from_secs(2)).await;
     }

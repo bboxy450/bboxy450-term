@@ -305,6 +305,40 @@ impl TaskDocuments for ProviderTasks<'_> {
     }
 }
 impl ProviderTasks<'_> {
+    pub(crate) fn claimed_delegators(
+        &self,
+        registry: &Registry,
+        actor: &super::SeatActor,
+    ) -> Checked<BTreeSet<Recipient>> {
+        let mut args = List {
+            unassigned: false,
+            include_unassigned: false,
+            swarm_id: Some(actor.swarm_id),
+            status: Some("claimed".into()),
+            assignee: Some(format!("seat:{}", actor.seat_id)),
+            after: None,
+            limit: Some(128),
+        };
+        let mut recipients = BTreeSet::new();
+        let actor = Actor::Seat(actor.clone());
+        loop {
+            let mut rows = self.documents(registry, &actor, &args)?;
+            let more = rows.len() > args.limit.unwrap();
+            if more {
+                rows.pop();
+            }
+            args.after = rows.last().map(|(rank, _)| rank.cursor());
+            for (_, task) in rows {
+                if let Some(recipient) = delegator(&task)? {
+                    recipients.insert(recipient);
+                }
+            }
+            if !more {
+                return Ok(recipients);
+            }
+        }
+    }
+
     /// Paths of the live tasks that name `seat` as assignee or delegator, from
     /// typed metadata. An operator seat move refuses on any of them.
     pub(crate) fn live_for_seat(&self, seat: Ulid) -> Checked<Vec<String>> {

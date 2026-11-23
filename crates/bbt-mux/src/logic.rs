@@ -486,6 +486,13 @@ enum Command {
             crate::adapters::native::HookFailure,
         )>,
     ),
+    HarnessAgentExit(crate::adapters::Binding, harness_status::AgentExit),
+    HarnessAgentExitRecipients(
+        crate::adapters::Binding,
+        RootBinding,
+        harness_status::AgentExit,
+        Result<std::collections::BTreeSet<bbt_proto::messaging::Recipient>>,
+    ),
     Native(
         Ulid,
         u64,
@@ -6674,6 +6681,93 @@ impl Worker {
             None => self.workspaces.legacy(),
         }
     }
+    fn harness_agent_exit_actor(
+        &mut self,
+        binding: &crate::adapters::Binding,
+    ) -> Result<crate::mcp::SeatActor> {
+        let current = &self
+            .views
+            .get(&binding.seat)
+            .ok_or_else(|| invalid("unknown harness exit seat"))?
+            .adapter
+            .binding;
+        if current.pid != binding.pid
+            || current.process_start != binding.process_start
+            || current.generation != binding.generation
+            || current.attachment_generation != binding.attachment_generation
+        {
+            return Err(invalid("stale harness exit source"));
+        }
+        let (actor, record) = self.control_actor(binding.seat, binding.generation)?;
+        if record.lifecycle != Lifecycle::Open || record.harness_kind != "bboxy450-harness" {
+            return Err(invalid("harness exit seat is unavailable"));
+        }
+        Ok(actor)
+    }
+
+    fn read_harness_agent_exit_recipients(
+        &mut self,
+        binding: crate::adapters::Binding,
+        loss: harness_status::AgentExit,
+    ) -> Result<()> {
+        let actor = self.harness_agent_exit_actor(&binding)?;
+        let port = self
+            .workspaces
+            .select(&self.registry, actor.swarm_id, None)?;
+        let registry = self.registry.clone();
+        let tx = self.client.tx.clone();
+        self.handle.spawn_blocking(move || {
+            let source = port.host.source(&port.index, &registry);
+            let tasks = crate::mcp::work_items::ProviderTasks(&source, Some(actor.swarm_id));
+            let recipients = tasks.claimed_delegators(&registry, &actor).map_err(invalid);
+            let _ = tx.blocking_send(Command::HarnessAgentExitRecipients(
+                binding,
+                port.binding,
+                loss,
+                recipients,
+            ));
+        });
+        Ok(())
+    }
+
+    fn send_harness_agent_exit(
+        &mut self,
+        binding: crate::adapters::Binding,
+        root: RootBinding,
+        loss: harness_status::AgentExit,
+        recipients: std::collections::BTreeSet<bbt_proto::messaging::Recipient>,
+    ) -> Result<()> {
+        let actor = self.harness_agent_exit_actor(&binding)?;
+        self.workspaces.current(&self.registry, &root)?;
+        if actor.swarm_id != root.swarm {
+            return Err(invalid("harness exit swarm changed"));
+        }
+        for recipient in recipients {
+            let Some(message) = loss.message(recipient) else {
+                continue;
+            };
+            let result = self.messaging.request(
+                actor.seat_id,
+                actor.process_generation,
+                crate::messaging::api::Request::Send { message },
+                false,
+                None,
+                now_ms(),
+            );
+            match result {
+                Ok(
+                    crate::messaging::api::Response::Stored { .. }
+                    | crate::messaging::api::Response::Held { .. },
+                ) => {}
+                Ok(_) | Err(_) => eprintln!(
+                    "seat {} agent exit {} notice could not be stored for {recipient:?}",
+                    actor.seat_id, loss.id
+                ),
+            }
+        }
+        Ok(())
+    }
+
     fn root_journal(
         &self,
         journal: &crate::mcp::journal::Journal,
@@ -12846,6 +12940,18 @@ impl Worker {
                             .map(|view| &view.adapter.binding);
                         if let Some(row) = native_hook_row(current, &binding, failure) {
                             bbt_rt::error_journal::report_to(&self.config.run_dir, row);
+                        }
+                    }
+                    Command::HarnessAgentExit(binding, loss) => {
+                        if let Err(error) = self.read_harness_agent_exit_recipients(binding, loss) {
+                            eprintln!("ACP exit notice admission: {error}");
+                        }
+                    }
+                    Command::HarnessAgentExitRecipients(binding, root, loss, recipients) => {
+                        if let Err(error) = recipients.and_then(|recipients| {
+                            self.send_harness_agent_exit(binding, root, loss, recipients)
+                        }) {
+                            eprintln!("ACP exit notice delivery: {error}");
                         }
                     }
                     Command::Native(id, generation, event, reply) => {

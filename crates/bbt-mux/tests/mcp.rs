@@ -4882,6 +4882,7 @@ fn mcp_seat_isolated_process() {
         "harness-status" => seat_harness_fixture(false, Some(false), false),
         "harness-status-log" => seat_harness_fixture(false, Some(true), false),
         "harness-crash" => seat_harness_fixture(false, Some(false), true),
+        "harness-agent-exit" => seat_harness_agent_exit_fixture(),
         "harness-status-phase" => harness_status::run(),
         _ => panic!("unknown fixture mode"),
     }
@@ -4927,6 +4928,138 @@ fn mcp_harness_seat_owner_close_retires_hup_ignoring_tool_and_recovers() {
 #[ignore = "real private PTY and planned harness crash; make test-harness-native"]
 fn mcp_harness_seat_crash_resumes_and_continues_once() {
     isolated_seat_fixture("harness-crash");
+}
+
+#[test]
+#[ignore = "real private PTY and ACP agent; make test-harness-native"]
+fn mcp_harness_seat_agent_exit_notifies_claim_delegator_once() {
+    isolated_seat_fixture("harness-agent-exit");
+}
+
+fn seat_harness_agent_exit_fixture() {
+    use std::os::unix::fs::PermissionsExt;
+    let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+    let binary = PathBuf::from(std::env::var_os("BBOXY_HARNESS_TEST_BIN").unwrap());
+    let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../bboxy450-harness/tests/fixtures/acp-agent/fake_agent.py")
+        .canonicalize()
+        .unwrap();
+    let profiles = home.join(".bboxy450-harness/profiles");
+    std::fs::create_dir_all(&profiles).unwrap();
+    let command = json!(["/usr/bin/python3", "-I", fixture, "retry-terminal-close"]);
+    std::fs::write(
+        profiles.join("exit-fixture.md"),
+        format!(
+            "---\nname: ACP exit fixture\nprovider: acp-agent\nagent:\n  command: {command}\n---\n"
+        ),
+    )
+    .unwrap();
+    let bin = home.join("bin");
+    std::fs::create_dir(&bin).unwrap();
+    let shim = bin.join("bboxy450-harness");
+    let launcher = format!(
+        "#!/usr/bin/python3\nBINARY = {}\n",
+        serde_json::to_string(&binary).unwrap()
+    ) + r#"import os, sys
+args = sys.argv[1:]
+at = args.index('--mcp-config')
+del args[at:at+2]
+os.execv(BINARY, [BINARY, *args, '--profile', 'exit-fixture'])
+"#;
+    std::fs::write(&shim, launcher).unwrap();
+    std::fs::set_permissions(&shim, std::fs::Permissions::from_mode(0o700)).unwrap();
+    std::fs::write(
+        home.join(".zprofile"),
+        format!("export PATH='{}':$PATH\n", bin.display()),
+    )
+    .unwrap();
+    let mut f = Fixture::real();
+    let spawn = data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "seat_spawn",
+        json!({
+            "swarm_id": f.own.swarm, "approved_profile": "bboxy450-harness", "cwd": f._temp.path()
+        }),
+    ));
+    assert_eq!(spawn["status"], "applied", "{spawn}");
+    let seat: Ulid = serde_json::from_value(spawn["seat_id"].clone()).unwrap();
+    let mut task = f.task_metadata();
+    task["status"] = json!("claimed");
+    task["assignee"] = json!(format!("seat:{seat}"));
+    f.task_file(task);
+    let claim = data(f.call(
+        seat,
+        Ulid::new(),
+        "task_status",
+        json!({"task_path": f.task_path()}),
+    ));
+    assert_eq!(claim["metadata"]["status"], "claimed", "{claim}");
+    f.wait_screen(seat, "session ");
+    f.runtime
+        .block_on(f.client().gui_input(
+            seat,
+            1,
+            Ulid::new(),
+            b"start the foreground command\r".to_vec(),
+        ))
+        .unwrap();
+    f.wait_screen(seat, "Open tool");
+    std::fs::write(f._temp.path().join("cancel-foreground"), "").unwrap();
+    let notices = |f: &Fixture| {
+        let page = data(f.call(
+            f.oracle.id,
+            Ulid::new(),
+            "message_list",
+            json!({"limit":128}),
+        ));
+        page["page"]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|row| {
+                let envelope = &row["envelope"];
+                envelope["body"]["text"]
+                    .as_str()
+                    .filter(|text| text.starts_with("ACP agent exited while this seat held"))
+                    .map(|text| (envelope["id"].clone(), text.to_owned()))
+            })
+            .collect::<Vec<_>>()
+    };
+    let until = Instant::now() + Duration::from_secs(12);
+    let before = loop {
+        let messages = notices(&f);
+        if !messages.is_empty() {
+            break messages;
+        }
+        assert!(
+            Instant::now() < until,
+            "delegator received no ACP exit notice"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    assert_eq!(before.len(), 1);
+    assert!(before[0].1.contains("exit status: 0"), "{before:?}");
+    assert!(before[0].1.contains("recover-tool"), "{before:?}");
+    f.restart();
+    // Let the replacement logic owner replay the still-live harness journal.
+    std::thread::sleep(Duration::from_secs(1));
+    assert_eq!(notices(&f), before);
+    f.runtime
+        .block_on(f.client().close(
+            seat,
+            1,
+            Ulid::new(),
+            bbt_mux::registry::Position {
+                swarm: f.own.swarm,
+                tab: Ulid::new(),
+                split_path: vec![],
+                ratios: vec![],
+                layout_revision: 0,
+            },
+            0,
+        ))
+        .unwrap();
 }
 
 fn seat_harness_fixture(owner_close: bool, quiet: Option<bool>, crash: bool) {
