@@ -329,7 +329,22 @@ fn link_targets(doc: &bbt_doc::Markdown) -> Vec<String> {
     for value in doc.frontmatter.fields.values() {
         metadata(value, &mut out);
     }
+    // The renderer uses the same vocabulary for pills in task reports.
+    out.retain(|target| bbt_ui_model::emphasis::pill(target).is_none());
     out
+}
+
+#[test]
+fn corpus_link_targets_ignore_pills_and_keep_broken_links() {
+    let doc = bbt_doc::parse(concat!(
+        "---\nsummary: '[[Passed]] [[missing-summary-record]]'\n---\n\n",
+        "[[Blocked]] [[missing-body-record]]\n",
+    ));
+    let targets = link_targets(&doc);
+    assert_eq!(targets, ["missing-body-record", "missing-summary-record"]);
+    for target in targets {
+        assert!(bbt_doc::links::resolve([], &target).is_err(), "{target}");
+    }
 }
 
 // keeps: decision #48 — unique positive record handles and allocation
