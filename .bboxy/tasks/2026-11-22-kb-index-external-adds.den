@@ -22,23 +22,57 @@ task KbIndexExternalAdds {
 
     ## Land
     Long commands detached. `make land`. Report at reports/2026-11-22-kb-index-external-adds.den, then `task_report`.
+
+
+    ## Report from seat:01M83BNHQMSS2XY3PPDB4WJK4F
+
+    Landed the live KB reconciliation and canonical canvas store as f0365a5b1. The assigned selection passed all 122 tests, and make land passed 575 mux tests and native/Java TLC parity for 999 models. The live Git witness checks checkout, fetch, search and removal in one running Logic host. Startup moves the legacy canvas store with its logs and archive. Removed the nested canvas root guess, the forced full-scan reparse and the number lookup on explicit file selectors. The report is indexed as a local Den record. Its KB Git checkpoint exited 1 because reports/ is intentionally ignored.
+
+    ```json
+    {
+      "op_id": "01M83FDWSHJGJ4VBCQ4QVNCPJ0",
+      "commit": "f0365a5b1bbdccc9f5725a90711174573ac76379",
+      "report": "[[reports/2026-11-22-kb-index-external-adds.den]]",
+      "verify_result": {
+        "command": "cargo nextest run -p bboxy450-term-mux -E 'test(index) | test(knowledge)'",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Real Git checkout is fetched and removed during one running host",
+            "reference": "crates/bbt-mux/tests/mcp/den_records.rs:195; verify.log, 122/122; land.log, 575/575 mux tests"
+          },
+          {
+            "criterion": "Startup moves the canvas log and archive into the canonical home and preserves conflicts",
+            "reference": "crates/bbt-mux/tests/mcp/canvas.rs:524; land.log; formal evidence 1c606f20b75f51994e6843c7a3e715b6c73d26e32d497376c11ad8fbc0afc3e9"
+          },
+          {
+            "criterion": "Landed, signed and clean",
+            "reference": "make land exit 0; git verify-commit HEAD exit 0; origin/main f0365a5b1bbdccc9f5725a90711174573ac76379"
+          }
+        ]
+      }
+    }
+    ```
     """
 
   managed {
     allowed_paths = json"[\"crates/bbt-mux\",\"crates/bboxy450-term-data_source-bboxy\",\"verification\",\"Cargo.lock\",\"crates/bboxy450-canvas\"]"
     assignee = json"\"seat:01M83BNHQMSS2XY3PPDB4WJK4F\""
     authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"+Z+SffD6ma7+9tH7HcO8nu+L88bfZ9A4Xu1v6WL7C48=\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\"}"
+    closed = json"{\"by\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"op_id\":\"01M83FEC9E5VZ48D76E6S82H4T\"}"
     created = json"\"2026-11-22T18:40:45.262Z\""
     created_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
     delegated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
     id = json"\"01M828YTHGX82AKMA49DBF11C7\""
     number = json"1794292861627760"
+    report = json"{\"commit\":\"f0365a5b1bbdccc9f5725a90711174573ac76379\",\"op_id\":\"01M83FDWSHJGJ4VBCQ4QVNCPJ0\",\"report\":\"[[reports/2026-11-22-kb-index-external-adds.den]]\",\"reported_by\":\"seat:01M83BNHQMSS2XY3PPDB4WJK4F\",\"summary\":\"Landed the live KB reconciliation and canonical canvas store as f0365a5b1. The assigned selection passed all 122 tests, and make land passed 575 mux tests and native/Java TLC parity for 999 models. The live Git witness checks checkout, fetch, search and removal in one running Logic host. Startup moves the legacy canvas store with its logs and archive. Removed the nested canvas root guess, the forced full-scan reparse and the number lookup on explicit file selectors. The report is indexed as a local Den record. Its KB Git checkpoint exited 1 because reports/ is intentionally ignored.\",\"verify_revision\":0}"
     role = json"\"executor\""
-    status = Claimed
+    status = Done
     swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
-    updated = json"\"2026-11-23T04:47:20.714Z\""
+    updated = json"\"2026-11-23T05:53:21.387Z\""
     updated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
-    provenance = json"{\"digest\":\"sha256:2d7764895ba1c00ea3e4eb9135fefd89a6c677797b434ce8d9999b20b1371aff\",\"frontmatter_digest\":\"sha256:6bacb1357b7dc075e43e29cff5a4dc097aa4cd4178b0a4607ff34d74450a6129\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"vs29JhjSwjzATux3bLwza+K2G86ngf7PiW6GwfpcZm+92OHEzwmdwi84C1ogUB97crtjy/4b1xKUg5SWCSxQBw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1198\",\"event\":{\"id\":\"01M83BNRQR434YVB6PBY29PDED\",\"sequence\":1198,\"hash\":\"dbd567365c17e30f150d5630aaecee059980cb47c86ea70066fb7c0064046a43\"}}"
+    verify_result = json"{\"command\":\"cargo nextest run -p bboxy450-term-mux -E 'test(index) | test(knowledge)'\",\"evidence\":[{\"criterion\":\"Real Git checkout is fetched and removed during one running host\",\"reference\":\"crates/bbt-mux/tests/mcp/den_records.rs:195; verify.log, 122/122; land.log, 575/575 mux tests\"},{\"criterion\":\"Startup moves the canvas log and archive into the canonical home and preserves conflicts\",\"reference\":\"crates/bbt-mux/tests/mcp/canvas.rs:524; land.log; formal evidence 1c606f20b75f51994e6843c7a3e715b6c73d26e32d497376c11ad8fbc0afc3e9\"},{\"criterion\":\"Landed, signed and clean\",\"reference\":\"make land exit 0; git verify-commit HEAD exit 0; origin/main f0365a5b1bbdccc9f5725a90711174573ac76379\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:52a12455078f2c72724687c79962720133b571d330ba4df94faa75220d0d641d\",\"frontmatter_digest\":\"sha256:8b470412f2215ada74031c518d5b45b86c04383abfba403c28396ff2574c01f9\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"P/WHMStoHYEcxLqY/BxCU3yoxcvF7ATC/57xJuSbCoTjyA8DB5rzq627OktGIBAgaGvWOOa+3b/UeDp0GWK3BA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1218\",\"event\":{\"id\":\"01M83FEMMW0KW9QX0AJN3P1G3Z\",\"sequence\":1218,\"hash\":\"d76ed7c52935ae4b31bf8d74730efd9cc3ceb2acfc3b5fd9e0133ae5358783e4\"}}"
     body_tail = json"\"\\n\""
   }
 }
