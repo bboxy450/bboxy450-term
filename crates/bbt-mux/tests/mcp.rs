@@ -5004,7 +5004,26 @@ os.execv(BINARY, [BINARY, *args, '--profile', 'exit-fixture'])
             b"start the foreground command\r".to_vec(),
         ))
         .unwrap();
-    f.wait_screen(seat, "Open tool");
+    let until = Instant::now() + Duration::from_secs(8);
+    let sessions = home.join(".bboxy450-harness/sessions");
+    while !std::fs::read_dir(&sessions)
+        .unwrap()
+        .flatten()
+        .any(|entry| {
+            entry.path().extension().is_some_and(|ext| ext == "jsonl")
+                && std::fs::read_to_string(entry.path()).is_ok_and(|log| {
+                    log.lines()
+                        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+                        .any(|record| {
+                            record["event"]["type"] == "item_started"
+                                && record["event"]["head"]["call_id"] == "recover-tool"
+                        })
+                })
+        })
+    {
+        assert!(Instant::now() < until, "ACP foreground tool did not start");
+        std::thread::sleep(Duration::from_millis(10));
+    }
     std::fs::write(f._temp.path().join("cancel-foreground"), "").unwrap();
     let notices = |f: &Fixture| {
         let page = data(f.call(
