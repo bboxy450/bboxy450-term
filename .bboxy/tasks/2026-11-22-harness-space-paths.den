@@ -1,0 +1,38 @@
+module tasks.`2026-11-22-harness-space-paths`
+
+task HarnessSpacePaths {
+  title "Harness fixtures and Makefile break in checkouts whose path contains a space"
+  verify $ cargo nextest run -p bboxy450-harness -E 'test(dream_proof_tools) | test(eof_cancels_a_pending_profile_factory)'
+  paths "crates/bboxy450-harness", "Cargo.lock"
+  brief """
+    Our stand: subtract before you add; report what you removed. ROLE: EXECUTOR.
+
+    ## Gap (Oracle, observed 2026-11-22)
+    Every managed checkout lives under `~/Library/Application Support/bboxy450-term/run/implementation-workspaces/checkouts/<id>`, a path with a space. Harness tooling breaks there:
+    - `bboxy450-harness::dream_proof_tools private_builder_source_and_publication_controls`: `scripts/dream-proof-tools.py:3618` raises "synthetic dependency fixture uses unescaped private paths" (also `test_q2_shim_resealed_inner_cross_bindings_still_refuse`, line 4249).
+    - `bboxy450-harness::acp_face eof_cancels_a_pending_profile_factory_without_waiting_for_its_key_command` fails in the same checkout (evidence: svg-chrome checkout 01M82JAA2SY4ZYPE46E90NRZ7W, `target/svg-chrome-evidence/test-parity-amended.log`).
+    - `make -C crates/bboxy450-harness land TARGET_DIR=<checkout>/target` split the space-bearing absolute path (chart-runtime report, reports/2026-11-22-chart-runtime.den).
+    The same tests pass in a checkout under `~/mydev`.
+
+    ## Do
+    Make the harness fixtures and Makefile correct for paths containing spaces (quote/escape, never rely on the path being space-free). Add a regression that runs the affected fixtures from a temporary directory whose name contains a space. Land in harness, then bump term's pin with `make bump-harness`.
+
+    ## Land
+    Long commands detached. Harness `make land`, then term `make land`. Report at reports/2026-11-22-harness-space-paths.den, then `task_report`.
+    """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"+Z+SffD6ma7+9tH7HcO8nu+L88bfZ9A4Xu1v6WL7C48=\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\"}"
+    created = json"\"2026-11-23T02:20:07.334Z\""
+    created_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    delegated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    id = json"\"01M8337Y3KPPMPM7MV9R6J706E\""
+    number = json"1794292861627785"
+    status = Open
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-23T02:20:07.334Z\""
+    updated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
+    provenance = json"{\"digest\":\"sha256:7e365cb3078ed432b36e41a9865bfdc0ac76eec8bb18d8abf6cde55ba3e66bbf\",\"frontmatter_digest\":\"sha256:4281258f1834f9d3c9436538de6cb3abed68d7ea980a4192d277bc0fccd2aefc\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"HOGF82rNT+Y9Tpu7do2F+yfnggdIJqWgVoVufCxSN6P2lntt32ny8WqxvnMqxN9+DJcjeM8KeA+kefRyhAcyCg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1149\",\"event\":{\"id\":\"01M83386DRC6YCRY71CVE5X4QK\",\"sequence\":1149,\"hash\":\"e998a9e59223dc7cef415885a4274553699c5d39d8a1ff02f7d637713d37471f\"}}"
+    body_tail = json"\"\\n\""
+  }
+}

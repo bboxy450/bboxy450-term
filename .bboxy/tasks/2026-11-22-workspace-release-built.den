@@ -26,17 +26,19 @@ task WorkspaceReleaseBuilt {
     """
 
   managed {
+    assignee = json"\"seat:01M835JZQENGGCWQZGVS49JV4P\""
     authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"+Z+SffD6ma7+9tH7HcO8nu+L88bfZ9A4Xu1v6WL7C48=\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\"}"
     created = json"\"2026-11-22T21:25:46.733Z\""
     created_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
     delegated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
     id = json"\"01M82JD6WWSXAMPNKX8EJFNY9W\""
     number = json"1794292861627769"
-    status = Open
+    role = json"\"executor\""
+    status = Claimed
     swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
-    updated = json"\"2026-11-22T21:25:46.733Z\""
+    updated = json"\"2026-11-23T03:01:01.490Z\""
     updated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
-    provenance = json"{\"digest\":\"sha256:8033460cf13b033e1e113926363a0d5ba991e85c908f05050174b0f28df9fb57\",\"frontmatter_digest\":\"sha256:ed72cbed5a8aa1e2639b422145464a7146a509d9d0880c5bcdecef0957406c75\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"4ytuBwZFoIktqffIupsGJe6dpKpBrAdDS+iiro54i9t2XultX0Hw8AmbpxKAqBCOnJ7K3UGofEseSGL9LG7tDQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1085\",\"event\":{\"id\":\"01M82JD7S7TP94ESERRAT9XDAW\",\"sequence\":1085,\"hash\":\"1c76360dd61ac943ad1314fe7e9dec1907682284764f9eb5a3256fa649714dff\"}}"
+    provenance = json"{\"digest\":\"sha256:8033460cf13b033e1e113926363a0d5ba991e85c908f05050174b0f28df9fb57\",\"frontmatter_digest\":\"sha256:65b65d6ecfcdc779831061d2028b5f7c40fc2dbce43b6069f6b8fc692f35913a\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"DTiN7Q2/DrivvQcOvhQ2fJqhYRFWzg7wPbzCTwE7O03AhTZXZygDqW0ed6HiUvcg2GvefkhNCWwzBvaF9V1mDA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1162\",\"event\":{\"id\":\"01M835K31XFRFFBR8JR5NZPT03\",\"sequence\":1162,\"hash\":\"2ff0315552c9c6d0662fea589dce25af1c7f662eaea0add24dc8bab2d6519740\"}}"
     body_tail = json"\"\\n\""
   }
 }
