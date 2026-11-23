@@ -23,22 +23,60 @@ task WorkspaceReleaseBuilt {
 
     ## Land
     Long commands detached. `make land`. Report at reports/2026-11-22-workspace-release-built.den, then `task_report`.
+
+
+    ## Report from seat:01M835JZQENGGCWQZGVS49JV4P
+
+    Landed signed commit 5fdc04f2b53495a84632282be71b584cdd0831fe. All 52 workspace tests passed, including a native build, unique-commit refusal, rebase and successful release. The provider now accepts recognized ignored build directories and checks commit preservation per commit. It keeps a digest, head and tail for oversized output. Removed the blanket dirty-output and 64 KiB failures, the integration-tip equality gate and the Git-only provenance directory descriptor. `make test-licenses` and final `make land` exited 0. The latter passed 558 mux tests with one retry and held native/TLC parity across 997 models. Earlier land attempts reached generated-model drift and disk exhaustion, both resolved before push. Three historical commit pairs still need Git preservation evidence. The full report is indexed locally, and its checkpoint request was refused because `reports/` is Git-ignored.
+
+    ```json
+    {
+      "op_id": "01M83BBW9D9RAAJVNMJQVKEP7C",
+      "commit": "5fdc04f2b53495a84632282be71b584cdd0831fe",
+      "report": "[[reports/2026-11-22-workspace-release-built.den]]",
+      "verify_result": {
+        "command": "cargo nextest run -p bboxy450-term-mux -E 'test(workspace)'",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Managed checkout compiles, refuses unique source, and disappears after a rebase",
+            "reference": "crates/bbt-mux/tests/mcp/workspaces.rs:214 and /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxy-workspace-release-i92kscuo/workspace.junit.xml"
+          },
+          {
+            "criterion": "Ignored artifacts, module pin ancestry, and private data",
+            "reference": "crates/bbt-mux/src/mcp/workspaces/tests.rs:648"
+          },
+          {
+            "criterion": "Oversized output retention and open handle refusal",
+            "reference": "crates/bbt-mux/src/mcp/workspaces/tests.rs:600 and crates/bbt-mux/src/mcp/workspaces/tests.rs:260"
+          },
+          {
+            "criterion": "Source-bound landing and formal parity",
+            "reference": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxy-workspace-release-i92kscuo/land.log"
+          }
+        ]
+      }
+    }
+    ```
     """
 
   managed {
     assignee = json"\"seat:01M835JZQENGGCWQZGVS49JV4P\""
     authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"+Z+SffD6ma7+9tH7HcO8nu+L88bfZ9A4Xu1v6WL7C48=\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\"}"
+    closed = json"{\"by\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"op_id\":\"01M83BDMKEBFS47CJTMRE5JJ80\"}"
     created = json"\"2026-11-22T21:25:46.733Z\""
     created_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
     delegated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
     id = json"\"01M82JD6WWSXAMPNKX8EJFNY9W\""
     number = json"1794292861627769"
+    report = json"{\"commit\":\"5fdc04f2b53495a84632282be71b584cdd0831fe\",\"op_id\":\"01M83BBW9D9RAAJVNMJQVKEP7C\",\"report\":\"[[reports/2026-11-22-workspace-release-built.den]]\",\"reported_by\":\"seat:01M835JZQENGGCWQZGVS49JV4P\",\"summary\":\"Landed signed commit 5fdc04f2b53495a84632282be71b584cdd0831fe. All 52 workspace tests passed, including a native build, unique-commit refusal, rebase and successful release. The provider now accepts recognized ignored build directories and checks commit preservation per commit. It keeps a digest, head and tail for oversized output. Removed the blanket dirty-output and 64 KiB failures, the integration-tip equality gate and the Git-only provenance directory descriptor. `make test-licenses` and final `make land` exited 0. The latter passed 558 mux tests with one retry and held native/TLC parity across 997 models. Earlier land attempts reached generated-model drift and disk exhaustion, both resolved before push. Three historical commit pairs still need Git preservation evidence. The full report is indexed locally, and its checkpoint request was refused because `reports/` is Git-ignored.\",\"verify_revision\":0}"
     role = json"\"executor\""
-    status = Claimed
+    status = Done
     swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
-    updated = json"\"2026-11-23T03:01:01.490Z\""
+    updated = json"\"2026-11-23T04:43:02.255Z\""
     updated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
-    provenance = json"{\"digest\":\"sha256:8033460cf13b033e1e113926363a0d5ba991e85c908f05050174b0f28df9fb57\",\"frontmatter_digest\":\"sha256:65b65d6ecfcdc779831061d2028b5f7c40fc2dbce43b6069f6b8fc692f35913a\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"DTiN7Q2/DrivvQcOvhQ2fJqhYRFWzg7wPbzCTwE7O03AhTZXZygDqW0ed6HiUvcg2GvefkhNCWwzBvaF9V1mDA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1162\",\"event\":{\"id\":\"01M835K31XFRFFBR8JR5NZPT03\",\"sequence\":1162,\"hash\":\"2ff0315552c9c6d0662fea589dce25af1c7f662eaea0add24dc8bab2d6519740\"}}"
+    verify_result = json"{\"command\":\"cargo nextest run -p bboxy450-term-mux -E 'test(workspace)'\",\"evidence\":[{\"criterion\":\"Managed checkout compiles, refuses unique source, and disappears after a rebase\",\"reference\":\"crates/bbt-mux/tests/mcp/workspaces.rs:214 and /var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxy-workspace-release-i92kscuo/workspace.junit.xml\"},{\"criterion\":\"Ignored artifacts, module pin ancestry, and private data\",\"reference\":\"crates/bbt-mux/src/mcp/workspaces/tests.rs:648\"},{\"criterion\":\"Oversized output retention and open handle refusal\",\"reference\":\"crates/bbt-mux/src/mcp/workspaces/tests.rs:600 and crates/bbt-mux/src/mcp/workspaces/tests.rs:260\"},{\"criterion\":\"Source-bound landing and formal parity\",\"reference\":\"/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxy-workspace-release-i92kscuo/land.log\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:56406278ae168b94ea03c9a57004dc791e9fa16fa944868d1d62fd6f9f5727a6\",\"frontmatter_digest\":\"sha256:032b1048df40721290ef85327aa90f45ad02c542234c64f46fac8c71faff285a\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"3ujmvAHudv/6L57FPhjY3H6JIDD8/mT4de8y8vJpZv1D1X28fHYmwOamQb3XOgvpkZiSCKuycZbM7prAkjFCAA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1185\",\"event\":{\"id\":\"01M83BDWBCAGSYPM2CM98YYT90\",\"sequence\":1185,\"hash\":\"fd10d64c79fa5be1b1b96a6a18bc30e805ff7ac1db062ed871edfd959367eb10\"}}"
     body_tail = json"\"\\n\""
   }
 }

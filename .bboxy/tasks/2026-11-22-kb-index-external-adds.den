@@ -17,13 +17,16 @@ task KbIndexExternalAdds {
     `crates/bbt-mux/src/mcp/canvas.rs:262-267` picks `root/.bboxy/canvases` whenever `root/.bboxy` is a directory. The knowledge root is already `.bboxy`, and a stray nested `.bboxy/.bboxy/` tree was committed in `2b1f9c388` (Nov 4: `.bboxy/.bboxy/tasks/2026-11-03-codex-launch-parity.md`, which differs from the canonical `.bboxy/tasks/` copy). So canvases are stored at `.bboxy/.bboxy/canvases/` (canvas-152779724248273, committed by the Oracle in 52f255a42).
     Do: one home for canvases derived from the knowledge root, without the guess; move existing canvas records there on startup (or say why not); report the differing nested task copy to the Oracle in your report instead of deleting it (the Oracle disposes of KB records).
 
+    ## Attempt 2 (Oracle, 2026-11-22)
+    Attempt 1's Codex seat exited mid-task (turn ended `agent.cancelled`, process gone before the auto-continue deadline; seat 01M82YG6… stuck in closed_grace). Its work is commit `9b6fd2ab5` "Reconcile live KB records and use the canonical canvas store", checked out in your worktree `~/mydev/bbx-kb-index` (branch `kb-index-2`; unmanaged because the stuck seat still binds the managed record). Work only there. Review it against this brief, finish what is missing, verify and land. Its session log is `~/.bboxy450-harness/sessions/01M82YGBZS5SH367NMA23V2AR3.jsonl` if you need its reasoning.
+
     ## Land
     Long commands detached. `make land`. Report at reports/2026-11-22-kb-index-external-adds.den, then `task_report`.
     """
 
   managed {
     allowed_paths = json"[\"crates/bbt-mux\",\"crates/bboxy450-term-data_source-bboxy\",\"verification\",\"Cargo.lock\",\"crates/bboxy450-canvas\"]"
-    assignee = json"\"seat:01M82YG6PNPXPNFYB8CCAXTTY3\""
+    assignee = json"\"seat:01M83BNHQMSS2XY3PPDB4WJK4F\""
     authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"+Z+SffD6ma7+9tH7HcO8nu+L88bfZ9A4Xu1v6WL7C48=\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\"}"
     created = json"\"2026-11-22T18:40:45.262Z\""
     created_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
@@ -33,9 +36,9 @@ task KbIndexExternalAdds {
     role = json"\"executor\""
     status = Claimed
     swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
-    updated = json"\"2026-11-23T00:57:09.828Z\""
+    updated = json"\"2026-11-23T04:47:20.714Z\""
     updated_by = json"\"seat:01M8288EHSV7SQ289RE0J1SK0S\""
-    provenance = json"{\"digest\":\"sha256:84ec503c4c18feea148c97eec694f5b50e2f5ba43993c488d58e0148f7992e11\",\"frontmatter_digest\":\"sha256:c0fc757dfcf862440e662e78105a9cc279e1e0159571c989adc8aba4f4557fd9\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"eT0fiARQ094Ou9ZN/M3vVt8OkHOvNyQ5ze0X7pufCaCoAWA7TiFIJpUlYox+MA8ANybCBGxhDP9P8bB6z66hDw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1123\",\"event\":{\"id\":\"01M82YG9JKBS2VRFPRBGAES8C9\",\"sequence\":1123,\"hash\":\"332ae3aa78caaebeb2f189249c129744f34b087f0e282d26216295b6da8ca0b4\"}}"
+    provenance = json"{\"digest\":\"sha256:2d7764895ba1c00ea3e4eb9135fefd89a6c677797b434ce8d9999b20b1371aff\",\"frontmatter_digest\":\"sha256:6bacb1357b7dc075e43e29cff5a4dc097aa4cd4178b0a4607ff34d74450a6129\",\"signer\":\"seat:01M8288EHSV7SQ289RE0J1SK0S\",\"sig\":\"vs29JhjSwjzATux3bLwza+K2G86ngf7PiW6GwfpcZm+92OHEzwmdwi84C1ogUB97crtjy/4b1xKUg5SWCSxQBw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1198\",\"event\":{\"id\":\"01M83BNRQR434YVB6PBY29PDED\",\"sequence\":1198,\"hash\":\"dbd567365c17e30f150d5630aaecee059980cb47c86ea70066fb7c0064046a43\"}}"
     body_tail = json"\"\\n\""
   }
 }
