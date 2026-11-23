@@ -309,6 +309,7 @@ impl ProviderTasks<'_> {
         &self,
         registry: &Registry,
         actor: &super::SeatActor,
+        at_ms: u64,
     ) -> Checked<BTreeSet<Recipient>> {
         let mut args = List {
             unassigned: false,
@@ -328,8 +329,9 @@ impl ProviderTasks<'_> {
                 rows.pop();
             }
             args.after = rows.last().map(|(rank, _)| rank.cursor());
-            for (_, task) in rows {
-                if let Some(recipient) = delegator(&task)? {
+            for (rank, task) in rows {
+                // A replay cannot route an old exit to a later claim or delegator.
+                if rank.0 <= at_ms && let Some(recipient) = delegator(&task)? {
                     recipients.insert(recipient);
                 }
             }

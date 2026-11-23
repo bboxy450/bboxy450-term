@@ -6719,7 +6719,9 @@ impl Worker {
         self.handle.spawn_blocking(move || {
             let source = port.host.source(&port.index, &registry);
             let tasks = crate::mcp::work_items::ProviderTasks(&source, Some(actor.swarm_id));
-            let recipients = tasks.claimed_delegators(&registry, &actor).map_err(invalid);
+            let recipients = tasks
+                .claimed_delegators(&registry, &actor, loss.at_ms)
+                .map_err(invalid);
             let _ = tx.blocking_send(Command::HarnessAgentExitRecipients(
                 binding,
                 port.binding,

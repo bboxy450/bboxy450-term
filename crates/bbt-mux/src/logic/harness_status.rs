@@ -518,6 +518,7 @@ fn hold_private_legacy_read(runtime: &Path, seat: crate::Ulid) -> std::io::Resul
 #[derive(Debug, serde::Deserialize)]
 pub(super) struct AgentExit {
     pub id: Ulid,
+    pub at_ms: u64,
     pub cause: String,
     pub last_tool: Option<ExitTool>,
 }
@@ -574,6 +575,7 @@ fn agent_exit(event: &serde_json::Value, session: &str) -> Option<AgentExit> {
         return None;
     }
     loss["id"] = body["item"].clone();
+    loss["at_ms"] = event["ts_ms"].clone();
     serde_json::from_value(loss).ok()
 }
 
