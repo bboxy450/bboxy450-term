@@ -153,9 +153,14 @@ export CARGO_PROFILE_TEST_OPT_LEVEL ?= 1
 
 .PHONY: help tools build build-release build-node test-node test-linux compile lock test test-parity parity-swarm check test-boundaries test-swarm smoke bundle-files bundle bundle-unsigned install install-unsigned release package-crate publish-release push
 
+.PHONY: tool-usage
+tool-usage:
+	@python3 -I scripts/tool-usage.py --days '$(or $(DAYS),0)'
+
 help:
 	@printf '%s\n' \
 	  'make svg-loop                   Pinned SVG corpus and native renderer verification' \
+	  'make tool-usage [DAYS=n]        What seats call from python_execute: shell programs vs bboxy_code, MCP tools' \
 	  'make test-python-execute         Real CPython/MCP/command, cancellation and recovery checks' \
 	  'make test-chart-artifacts        Private installed chart runtime, artifact pins and native painting' \
 	  'make build / build-release       Build the app (debug / optimized)' \

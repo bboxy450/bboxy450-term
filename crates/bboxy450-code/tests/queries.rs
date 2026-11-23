@@ -92,6 +92,72 @@ fn search_names_the_containing_item_counts_each_pattern_and_reports_missing_path
     )
     .unwrap();
     assert_eq!(literal["total"], 1);
+    let lead = call(
+        &root,
+        "search",
+        &json!({"patterns": ["Closed,"], "before": 2}),
+    )
+    .unwrap();
+    assert_eq!(
+        lead["hits"][0]["before"],
+        json!(["pub enum State {", "    Open,"])
+    );
+    let first = call(
+        &root,
+        "search",
+        &json!({"patterns": ["^pub struct"], "before": 3}),
+    )
+    .unwrap();
+    assert_eq!(
+        first["hits"][0]["before"],
+        json!([]),
+        "no lines before line 1"
+    );
+    let folded = call(
+        &root,
+        "search",
+        &json!({"patterns": ["seat notes"], "ignore_case": true}),
+    )
+    .unwrap();
+    assert_eq!(folded["total"], 1);
+    let exact = call(&root, "search", &json!({"patterns": ["seat notes"]})).unwrap();
+    assert_eq!(exact["total"], 0, "case-sensitive by default");
+    let ignored = call(&root, "search", &json!({"patterns": ["pub struct Seat;"]})).unwrap();
+    assert_eq!(
+        ignored["total"], 0,
+        "gitignored files are skipped by default"
+    );
+    let every = call(
+        &root,
+        "search",
+        &json!({"patterns": ["pub struct Seat;"], "all": true}),
+    )
+    .unwrap();
+    assert_eq!(every["hits"][0]["path"], "ignored.rs");
+    std::fs::write(_dir.path().join(".git/HEAD"), "pub struct Seat; in git\n").unwrap();
+    let every = call(
+        &root,
+        "search",
+        &json!({"patterns": ["pub struct Seat;"], "all": true, "mode": "files"}),
+    )
+    .unwrap();
+    assert_eq!(
+        every["files"],
+        json!([{"path": "ignored.rs", "hits": 1}]),
+        "all never walks .git"
+    );
+    let listed = call(&root, "files", &json!({"all": true})).unwrap();
+    let names: Vec<&str> = listed["files"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["path"].as_str().unwrap())
+        .collect();
+    assert!(
+        names.contains(&"ignored.rs") && names.contains(&".gitignore"),
+        "{names:?}"
+    );
+    assert!(!names.iter().any(|n| n.starts_with(".git/")), "{names:?}");
 }
 
 #[test]

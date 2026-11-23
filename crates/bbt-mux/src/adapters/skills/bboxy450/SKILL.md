@@ -69,7 +69,11 @@ decision, and wait.
    Every MCP tool is a function inside it (`bboxy.task_list(status="open")`,
    `tools.search("close seat")`), with loops, filtering,
    `sh("git status --porcelain").out`, `fs.replace(path, old, new)` and
-   `store["key"]` for state between runs. One run replaces ten round trips,
+   `store["key"]` for state between runs. Search and read code with
+   `tools.bboxy_code.search(patterns=[...], before=2, context=5)`,
+   `.read`, `.symbol` and `.files` rather than `sh("rg ...")` or `sed -n`:
+   hits come back structured, bounded and labelled with their enclosing
+   function. `make tool-usage` shows what seats actually call. One run replaces ten round trips,
    and its final expression is the only thing that returns, so large results
    stay out of your context. The seats that work this way are the fastest in
    the swarm. Reach for a single direct tool call only when one call is the

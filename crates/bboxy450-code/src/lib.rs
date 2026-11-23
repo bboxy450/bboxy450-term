@@ -72,13 +72,15 @@ impl Root {
             .display()
             .to_string()
     }
-    /// Every text file under `paths` in path order, honouring `.gitignore`.
+    /// Every text file under `paths` in path order, honouring `.gitignore`
+    /// and skipping hidden files unless `all` (rg `--hidden --no-ignore`).
     /// Missing paths are returned, not fatal.
     fn walk(
         &self,
         paths: &[String],
         glob: Option<&str>,
         depth: Option<usize>,
+        all: bool,
     ) -> Result<(Vec<PathBuf>, Vec<String>), String> {
         let mut missing = vec![];
         let mut roots = vec![];
@@ -98,6 +100,12 @@ impl Root {
             builder.add(root);
         }
         builder.max_depth(depth).sort_by_file_path(|a, b| a.cmp(b));
+        if all {
+            // Hidden and ignored files, never Git's own object store.
+            builder
+                .standard_filters(false)
+                .filter_entry(|entry| entry.file_name() != ".git");
+        }
         // The glob only narrows: given to the walker it would outrank .gitignore.
         let glob = match glob {
             Some(glob) => {
@@ -298,6 +306,15 @@ struct Search {
     /// Lines of context after each hit (most readers read down from a hit).
     #[serde(default)]
     context: usize,
+    /// Lines of context before each hit (rg -B).
+    #[serde(default)]
+    before: usize,
+    /// Match regardless of case (rg -i).
+    #[serde(default)]
+    ignore_case: bool,
+    /// Also search hidden and gitignored files (rg --hidden --no-ignore).
+    #[serde(default)]
+    all: bool,
     #[serde(default)]
     limit: Option<usize>,
     #[serde(default)]
@@ -315,7 +332,7 @@ enum Mode {
     Count,
 }
 
-fn compile(patterns: &[String], fixed: bool) -> Result<Vec<Regex>, String> {
+fn compile(patterns: &[String], fixed: bool, ignore_case: bool) -> Result<Vec<Regex>, String> {
     if patterns.is_empty() {
         return Err("give at least one pattern".into());
     }
@@ -328,6 +345,7 @@ fn compile(patterns: &[String], fixed: bool) -> Result<Vec<Regex>, String> {
                 ));
             }
             let source = if fixed { regex::escape(pattern) } else { pattern.clone() };
+            let source = if ignore_case { format!("(?i:{source})") } else { source };
             Regex::new(&source).map_err(|e| format!("invalid pattern {pattern:?}: {e}"))
         })
         .collect()
@@ -336,11 +354,12 @@ fn compile(patterns: &[String], fixed: bool) -> Result<Vec<Regex>, String> {
 /// Lines matching any pattern, each with the item that contains it.
 pub fn search(root: &Root, args: &Value) -> Result<Value, String> {
     let args: Search = parse(args)?;
-    let regexes = compile(&args.patterns, args.fixed)?;
+    let regexes = compile(&args.patterns, args.fixed, args.ignore_case)?;
     let set = RegexSet::new(regexes.iter().map(Regex::as_str)).map_err(|e| e.to_string())?;
-    let (found, missing) = root.walk(&args.paths, args.glob.as_deref(), None)?;
+    let (found, missing) = root.walk(&args.paths, args.glob.as_deref(), None, args.all)?;
     let limit = args.limit.unwrap_or(50).clamp(1, 500);
     let context = args.context.min(20);
+    let before = args.before.min(20);
     let mut budget = Budget::new();
     let (mut hits, mut by_file) = (vec![], vec![]);
     let mut per_pattern = vec![0usize; regexes.len()];
@@ -374,6 +393,13 @@ pub fn search(root: &Root, args: &Value) -> Result<Value, String> {
             let mut hit = json!({"path": root.show(path), "line": index + 1, "text": clip(line)});
             if let Some(label) = enclosing(found, index + 1) {
                 hit["item"] = json!(label);
+            }
+            if before > 0 {
+                let lead: Vec<String> = lines[index.saturating_sub(before)..index]
+                    .iter()
+                    .map(|l| clip(l))
+                    .collect();
+                hit["before"] = json!(lead);
             }
             if context > 0 {
                 let after: Vec<String> = lines[index + 1..lines.len().min(index + 1 + context)]
@@ -446,7 +472,7 @@ pub fn symbol(root: &Root, args: &Value) -> Result<Value, String> {
         .iter()
         .map(|name| Regex::new(&format!(r"\b{}\b", regex::escape(name))).map_err(|e| e.to_string()))
         .collect::<Result<_, _>>()?;
-    let (mut found, missing) = root.walk(&args.paths, None, None)?;
+    let (mut found, missing) = root.walk(&args.paths, None, None, false)?;
     found.retain(|path| supported(path));
     let mut budget = Budget::new();
     let mut symbols: Vec<Value> = args
@@ -548,12 +574,15 @@ struct Files {
     glob: Option<String>,
     #[serde(default)]
     depth: Option<usize>,
+    /// Also list hidden and gitignored files.
+    #[serde(default)]
+    all: bool,
 }
 
 /// Files under paths or matching a glob, with line counts.
 pub fn files(root: &Root, args: &Value) -> Result<Value, String> {
     let args: Files = parse(args)?;
-    let (found, missing) = root.walk(&args.paths, args.glob.as_deref(), args.depth)?;
+    let (found, missing) = root.walk(&args.paths, args.glob.as_deref(), args.depth, args.all)?;
     let mut budget = Budget::new();
     let (mut rows, mut lines_total, mut cut) = (vec![], 0usize, 0usize);
     for path in &found {
@@ -658,11 +687,14 @@ fn definitions() -> Value {
             "path": path, "start": {"type": "integer", "minimum": 1}, "end": {"type": "integer", "minimum": 1},
             "around": {"type": "integer", "minimum": 1, "description": "Return the whole function, impl or type containing this line"},
             "rev": {"type": "string", "description": "Git revision, e.g. HEAD~1 or origin/main"}}}}}}},
-        {"name": "search", "description": "Search text with several regular expressions at once (Rust regex syntax; alternation is |). Each hit names the function, impl or type that contains it. Bounded: default 50 hits, with totals per pattern. Use instead of rg, grep and git grep.",
+        {"name": "search", "description": "Search text with several regular expressions at once (Rust regex syntax; alternation is |). Each hit names the function, impl or type that contains it. Bounded: default 50 hits, with totals per pattern. Use instead of rg, grep and git grep; from python_execute: tools.bboxy_code.search(patterns=[...]).",
          "inputSchema": {"type": "object", "additionalProperties": false, "required": ["patterns"], "properties": {
             "patterns": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "A line matching any pattern is a hit"},
             "paths": paths, "glob": {"type": "string", "description": "Only files matching this glob, e.g. *.rs or !tests/**"},
-            "context": {"type": "integer", "minimum": 0, "maximum": 20, "description": "Lines to include after each hit"},
+            "context": {"type": "integer", "minimum": 0, "maximum": 20, "description": "Lines to include after each hit (rg -A)"},
+            "before": {"type": "integer", "minimum": 0, "maximum": 20, "description": "Lines to include before each hit (rg -B)"},
+            "ignore_case": {"type": "boolean", "description": "Match regardless of case (rg -i)"},
+            "all": {"type": "boolean", "description": "Also search hidden and gitignored files (rg --hidden --no-ignore)"},
             "limit": {"type": "integer", "minimum": 1, "maximum": 500},
             "mode": {"enum": ["lines", "files", "count"], "description": "lines: hits; files: hit counts per file; count: totals only"},
             "fixed": {"type": "boolean", "description": "Take patterns literally"}}}},
@@ -672,7 +704,8 @@ fn definitions() -> Value {
             "refs": {"type": "boolean", "description": "Also list uses of each name (at most 50 each, with the full count)"}}}},
         {"name": "files", "description": "List files under paths or matching a glob, with line counts. Honours .gitignore. Use instead of ls, find, rg --files and wc -l.",
          "inputSchema": {"type": "object", "additionalProperties": false, "properties": {
-            "paths": paths, "glob": {"type": "string"}, "depth": {"type": "integer", "minimum": 1}}}},
+            "paths": paths, "glob": {"type": "string"}, "depth": {"type": "integer", "minimum": 1},
+            "all": {"type": "boolean", "description": "Also list hidden and gitignored files (rg --files --hidden --no-ignore)"}}}},
         {"name": "outline", "description": "List a file's items in order: kind, name, signature, line range and nesting depth. Rust, Den, Lean, Python, TypeScript and Go. Use before reading a large file.",
          "inputSchema": {"type": "object", "additionalProperties": false, "required": ["paths"], "properties": {
             "paths": {"type": "array", "minItems": 1, "items": {"type": "string"}}}}},

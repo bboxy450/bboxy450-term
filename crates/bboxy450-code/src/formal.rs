@@ -26,7 +26,7 @@ pub fn den_check(root: &Root, args: &Value) -> Result<Value, String> {
     if args.paths.is_empty() {
         return Err("give at least one path".into());
     }
-    let (found, missing) = root.walk(&args.paths, Some("*.den"), None)?;
+    let (found, missing) = root.walk(&args.paths, Some("*.den"), None, false)?;
     let mut budget = Budget::new();
     let (mut out, mut sound, mut cut) = (vec![], 0usize, 0usize);
     for path in &found {
@@ -232,7 +232,9 @@ impl Den {
     fn all(root: &Root) -> Vec<Self> {
         // Records live under .bboxy, which a walk of the root skips as hidden.
         let roots = [".".to_owned(), ".bboxy".to_owned()];
-        let (found, _) = root.walk(&roots, Some("*.den"), None).unwrap_or_default();
+        let (found, _) = root
+            .walk(&roots, Some("*.den"), None, false)
+            .unwrap_or_default();
         found
             .iter()
             .filter_map(|path| {
