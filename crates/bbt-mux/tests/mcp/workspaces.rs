@@ -39,7 +39,7 @@ fn fixture_kind(real: bool) -> (Fixture, Ulid) {
     let f = Fixture::open_seeded(real, false, |repo, _| {
         git(repo, &["init", "-b", "main"]);
         std::fs::write(repo.join("source.txt"), "source\n").unwrap();
-        std::fs::write(repo.join(".gitignore"), ".bboxy/\n").unwrap();
+        std::fs::write(repo.join(".gitignore"), ".bboxy/\ntarget/\n").unwrap();
         git(repo, &["add", "source.txt", ".gitignore"]);
         git(repo, &["commit", "-m", "base"]);
         std::fs::write(repo.join(".bboxy/tasks/managed.md"),format!("---\nid: {task}\nnumber: 3\ntype: task\ntitle: Managed fixture\nstatus: open\nassignee: none\nverify: 'true'\nallowed_paths: [source.txt]\n---\nImplement the fixture.\n")).unwrap();
@@ -57,7 +57,7 @@ fn wait(f: &Fixture, id: Ulid, state: &str) -> Value {
             json!({"workspace_id":id}),
         ));
         let row = &result["workspace"];
-        assert_ne!(row["state"], "failed", "{result}");
+        assert!(state == "failed" || row["state"] != "failed", "{result}");
         if row["state"] == state {
             return row.clone();
         }
@@ -209,6 +209,108 @@ fn managed_workspace_mcp_prepares_launches_and_delegates_with_canonical_kb() {
     );
     assert_eq!(refused["isError"], true);
     assert!(cwd.exists());
+}
+#[test]
+fn managed_workspace_mcp_releases_a_built_worktree_after_rebase() {
+    let (f, task) = fixture_real();
+    let (id, ready) = prepare(&f, task);
+    let cwd = PathBuf::from(ready["cwd"].as_str().unwrap());
+    let seat: Ulid = serde_json::from_value(
+        data(f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "seat_spawn",
+            json!({
+                "swarm_id": f.oracle.swarm, "approved_profile": "zsh", "role": "executor",
+                "workspace": {"id": id, "expected_revision": ready["revision"]},
+            }),
+        ))["seat_id"]
+            .clone(),
+    )
+    .unwrap();
+    wait(&f, id, "in_use");
+
+    std::fs::write(cwd.join("source.txt"), "int main(void) { return 0; }\n").unwrap();
+    git(&cwd, &["commit", "-am", "worker source"]);
+    let worker = git(&cwd, &["rev-parse", "HEAD"]);
+    let built = std::process::Command::new("/bin/sh")
+        .args([
+            "-ec",
+            "mkdir target; cc -x c source.txt -o target/build; ./target/build",
+        ])
+        .current_dir(&cwd)
+        .status()
+        .unwrap();
+    assert!(built.success());
+    for i in 0..1200 {
+        std::fs::write(
+            cwd.join("target")
+                .join(format!("{i:04}-{}", "x".repeat(65))),
+            b"build",
+        )
+        .unwrap();
+    }
+    assert!(git(&cwd, &["status", "--porcelain", "--ignored", "-uall"]).len() > 65536);
+
+    f.runtime
+        .block_on(f.client().close(
+            seat,
+            1,
+            Ulid::new(),
+            bbt_mux::registry::Position {
+                swarm: f.oracle.swarm,
+                tab: Ulid::new(),
+                split_path: vec![],
+                ratios: vec![],
+                layout_revision: 0,
+            },
+            0,
+        ))
+        .unwrap();
+
+    let release = |revision: &Value| {
+        data(f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "workspace_release",
+            json!({"workspace_id":id,"expected_revision":revision}),
+        ))
+    };
+    let ready = wait(&f, id, "ready");
+    assert_eq!(
+        release(&ready["revision"])["workspace"]["state"],
+        "releasing"
+    );
+    let failed = wait(&f, id, "failed");
+    assert!(
+        failed["error"]
+            .as_str()
+            .unwrap()
+            .contains("workspace_unpublished_commits")
+    );
+    assert!(cwd.join("target/build").is_file());
+
+    let repo = &f.config.repository;
+    std::fs::write(repo.join("upstream.txt"), "upstream\n").unwrap();
+    git(repo, &["add", "upstream.txt"]);
+    git(repo, &["commit", "-m", "upstream"]);
+    git(repo, &["checkout", "-b", "landing-fixture", &worker]);
+    git(repo, &["-c", "core.hooksPath=/dev/null", "rebase", "main"]);
+    let rebased = git(repo, &["rev-parse", "HEAD"]);
+    assert_ne!(rebased, worker);
+    git(repo, &["checkout", "main"]);
+    git(repo, &["merge", "--ff-only", &rebased]);
+
+    assert_eq!(
+        release(&failed["revision"])["workspace"]["state"],
+        "releasing"
+    );
+    let released = wait(&f, id, "released");
+    assert!(!cwd.exists());
+    assert_eq!(
+        git(repo, &["rev-parse", released["branch"].as_str().unwrap()]),
+        worker
+    );
 }
 #[test]
 fn managed_workspace_mcp_restart_replay_and_guarded_release() {

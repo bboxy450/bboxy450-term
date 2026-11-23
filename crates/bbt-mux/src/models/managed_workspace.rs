@@ -202,25 +202,48 @@ pub(super) fn managed_workspace_release(b: bool) -> Model {
         "ManagedWorkspaceRelease",
         b,
         &[
-            ("dirty", 1, 1),
+            ("private", 1, 1),
             ("holder", 1, 1),
             ("deleted", 1, 0),
             ("bad", 1, 0),
+            ("preserved", 1, 0),
+            ("build", 1, 0),
+            ("external_handle", 1, 0),
         ],
     );
-    action(&mut m, "Preserve", eq(0, 1), &[(0, Int(0))]);
+    action(&mut m, "PreservePrivateData", eq(0, 1), &[(0, Int(0))]);
+    action(&mut m, "PreserveSource", eq(4, 0), &[(4, Int(1))]);
+    action(&mut m, "Build", all([eq(1, 1), eq(5, 0)]), &[(5, Int(1))]);
     action(&mut m, "CloseAndVerifyDead", eq(1, 1), &[(1, Int(0))]);
+    action(
+        &mut m,
+        "OpenExternalHandle",
+        all([eq(2, 0), eq(6, 0)]),
+        &[(6, Int(1))],
+    );
+    action(&mut m, "CloseExternalHandle", eq(6, 1), &[(6, Int(0))]);
+    let preserved = all([eq(0, 0), eq(4, 1)]);
     action(
         &mut m,
         "Release",
         all([
             eq(1, 0),
             eq(2, 0),
-            if b { Expr::Bool(true) } else { eq(0, 0) },
+            eq(6, 0),
+            if b {
+                Expr::Bool(true)
+            } else {
+                preserved.clone()
+            },
         ]),
-        &[(2, Int(1)), (3, eq(0, 1).ite(Int(1), Var(3)))],
+        &[(2, Int(1)), (3, preserved.ite(Var(3), Int(1))), (5, Int(0))],
     );
     no_bad(&mut m, 3);
+    safe(
+        &mut m,
+        "DeletedBuildHasNoOwner",
+        implies(eq(2, 1), all([eq(5, 0), eq(6, 0)])),
+    );
     m
 }
 pub(super) fn managed_workspace_ownership(b: bool) -> Model {

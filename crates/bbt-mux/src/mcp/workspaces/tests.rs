@@ -220,6 +220,65 @@ fn managed_workspace_refuses_untracked_ignored_and_unpublished_work() {
     assert!(r.cwd.exists());
 }
 #[test]
+fn managed_workspace_release_requires_the_exact_tree_even_for_a_matching_subject() {
+    let f = Fixture::new();
+    let r = f.prepare();
+    std::fs::write(r.cwd.join("source.txt"), "worker bytes").unwrap();
+    git(&r.cwd, &["commit", "-am", "matching subject"]);
+    std::fs::write(f.repo.join("source.txt"), "different parent").unwrap();
+    git(&f.repo, &["commit", "-am", "intervening"]);
+    std::fs::write(f.repo.join("source.txt"), "different bytes").unwrap();
+    git(&f.repo, &["commit", "-am", "matching subject"]);
+    let w = f.begin_release(&r);
+    let r = f
+        .service
+        .finish(w.record(), f.service.run(&w), true)
+        .unwrap();
+    assert!(
+        r.error
+            .as_ref()
+            .unwrap()
+            .contains("workspace_unpublished_commits")
+    );
+
+    // Same subject and tree, but a different parent and therefore a different
+    // patch. Integration moves on again before release.
+    std::fs::write(f.repo.join("source.txt"), "worker bytes").unwrap();
+    git(&f.repo, &["commit", "-am", "matching subject"]);
+    std::fs::write(f.repo.join("source.txt"), "later integration").unwrap();
+    git(&f.repo, &["commit", "-am", "later integration"]);
+    let w = f.begin_release(&r);
+    let r = f
+        .service
+        .finish(w.record(), f.service.run(&w), true)
+        .unwrap();
+    assert_eq!(r.state, State::Released, "{:?}", r.error);
+    assert!(!r.cwd.exists());
+}
+
+#[test]
+fn managed_workspace_release_refuses_an_open_checkout_handle() {
+    let f = Fixture::new();
+    let r = f.prepare();
+    let open = std::fs::File::open(&r.cwd).unwrap();
+    let w = f.begin_release(&r);
+    let r = f
+        .service
+        .finish(w.record(), f.service.run(&w), true)
+        .unwrap();
+    assert!(r.error.as_ref().unwrap().contains("workspace_in_use"));
+    assert!(r.cwd.exists());
+
+    drop(open);
+    let w = f.begin_release(&r);
+    let r = f
+        .service
+        .finish(w.record(), f.service.run(&w), true)
+        .unwrap();
+    assert_eq!(r.state, State::Released, "{:?}", r.error);
+}
+
+#[test]
 fn managed_workspace_reservation_and_a_b_a_fences() {
     let f = Fixture::new();
     let r = f.prepare();
@@ -538,20 +597,28 @@ fn managed_workspace_failed_prepare_releases_only_its_durably_claimed_empty_dire
 }
 
 #[test]
-fn managed_workspace_truncated_provider_evidence_fails_closed_after_draining() {
-    for script in [
-        "dd if=/dev/zero bs=65536 count=2 2>/dev/null",
-        "(dd if=/dev/zero bs=65536 count=2 2>/dev/null) >&2",
+fn managed_workspace_large_provider_output_keeps_digest_head_and_tail() {
+    use sha2::{Digest, Sha256};
+    let script = "printf 'head'; dd if=/dev/zero bs=65536 count=2 2>/dev/null; printf 'tail'";
+    let mut source = b"head".to_vec();
+    source.resize(source.len() + 2 * 65536, 0);
+    source.extend_from_slice(b"tail");
+    let digest = format!("sha256:{:x}", Sha256::digest(source));
+    for (script, stdout) in [
+        (script.to_owned(), true),
+        (format!("({script}) >&2"), false),
     ] {
         let mut command = Command::new("/bin/sh");
-        command.args(["-c", script]);
-        let error = super::git::output(command, std::time::Duration::from_secs(3)).unwrap_err();
-        assert!(
-            error
-                .to_string()
-                .starts_with("workspace_provider_output_exceeded:"),
-            "{error}"
-        );
+        command.args(["-c", &script]);
+        let (out, clipped) =
+            super::git::output(command, std::time::Duration::from_secs(3)).unwrap();
+        assert!(out.status.success());
+        assert_eq!(clipped, stdout);
+        let captured = if stdout { out.stdout } else { out.stderr };
+        assert!(captured.len() <= 65536);
+        assert!(captured.starts_with(b"head"));
+        assert!(captured.ends_with(b"tail"));
+        assert!(String::from_utf8_lossy(&captured).contains(&digest));
     }
 }
 #[test]
@@ -589,12 +656,7 @@ fn managed_workspace_submodule_private_data_is_preserved_before_deinit_and_relea
 ",
     )
     .unwrap();
-    std::fs::write(
-        module.join(".gitignore"),
-        "private/
-",
-    )
-    .unwrap();
+    std::fs::write(module.join(".gitignore"), "private/\ntarget/\n").unwrap();
     git(&module, &["add", "tracked", ".gitignore"]);
     git(&module, &["commit", "-m", "module"]);
     git(
@@ -651,6 +713,8 @@ fn managed_workspace_submodule_private_data_is_preserved_before_deinit_and_relea
         .finish(work.record(), f.service.run(&work), true)
         .unwrap();
     assert_eq!(r.state, State::Ready);
+    std::fs::create_dir(r.cwd.join("module/target")).unwrap();
+    std::fs::write(r.cwd.join("module/target/build"), "generated").unwrap();
     std::fs::create_dir(r.cwd.join("module/private")).unwrap();
     std::fs::write(r.cwd.join("module/private/evidence"), "retain").unwrap();
     let work = f.begin_release(&r);
@@ -660,7 +724,32 @@ fn managed_workspace_submodule_private_data_is_preserved_before_deinit_and_relea
         .unwrap();
     assert!(r.error.as_ref().unwrap().contains("workspace_dirty"));
     assert!(r.cwd.join("module/private/evidence").exists());
+    assert!(r.cwd.join("module/target/build").exists());
     std::fs::remove_dir_all(r.cwd.join("module/private")).unwrap();
+
+    // The worker pins an intermediate module commit. Main independently
+    // advances past it, so neither the superproject SHA nor its tree matches.
+    std::fs::write(module.join("tracked"), "intermediate").unwrap();
+    git(&module, &["commit", "-am", "intermediate module"]);
+    let intermediate = git(&module, &["rev-parse", "HEAD"]);
+    let working_module = r.cwd.join("module");
+    git(
+        &working_module,
+        &["-c", "protocol.file.allow=always", "fetch", "origin"],
+    );
+    git(&working_module, &["checkout", &intermediate]);
+    git(&r.cwd, &["commit", "-am", "intermediate pin"]);
+    std::fs::write(module.join("tracked"), "superseding").unwrap();
+    git(&module, &["commit", "-am", "superseding module"]);
+    let superseding = git(&module, &["rev-parse", "HEAD"]);
+    let integration_module = f.repo.join("module");
+    git(
+        &integration_module,
+        &["-c", "protocol.file.allow=always", "fetch", "origin"],
+    );
+    git(&integration_module, &["checkout", &superseding]);
+    git(&f.repo, &["commit", "-am", "integration pin"]);
+
     let work = f.begin_release(&r);
     let r = f
         .service

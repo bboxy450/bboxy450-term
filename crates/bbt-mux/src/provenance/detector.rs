@@ -36,7 +36,7 @@ pub(crate) const MAX_FILE: u64 = 64 * 1024 * 1024;
 struct Root {
     path: PathBuf,
     prefix: String,
-    dir: Arc<File>,
+    dir: Option<Arc<File>>,
 }
 #[derive(Clone)]
 struct Binding {
@@ -327,7 +327,11 @@ fn open_regular(root: &Root, path: &Path) -> Result<File> {
     let (name, parents) = parts
         .split_last()
         .ok_or_else(|| invalid("empty artifact path"))?;
-    let mut directory = root.dir.try_clone()?;
+    let mut directory = root
+        .dir
+        .as_ref()
+        .ok_or_else(|| invalid("artifact file hashing is disabled"))?
+        .try_clone()?;
     for component in parents {
         let component = CString::new(component.as_bytes())?;
         // SAFETY: owned directory FD and NUL-terminated single path component.
@@ -489,10 +493,18 @@ impl Detector {
             return Err(invalid("home-wide artifact watch is unavailable"));
         }
         use std::os::unix::fs::OpenOptionsExt;
-        let directory = std::fs::OpenOptions::new()
-            .read(true)
-            .custom_flags(libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC)
-            .open(path)?;
+        // Git-only observation has no file-hashing custody. Holding an open
+        // directory here would keep every registered worktree in use forever.
+        let directory = if self.commits_only {
+            None
+        } else {
+            Some(Arc::new(
+                std::fs::OpenOptions::new()
+                    .read(true)
+                    .custom_flags(libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC)
+                    .open(path)?,
+            ))
+        };
         let id = self.roots.len();
         let prefix = if path == self.primary {
             String::new()
@@ -505,7 +517,7 @@ impl Detector {
         let root = Root {
             path: path.to_owned(),
             prefix,
-            dir: Arc::new(directory),
+            dir: directory,
         };
         if !self.commits_only {
             let inbox = self.inbox.clone();
@@ -1263,7 +1275,7 @@ mod tests {
         let root = Root {
             path: temp.path().to_owned(),
             prefix: String::new(),
-            dir: Arc::new(File::open(temp.path()).unwrap()),
+            dir: Some(Arc::new(File::open(temp.path()).unwrap())),
         };
         let outside = tempfile::tempdir().unwrap();
         std::fs::write(outside.path().join("secret"), b"private").unwrap();

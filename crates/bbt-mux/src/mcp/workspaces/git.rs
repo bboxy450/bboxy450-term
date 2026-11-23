@@ -8,11 +8,13 @@
 //! every Git/submodule/process inspection here runs on a bounded IO worker.
 use super::{Record, Source, State};
 use crate::store::{Result, invalid};
+use sha2::{Digest, Sha256};
 use std::{
+    collections::VecDeque,
     fs,
     io::Read,
-    os::unix::{fs::MetadataExt, process::CommandExt},
-    path::Path,
+    os::unix::{ffi::OsStrExt, fs::MetadataExt, process::CommandExt},
+    path::{Component, Path, PathBuf},
     process::{Command, Output, Stdio},
     thread,
     time::{Duration, Instant},
@@ -57,7 +59,70 @@ pub(super) fn inherit_provider_lease(
     }
     lease
 }
-pub(super) fn output(mut command: Command, timeout: Duration) -> Result<Output> {
+const OUTPUT_LIMIT: usize = 65536;
+
+struct Capture {
+    head: Vec<u8>,
+    tail: VecDeque<u8>,
+    digest: Sha256,
+    bytes: usize,
+}
+
+impl Capture {
+    fn new() -> Self {
+        Self {
+            head: Vec::new(),
+            tail: VecDeque::new(),
+            digest: Sha256::new(),
+            bytes: 0,
+        }
+    }
+
+    fn push(&mut self, chunk: &[u8]) {
+        const HEAD: usize = OUTPUT_LIMIT / 2;
+        // Reserve space for the truncation marker within the same byte bound.
+        const TAIL: usize = OUTPUT_LIMIT - HEAD - 128;
+        self.digest.update(chunk);
+        self.bytes += chunk.len();
+
+        if self.bytes <= OUTPUT_LIMIT {
+            self.head.extend_from_slice(chunk);
+            return;
+        }
+
+        if self.head.len() > HEAD {
+            self.tail.extend(self.head.drain(HEAD..));
+        }
+        let take = chunk.len().min(HEAD - self.head.len());
+        self.head.extend_from_slice(&chunk[..take]);
+        let remaining = &chunk[take..];
+        let remaining = &remaining[remaining.len().saturating_sub(TAIL)..];
+        let drop = (self.tail.len() + remaining.len()).saturating_sub(TAIL);
+        self.tail.drain(..drop);
+        self.tail.extend(remaining);
+    }
+
+    fn finish(mut self) -> (Vec<u8>, bool) {
+        let clipped = self.bytes > OUTPUT_LIMIT;
+        if clipped {
+            let marker = format!(
+                "\n[{} bytes total, sha256:{:x}]\n",
+                self.bytes,
+                self.digest.finalize()
+            );
+            self.head.extend_from_slice(marker.as_bytes());
+            self.head.extend(self.tail);
+        }
+        (self.head, clipped)
+    }
+}
+
+fn output_with<T: Send + 'static>(
+    mut command: Command,
+    timeout: Duration,
+    state: T,
+    observe: impl FnMut(&mut T, &[u8]) -> std::io::Result<()> + Send + 'static,
+) -> Result<(Output, bool, T)> {
     use std::{
         os::fd::AsRawFd,
         sync::{
@@ -82,11 +147,12 @@ pub(super) fn output(mut command: Command, timeout: Duration) -> Result<Output> 
         }
     }
     let _cancel_on_exit = Cancel(cancel.clone());
-    type Captured = (Vec<u8>, bool);
-    fn reader(
+    fn reader<T: Send + 'static>(
         mut pipe: impl Read + AsRawFd + Send + 'static,
         cancel: Arc<AtomicBool>,
-    ) -> mpsc::Receiver<std::io::Result<Captured>> {
+        mut state: T,
+        mut observe: impl FnMut(&mut T, &[u8]) -> std::io::Result<()> + Send + 'static,
+    ) -> mpsc::Receiver<std::io::Result<(Capture, T)>> {
         let (tx, rx) = mpsc::sync_channel(1);
         thread::spawn(move || {
             let result = (|| {
@@ -98,16 +164,14 @@ pub(super) fn output(mut command: Command, timeout: Duration) -> Result<Output> 
                 {
                     return Err(std::io::Error::last_os_error());
                 }
-                let mut saved = Vec::new();
-                let mut exceeded = false;
+                let mut saved = Capture::new();
                 let mut buf = [0; 8192];
                 while !cancel.load(Ordering::Acquire) {
                     match pipe.read(&mut buf) {
-                        Ok(0) => return Ok((saved, exceeded)),
+                        Ok(0) => break,
                         Ok(n) => {
-                            let take = n.min(65536usize.saturating_sub(saved.len()));
-                            exceeded |= take < n;
-                            saved.extend_from_slice(&buf[..take]);
+                            observe(&mut state, &buf[..n])?;
+                            saved.push(&buf[..n]);
                         }
                         Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                             let mut wait = libc::pollfd {
@@ -125,14 +189,24 @@ pub(super) fn output(mut command: Command, timeout: Duration) -> Result<Output> 
                         Err(e) => return Err(e),
                     }
                 }
-                Ok((saved, exceeded))
+                Ok((saved, state))
             })();
             let _ = tx.send(result);
         });
         rx
     }
-    let out = reader(child.stdout.take().expect("piped stdout"), cancel.clone());
-    let err = reader(child.stderr.take().expect("piped stderr"), cancel.clone());
+    let out = reader(
+        child.stdout.take().expect("piped stdout"),
+        cancel.clone(),
+        state,
+        observe,
+    );
+    let err = reader(
+        child.stderr.take().expect("piped stderr"),
+        cancel.clone(),
+        (),
+        |_, _| Ok(()),
+    );
     let deadline = Instant::now() + timeout;
     let (mut exited, mut stdout, mut stderr) = (false, None, None);
     loop {
@@ -192,21 +266,18 @@ pub(super) fn output(mut command: Command, timeout: Duration) -> Result<Output> 
                 libc::kill(-(pid as i32), libc::SIGKILL);
             }
             let status = child.wait()?;
-            let (stdout, stdout_exceeded) = stdout.take().unwrap();
-            let (stderr, stderr_exceeded) = stderr.take().unwrap();
-            if stdout_exceeded || stderr_exceeded {
-                // Bounded retention is not a complete preservation/identity
-                // proof. Keep draining, then fail closed instead of allowing
-                // a later omitted git-cherry/worktree row to change a verdict.
-                return Err(invalid(
-                    "workspace_provider_output_exceeded: process output exceeded the 65536-byte evidence bound; retained output cannot prove resource identity or source preservation",
-                ));
-            }
-            return Ok(Output {
-                status,
-                stdout,
-                stderr,
-            });
+            let (stdout, state) = stdout.take().unwrap();
+            let (stdout, clipped) = stdout.finish();
+            let (stderr, _) = stderr.take().unwrap().0.finish();
+            return Ok((
+                Output {
+                    status,
+                    stdout,
+                    stderr,
+                },
+                clipped,
+                state,
+            ));
         }
         if Instant::now() >= deadline {
             cancel.store(true, Ordering::Release);
@@ -225,7 +296,7 @@ pub(super) fn output(mut command: Command, timeout: Duration) -> Result<Output> 
     }
 }
 
-fn run(repo: &Path, args: &[&str]) -> Result<Output> {
+fn command(repo: &Path, args: &[&str]) -> Command {
     let mut command = Command::new("git");
     command
         .arg("-C")
@@ -233,21 +304,78 @@ fn run(repo: &Path, args: &[&str]) -> Result<Output> {
         .args(args)
         .env("GIT_TERMINAL_PROMPT", "0")
         .env("GIT_OPTIONAL_LOCKS", "0");
-    output(command, Duration::from_secs(120))
+    command
 }
+const GIT_TIMEOUT: Duration = Duration::from_secs(120);
+
+pub(super) fn output(command: Command, timeout: Duration) -> Result<(Output, bool)> {
+    output_with(command, timeout, (), |_, _| Ok(())).map(|(out, clipped, ())| (out, clipped))
+}
+
+fn run(repo: &Path, args: &[&str]) -> Result<(Output, bool)> {
+    output(command(repo, args), GIT_TIMEOUT)
+}
+
+fn success(out: &Output, args: &[&str]) -> Result<()> {
+    if out.status.success() {
+        return Ok(());
+    }
+    Err(invalid(format!(
+        "workspace_git_failed: git {} failed ({}); verify the requested source, setup and repository credentials",
+        args.first().copied().unwrap_or("command"),
+        out.status
+    )))
+}
+
 fn checked(repo: &Path, args: &[&str]) -> Result<String> {
-    let out = run(repo, args)?;
-    if !out.status.success() {
-        return Err(invalid(format!(
-            "workspace_git_failed: git {} failed ({}); verify the requested source, setup and repository credentials",
-            args.first().copied().unwrap_or("command"),
-            out.status
-        )));
+    let (out, clipped) = run(repo, args)?;
+    success(&out, args)?;
+    if clipped {
+        return Err(invalid(
+            "workspace_preservation_unproven: Git result exceeded the complete-result bound",
+        ));
     }
     String::from_utf8(out.stdout)
         .map(|s| s.trim().to_owned())
         .map_err(Into::into)
 }
+
+fn records<T: Send + 'static>(
+    repo: &Path,
+    args: &[&str],
+    state: T,
+    mut record: impl FnMut(&mut T, &[u8]) + Send + 'static,
+) -> Result<T> {
+    let (out, _, (pending, state)) = output_with(
+        command(repo, args),
+        GIT_TIMEOUT,
+        (Vec::new(), state),
+        move |(pending, state), mut chunk| {
+            while let Some(end) = chunk.iter().position(|&b| b == 0) {
+                if pending.len() + end > OUTPUT_LIMIT {
+                    return Err(std::io::Error::other("oversized Git record"));
+                }
+                pending.extend_from_slice(&chunk[..end]);
+                record(state, pending);
+                pending.clear();
+                chunk = &chunk[end + 1..];
+            }
+            pending.extend_from_slice(chunk);
+            if pending.len() > OUTPUT_LIMIT {
+                return Err(std::io::Error::other("oversized Git record"));
+            }
+            Ok(())
+        },
+    )?;
+    success(&out, args)?;
+    if !pending.is_empty() {
+        return Err(invalid(
+            "workspace_preservation_unproven: unterminated Git record",
+        ));
+    }
+    Ok(state)
+}
+
 pub(super) fn identity(path: &Path) -> Result<(u64, u64)> {
     let m = fs::symlink_metadata(path)?;
     if !m.is_dir() || m.file_type().is_symlink() {
@@ -341,14 +469,20 @@ pub(super) fn worktrees(repo: &Path) -> Result<Vec<std::path::PathBuf>> {
         .collect())
 }
 fn registered(r: &Record) -> Result<bool> {
-    let list = checked(&r.source.repository, &["worktree", "list", "--porcelain"])?;
-    let expected = format!("worktree {}", r.cwd.to_string_lossy());
-    Ok(list.split("\n\n").any(|block| {
-        block.lines().next() == Some(expected.as_str())
-            && block
-                .lines()
-                .any(|line| line == format!("branch refs/heads/{}", r.branch))
-    }))
+    let expected = [b"worktree ", r.cwd.as_os_str().as_encoded_bytes()].concat();
+    let branch = format!("branch refs/heads/{}", r.branch);
+    let (_, found) = records(
+        &r.source.repository,
+        &["worktree", "list", "--porcelain", "-z"],
+        (false, false),
+        move |(ours, found), row| {
+            if row.is_empty() || row.starts_with(b"worktree ") {
+                *ours = row == expected;
+            }
+            *found |= *ours && row == branch.as_bytes();
+        },
+    )?;
+    Ok(found)
 }
 fn verify_identity(r: &Record) -> Result<()> {
     same_source(r)?;
@@ -402,6 +536,7 @@ pub(super) fn prepare(r: &Record) -> Result<Record> {
                 &format!("refs/heads/{}", r.branch),
             ],
         )?
+        .0
         .status
         .success()
     {
@@ -481,6 +616,285 @@ pub(super) fn process_exists(pid: u32) -> bool {
             || std::io::Error::last_os_error().raw_os_error() != Some(libc::ESRCH)
     }
 }
+// Git's matching mode reports an ignored directory once, even when it
+// contains thousands of files. Keep all other ignored paths private.
+fn disposable(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
+        return false;
+    };
+    matches!(
+        name,
+        "target" | "dist" | "node_modules" | ".wrangler" | ".cache"
+    ) || name.starts_with(".chrome-")
+}
+
+fn verify_clean(repo: &Path) -> Result<()> {
+    let (dirty, outputs) = records(
+        repo,
+        &[
+            "status",
+            "--porcelain=v1",
+            "-z",
+            "--untracked-files=normal",
+            "--ignored=matching",
+            "--ignore-submodules=none",
+            "--no-renames",
+        ],
+        (false, Vec::new()),
+        |(dirty, outputs), row| {
+            if *dirty {
+                return;
+            }
+            if let Some(name) = row
+                .strip_prefix(b"!! ")
+                .and_then(|path| path.strip_suffix(b"/"))
+                && disposable(Path::new(std::ffi::OsStr::from_bytes(name)))
+            {
+                outputs.push(name.to_vec());
+            } else {
+                *dirty = true;
+            }
+        },
+    )?;
+    let private = || {
+        invalid(
+            "workspace_dirty: preserve tracked, untracked and ignored private data before release",
+        )
+    };
+    if dirty {
+        return Err(private());
+    }
+    for path in outputs {
+        let path = std::str::from_utf8(&path)?;
+        let rule = checked(
+            repo,
+            &[
+                "-c",
+                "core.quotePath=false",
+                "check-ignore",
+                "-v",
+                "--",
+                &format!("./{path}"),
+            ],
+        )?;
+        let Some((rule, _)) = rule.split_once('\t') else {
+            return Err(private());
+        };
+        let mut rule = rule.rsplitn(3, ':');
+        let (Some(pattern), Some(_), Some(source)) = (rule.next(), rule.next(), rule.next()) else {
+            return Err(private());
+        };
+        let name = Path::new(path).file_name().and_then(|name| name.to_str());
+        let pattern = pattern.trim_end_matches('/').rsplit('/').next();
+        let names_output = pattern == name
+            || (pattern == Some(".chrome-*")
+                && name.is_some_and(|name| name.starts_with(".chrome-")));
+        let source = Path::new(source);
+        if !names_output
+            || source.file_name().is_none_or(|name| name != ".gitignore")
+            || !source
+                .components()
+                .all(|part| matches!(part, Component::Normal(_)))
+        {
+            return Err(private());
+        }
+        let source = source.to_str().ok_or_else(private)?;
+        let (track, _) = run(
+            repo,
+            &[
+                "--literal-pathspecs",
+                "ls-files",
+                "--error-unmatch",
+                "--",
+                source,
+            ],
+        )?;
+        if !track.status.success() {
+            return Err(private());
+        }
+    }
+    Ok(())
+}
+
+fn verify_clean_tree(repo: &Path) -> Result<()> {
+    verify_clean(repo)?;
+    let modules = records(
+        repo,
+        &[
+            "submodule",
+            "foreach",
+            "--quiet",
+            "--recursive",
+            r#"printf '%s\0' "$displaypath""#,
+        ],
+        Vec::new(),
+        |modules, path| modules.push(PathBuf::from(std::ffi::OsStr::from_bytes(path))),
+    )?;
+    for path in modules {
+        if path.as_os_str().is_empty()
+            || !path
+                .components()
+                .all(|part| matches!(part, Component::Normal(_)))
+        {
+            return Err(invalid(
+                "workspace_preservation_unproven: unexpected submodule path",
+            ));
+        }
+        verify_clean(&repo.join(path))?;
+    }
+    Ok(())
+}
+
+fn ancestor(repo: &Path, old: &str, new: &str) -> Result<bool> {
+    let (out, _) = run(repo, &["merge-base", "--is-ancestor", old, new])?;
+    Ok(out.status.success())
+}
+
+fn matching_tree(repo: &Path, integration: &str, commit: &str) -> Result<bool> {
+    let format = "--format=%T %s";
+    let (out, clipped) = run(
+        repo,
+        &["show", "-s", "--no-show-signature", "-z", format, commit],
+    )?;
+    success(&out, &["show"])?;
+    let signature = out.stdout.strip_suffix(b"\0").ok_or_else(|| {
+        invalid("workspace_preservation_unproven: unexpected Git commit signature record")
+    })?;
+    if clipped {
+        return Err(invalid(
+            "workspace_preservation_unproven: oversized Git commit signature record",
+        ));
+    }
+    let signature = signature.to_vec();
+    records(
+        repo,
+        &["log", "--no-show-signature", "-z", format, integration],
+        false,
+        move |found, row| *found |= row == signature,
+    )
+}
+
+fn preserved_pointers(r: &Record, integration: &str, commit: &str) -> Result<bool> {
+    let repo = &r.source.repository;
+    let parents = checked(repo, &["show", "-s", "--format=%P", commit])?;
+    if parents.split_whitespace().count() != 1 {
+        return Ok(false);
+    }
+    let (_, pointers) = records(
+        repo,
+        &[
+            "diff-tree",
+            "-r",
+            "-z",
+            "--no-abbrev",
+            "--no-commit-id",
+            "--no-renames",
+            commit,
+        ],
+        (None, Some(Vec::new())),
+        |(header, pointers), row| {
+            if pointers.is_none() {
+                return;
+            }
+            if let Some(pin) = header.take() {
+                pointers.as_mut().unwrap().push((pin, row.to_vec()));
+            } else if row.starts_with(b":160000 160000 ")
+                && let Some(pin) = row.split(|&b| b == b' ').nth(3)
+            {
+                *header = Some(pin.to_vec());
+            } else {
+                *pointers = None;
+            }
+        },
+    )?;
+    let Some(pointers) = pointers.filter(|pointers| !pointers.is_empty()) else {
+        return Ok(false);
+    };
+    for (pin, path) in pointers {
+        let pin = std::str::from_utf8(&pin)?;
+        let path = std::str::from_utf8(&path)?;
+        let (entry, clipped) = run(
+            repo,
+            &[
+                "--literal-pathspecs",
+                "ls-tree",
+                "-z",
+                integration,
+                "--",
+                path,
+            ],
+        )?;
+        if !entry.status.success() || clipped || !entry.stdout.starts_with(b"160000 commit ") {
+            return Ok(false);
+        }
+        let Some((pin_field, _)) = std::str::from_utf8(&entry.stdout)?.split_once('\t') else {
+            return Ok(false);
+        };
+        let landed = pin_field.trim_start_matches("160000 commit ");
+        if pin == landed {
+            continue;
+        }
+        let mut preserved = false;
+        for checkout in [&r.cwd, repo] {
+            let module = checkout.join(path);
+            if module.join(".git").try_exists()? && ancestor(&module, pin, landed)? {
+                preserved = true;
+                break;
+            }
+        }
+        if !preserved {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+fn verify_preserved(r: &Record) -> Result<()> {
+    let repo = &r.source.repository;
+    let head = checked(&r.cwd, &["rev-parse", "HEAD"])?;
+    let integration = checked(
+        repo,
+        &[
+            "rev-parse",
+            "--verify",
+            &format!("{}^{{commit}}", r.source.integration_ref),
+        ],
+    )?;
+    if ancestor(repo, &head, &integration)? {
+        return Ok(());
+    }
+
+    let range = format!("{integration}...{head}");
+    const PAGE: usize = 128;
+    let mut skip = 0;
+    loop {
+        let commits = checked(
+            repo,
+            &[
+                "rev-list",
+                "--right-only",
+                "--cherry-pick",
+                &format!("--max-count={PAGE}"),
+                &format!("--skip={skip}"),
+                &range,
+            ],
+        )?;
+        for commit in commits.lines() {
+            if !matching_tree(repo, &integration, commit)?
+                && !preserved_pointers(r, &integration, commit)?
+            {
+                return Err(invalid(format!(
+                    "workspace_unpublished_commits: {commit} is not preserved at integration_ref",
+                )));
+            }
+        }
+        if commits.lines().count() < PAGE {
+            return Ok(());
+        }
+        skip += PAGE;
+    }
+}
+
 pub(super) fn release(r: &Record) -> Result<Record> {
     same_source(r)?;
     let mut next = r.clone();
@@ -510,108 +924,32 @@ pub(super) fn release(r: &Record) -> Result<Record> {
         return Ok(next);
     }
     verify_identity(r)?;
-    let status = checked(
-        &r.cwd,
-        &[
-            "status",
-            "--porcelain=v1",
-            "--untracked-files=all",
-            "--ignored",
-        ],
-    )?;
-    if !status.is_empty() {
-        return Err(invalid(
-            "workspace_dirty: preserve tracked, untracked and ignored private data before release",
-        ));
-    }
-    let nested = checked(
-        &r.cwd,
-        &[
-            "submodule",
-            "foreach",
-            "--quiet",
-            "--recursive",
-            "git status --porcelain=v1 --untracked-files=all --ignored",
-        ],
-    )?;
-    if !nested.is_empty() {
-        return Err(invalid(
-            "workspace_dirty: preserve private/untracked files inside submodules before release",
-        ));
-    }
-    let head = checked(&r.cwd, &["rev-parse", "HEAD"])?;
-    let preserved = run(
-        &r.source.repository,
-        &[
-            "merge-base",
-            "--is-ancestor",
-            &head,
-            &r.source.integration_ref,
-        ],
-    )?
-    .status
-    .success();
-    if !preserved {
-        // Patch-id alone is not source preservation: git cherry omits merges
-        // and ignores whitespace. Permit a rebased equivalent only when every
-        // ordinary patch is represented AND the complete tracked tree matches;
-        // unmatched merge commits always need explicit preservation.
-        let merges = checked(
-            &r.source.repository,
-            &[
-                "rev-list",
-                "--merges",
-                &format!("{}..{head}", r.source.integration_ref),
-            ],
-        )?;
-        let trees = checked(
-            &r.source.repository,
-            &[
-                "rev-parse",
-                &format!("{head}^{{tree}}"),
-                &format!("{}^{{tree}}", r.source.integration_ref),
-            ],
-        )?;
-        let trees = trees.lines().collect::<Vec<_>>();
-        if !merges.is_empty() || trees.len() != 2 || trees[0] != trees[1] {
-            return Err(invalid(
-                "workspace_unpublished_commits: unmatched commits/merges or source tree differ from integration_ref",
-            ));
-        }
-        let cherry = checked(
-            &r.source.repository,
-            &["cherry", &r.source.integration_ref, &head],
-        )?;
-        if cherry.lines().any(|line| line.starts_with('+')) {
-            return Err(invalid(
-                "workspace_unpublished_commits: source commits are not preserved at integration_ref",
-            ));
-        }
-    }
+    verify_clean_tree(&r.cwd)?;
+    verify_preserved(r)?;
     // A live editor/build/harness with this directory open is not safe to
     // remove, even if its seat record is closed. No broad process kills.
     ensure_unused(&r.cwd)?;
-    // Recheck identity and dirtiness at Git's own non-force removal boundary.
+    // Only tracked-ignore build directories passed the private data check.
+    // Git's non-force operations remove them with the rest of the checkout.
     verify_identity(r)?;
-    // Deinitialize only after the same clean/preservation/open-file checks.
-    // Git's non-force deinit refuses changed module work; no ignored/private
-    // module data was omitted by the recursive status check above.
-    checked(&r.cwd, &["submodule", "deinit", "--all"])?;
+    verify_clean_tree(&r.cwd)?;
+    let deinit = ["submodule", "deinit", "--all"];
+    let (out, _) = run(&r.cwd, &deinit)?;
+    success(&out, &deinit)?;
     // Git refuses even a clean/deinitialized worktree while its private module
     // repositories remain under worktrees/<id>/modules. Preserve that owned
     // Git data in the same common directory before non-force removal; no
     // branch/object/private module history is discarded to satisfy Git.
     next.preserved_module_repositories = preserve_modules(r)?;
-    checked(
-        &r.source.repository,
-        &[
-            "worktree",
-            "remove",
-            r.cwd
-                .to_str()
-                .ok_or_else(|| invalid("workspace_path_invalid"))?,
-        ],
-    )?;
+    let remove = [
+        "worktree",
+        "remove",
+        r.cwd
+            .to_str()
+            .ok_or_else(|| invalid("workspace_path_invalid"))?,
+    ];
+    let (out, _) = run(&r.source.repository, &remove)?;
+    success(&out, &remove)?;
     if r.cwd.try_exists()? || registered(r)? {
         return Err(invalid(
             "workspace_release_unknown: removal outcome not established",
@@ -675,7 +1013,7 @@ fn preserve_modules(r: &Record) -> Result<Option<std::path::PathBuf>> {
 fn ensure_unused(cwd: &Path) -> Result<()> {
     let mut lsof = Command::new("lsof");
     lsof.args(["-t", "+D"]).arg(cwd);
-    let open = output(lsof, Duration::from_secs(20))
+    let (open, _) = output(lsof, Duration::from_secs(20))
         .map_err(|_| invalid("workspace_preservation_unproven: process inspection unavailable"))?;
     if !open.stdout.is_empty() {
         return Err(invalid(
