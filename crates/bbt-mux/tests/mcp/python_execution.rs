@@ -479,14 +479,22 @@ fn python_managed_worktree_executes_python_and_mcp_against_canonical_kb() {
             .exists()
     );
     let oracle_harness = HarnessFixture::start(&f, f.oracle.id, &f.config.repository);
-    let oriented=oracle_harness.execute("import json\noriented=await mcp.call('native','orient',{})\nassert json.loads(oriented.content[0].text)==oriented.structured\nemit({'hints':oriented.hints,'tools':[tool.name for tool in oriented.structured.tools]})",json!({}));
+    let oriented = oracle_harness.execute(
+        r#"
+import json
+oriented = await mcp.call('native', 'orient', {})
+assert json.loads(oriented.content[0].text) == oriented.structured
+oriented.hints
+"#,
+        json!({}),
+    );
     assert_eq!(
         oriented["structuredContent"]["status"], "completed",
         "{oriented}"
     );
-    let hints = oriented["structuredContent"]["emitted"][0]["hints"]
+    let hints = oriented["structuredContent"]["result"]
         .as_array()
-        .unwrap();
+        .unwrap_or_else(|| panic!("native orient did not return hints: {oriented}"));
     for expected in [
         "knowledge_orient",
         "workspace_orient",
@@ -504,7 +512,26 @@ fn python_managed_worktree_executes_python_and_mcp_against_canonical_kb() {
     // status/context must use the independent trusted native read lane rather
     // than queueing behind that acknowledgement on the effect peer.
     std::fs::write(harness.run.join("hold-native-write"), b"hold").unwrap();
-    let held=harness.call("python_execute",json!({"source":"await commands.run(['/bin/test','-f','python-source.txt'],check=True)\nawait mcp.call('native','knowledge_write',inputs.report)","inputs":{"report":{"path":"reports/2026-11-05-python-held.md","frontmatter":{"type":"report","title":"Held native runtime fixture","task":"#3","author":format!("seat:{worker}"),"created":"2026-11-05T00:00:00Z","commits":[],"verify":{"command":"test -f python-source.txt","exit_code":0}},"body":"The native write completed before its serial reply was released."}}}));
+    let held = harness.call(
+        "python_execute",
+        json!({
+            "wait_ms": 0,
+            "source": "await commands.run(['/bin/test','-f','python-source.txt'],check=True)\nawait mcp.call('native','knowledge_write',inputs.report)",
+            "inputs": {"report": {
+                "path": "reports/2026-11-05-python-held.md",
+                "frontmatter": {
+                    "type": "report",
+                    "title": "Held native runtime fixture",
+                    "task": "#3",
+                    "author": format!("seat:{worker}"),
+                    "created": "2026-11-05T00:00:00Z",
+                    "commits": [],
+                    "verify": {"command": "test -f python-source.txt", "exit_code": 0}
+                },
+                "body": "The native write completed before its serial reply was released."
+            }}
+        }),
+    );
     assert_ne!(held["isError"], true, "{held}");
     let held_id = held["structuredContent"]["execution_id"].clone();
     let until = Instant::now() + Duration::from_secs(10);
@@ -522,7 +549,10 @@ fn python_managed_worktree_executes_python_and_mcp_against_canonical_kb() {
             .is_file()
     );
     let before = Instant::now();
-    let inspected = harness.call("python_execution_get", json!({"execution_id":held_id}));
+    let inspected = harness.call(
+        "python_execution_get",
+        json!({"execution_id":held_id, "wait_ms":0}),
+    );
     assert!(
         before.elapsed() < Duration::from_millis(1500),
         "get waited behind the held native effect: {inspected}"
@@ -549,7 +579,10 @@ fn python_managed_worktree_executes_python_and_mcp_against_canonical_kb() {
     std::fs::write(harness.run.join("release-native-write"), b"release").unwrap();
     let until = Instant::now() + Duration::from_secs(5);
     loop {
-        let value = harness.call("python_execution_get", json!({"execution_id":held_id}));
+        let value = harness.call(
+            "python_execution_get",
+            json!({"execution_id":held_id, "wait_ms":0, "detail":true}),
+        );
         if value["structuredContent"]["status"] == "cancelled" {
             assert_eq!(
                 value["structuredContent"]["children"]

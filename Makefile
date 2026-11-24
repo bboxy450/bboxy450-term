@@ -2924,7 +2924,7 @@ test-python-execute-boundaries: test-python-execute
 test-python-execute-native: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo build --locked -p bboxy450-term --example python_execute_fixture --target-dir '$(TARGET_DIR)'; \
-	BBOXY_PYTHON_EXECUTE_FIXTURE='$(abspath $(TARGET_DIR))/debug/examples/python_execute_fixture' cargo nextest run --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' -E '(binary(it)&test(/^(mcp)::/))&(test(python_))' --run-ignored all
+	BBOXY_PYTHON_EXECUTE_FIXTURE='$(abspath $(TARGET_DIR))/debug/examples/python_execute_fixture' cargo nextest run --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' -E '(binary(it)&test(/^(mcp)::/))&(test(python_))&!test(python_chart_artifact)' --run-ignored all
 
 .PHONY: test-chart-artifacts
 test-chart-artifacts: init-submodules
