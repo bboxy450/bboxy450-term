@@ -160,7 +160,7 @@ tool-usage:
 help:
 	@printf '%s\n' \
 	  'make svg-loop                   Pinned SVG corpus and native renderer verification' \
-	  'make tool-usage [DAYS=n]        What seats call from python_execute: shell programs vs bboxy_code, MCP tools' \
+	  'make tool-usage [DAYS=n]        Shell programs and MCP tools from bboxy Python and Codex' \
 	  'make test-python-execute         Real CPython/MCP/command, cancellation and recovery checks' \
 	  'make test-chart-artifacts        Private installed chart runtime, artifact pins and native painting' \
 	  'make build / build-release       Build the app (debug / optimized)' \
