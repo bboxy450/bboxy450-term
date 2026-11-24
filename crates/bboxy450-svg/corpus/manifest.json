@@ -580,7 +580,7 @@
   "generator_sha256": {
     "../bboxybook/capture-cdp.mjs": "0f4c3fbb1fa0636fe39a03680e7e65c53f57568e46e672e0c66e9caf784dc57e",
     "../bboxybook/capture-startup.mjs": "2191a3873599d95db3edd48e9bcf33266a13b243b599395a01849faa0d165293",
-    "capture.mjs": "02df055b98b554ed011dc103c431938da8d756913e8d3d7a6831e7d6234af785",
+    "capture.mjs": "bef17f27405b0b9589ddf3837a5b60e9b16474f5b4eb6a43d50c35fd0f67ac6a",
     "census.py": "40b0e9e448177c1e977852fb649e0c79d9a7d94d6b4acabd6ec96e9a799f94e4",
     "chart_export.py": "57383d1c42b7884e0cb0ee6331dcbe69521484f8b238cbc02d12ac380261bc42",
     "corpus.py": "4da156c64cf33592c95bb2391eb6352afb5121c0b3fbb4563cd44f60621eb7e7",
