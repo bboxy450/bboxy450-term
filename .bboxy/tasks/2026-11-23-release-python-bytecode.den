@@ -23,16 +23,18 @@ task ReleasePythonBytecode {
   """
 
   managed {
-    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"fgYs3Jd+beq/s5D5diFvgriRUbSwNInePdVVdEFsH1I=\",\"signer\":\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\"}"
+    assignee = json"\"seat:01M85NB8C9RRE0976A6G6XYDY5\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"bGMqsRvbQXvEDVnOwRt47b6crPtdbIu8ioBX1dU/YNs=\",\"signer\":\"seat:01M85BW3PMN3QBFPPMWBS866RA\"}"
     created = json"\"2026-11-23T20:04:08.448Z\""
     created_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
-    delegated_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
+    delegated_by = json"\"seat:01M85BW3PMN3QBFPPMWBS866RA\""
     id = json"\"01M8504ETPG6AM1EAZW5F8E08A\""
     number = json"1794292861627819"
-    status = Open
+    role = json"\"executor\""
+    status = Claimed
     swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
-    updated = json"\"2026-11-23T20:04:08.448Z\""
-    updated_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
-    provenance = json"{\"digest\":\"sha256:63aa930b9719e2913d14ce41d119681382bbf6ea23b98c7e1860c6a52aace2ff\",\"frontmatter_digest\":\"sha256:0dba4ec1ed519c85fce1c9b07ffda7d66ffd9e94426a20e8c3bfef7038e6121d\",\"signer\":\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\",\"sig\":\"AoqhuYY2jk+VpT1yCJcTSYQ8PppLvcLNULFzSJbDZ/54/6uBY2BZ6r3Gvse+aCTtsOhbxJiIbak6WD1DLYUABw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1294\",\"event\":{\"id\":\"01M8504F7D9H2NX7F0EAFGXV6Q\",\"sequence\":1294,\"hash\":\"0b802dc9dd6dfa72fb824fd2729eedd4f17921a6feb6495b551ae305631bec47\"}}"
+    updated = json"\"2026-11-24T02:14:52.228Z\""
+    updated_by = json"\"seat:01M85BW3PMN3QBFPPMWBS866RA\""
+    provenance = json"{\"digest\":\"sha256:63aa930b9719e2913d14ce41d119681382bbf6ea23b98c7e1860c6a52aace2ff\",\"frontmatter_digest\":\"sha256:914c00577ef4eee5db9a281279acd6dcd510dc05c495a30fcecc9d873c520a63\",\"signer\":\"seat:01M85BW3PMN3QBFPPMWBS866RA\",\"sig\":\"VF6+//3okIuCVSwvlgtULS4Bht//TE+OCbp07iLfbt2clTCydkSoxpa+48RZ3wVAEbf2/QkW9xudjIf5W8tfBg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1527\",\"event\":{\"id\":\"01M85NB9P0C36SEYKXFFAGXBJE\",\"sequence\":1527,\"hash\":\"235e1fd50fa67af791a11756fca1fe896fde204ed1266a3692ff3c9c6c9e6025\"}}"
   }
 }
