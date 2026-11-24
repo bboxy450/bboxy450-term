@@ -64,6 +64,10 @@ bboxy_cache_env() {
     # locally, failing build scripts and cc crates. Cache lookups still use it.
     KACHE_TRUST_DAEMON_EXECUTION=${KACHE_TRUST_DAEMON_EXECUTION:-0}
     export KACHE_CACHE_DIR KACHE_MAX_SIZE KACHE_LOCAL_ONLY KACHE_SCHEDULER KACHE_TRUST_DAEMON_EXECUTION
+    # The first rustc call otherwise spawns the daemon with its own cwd, and a
+    # daemon living in a managed checkout blocks workspace_release forever.
+    # Start it from / first; when it already runs this returns in ~10 ms.
+    (cd / && kache daemon start >/dev/null 2>&1) || true
     export RUSTC_WRAPPER=kache
     printf 'cache: on (kache; local store %s; %s)\n' "$KACHE_CACHE_DIR" "$KACHE_MAX_SIZE" >&2
     return 0
