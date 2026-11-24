@@ -2,6 +2,7 @@
 allowed_paths:
 - crates/bbt-mux
 - verification
+assignee: seat:01M8604N98T1PM5801QP4JG51R
 authorship:
   kind: seat
   process_generation: '1'
@@ -12,23 +13,24 @@ created_by: seat:01M85BW3PMN3QBFPPMWBS866RA
 delegated_by: seat:01M85BW3PMN3QBFPPMWBS866RA
 id: 01M85CHXH7C2W7Y1GKX83XDE12
 number: 1794292861627824
-status: open
+role: executor
+status: claimed
 swarm: 01M7P04CW1T6KY8CMSS6DQM12Q
 title: Let the operator (sudo) close task records whose swarm is unrecorded and whose seats are purged
 type: task
-updated: 2026-11-23T23:41:12.572Z
+updated: 2026-11-24T05:23:32.647Z
 updated_by: seat:01M85BW3PMN3QBFPPMWBS866RA
 verify: cargo nextest run -p bbt-mux && make test-formal
 provenance:
   digest: sha256:76a3717f48cd7459724266f6fda1eec17130f5875e12a42e9f1ca97eb3afa945
-  frontmatter_digest: sha256:35bef3115176e357458121581b1289f621d10fe1afffe344ef3325df148b44cf
+  frontmatter_digest: sha256:2fbb5672cf7d79f9599f953a49850fd42ad8dd39815756fe2305b18423b4e7bc
   signer: seat:01M85BW3PMN3QBFPPMWBS866RA
-  sig: DV26dVS1+YwZNezlSMtFKoPIyZlKulcQIqeFeCE9g1dBNMcEgT2Q4IAr9sjuRtzRodItXA7c4Htrk4UCN5xVBw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1458
+  sig: 4DjtI08cBwcDp153YNjWnVTSxYwI+hKBLwBSFacmDBrJdSvEb2yE339aOnpiHAhBfq7HFJlUlkyFWTXjpeKCBA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1575
   event:
-    id: 01M85CHY3VRZG4ZZFZV6AMZXZA
-    sequence: 1458
-    hash: 02e0c1149c4b30e564cd64d767b929c6c4a980a289bbbd5ef4e58d1cbc5f698f
+    id: 01M8604RVW3NBXZQ5NN58B4V6N
+    sequence: 1575
+    hash: e614d311d851da59c22704cb9350d5662c72a31ef773035bcd2387090a6223a1
 ---
 Our stand: subtract before you add; report what you removed.
 
