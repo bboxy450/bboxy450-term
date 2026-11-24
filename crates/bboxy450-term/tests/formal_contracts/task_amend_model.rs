@@ -165,27 +165,23 @@ fn amendment(control: Option<&str>) -> Model {
 }
 
 fn scoped_close(broken: bool) -> Model {
-    // Seat observations are missing/local/foreign. Stored scope is absent,
-    // matching, or foreign. Local includes a retained closed seat.
+    // References are unassigned, purged, A or B. Swarm is absent, A or B.
+    // Retained closed seats count as present. Seat callers are in A.
     let mut m = model(
-        if broken {
-            "BrokenScopedTaskClose"
-        } else {
-            "ScopedTaskClose"
-        },
-        false,
+        "ScopedTaskClose",
+        broken,
         &[
-            ("assignee", 2, 1),
-            ("delegator", 2, 1),
+            ("assignee", 3, 2),
+            ("delegator", 3, 2),
             ("stored_swarm", 2, 1),
-            ("done", 1, 0),
+            ("closed_by", 3, 0),
         ],
     );
-    for (field, name) in ["Assignee", "Delegator", "StoredSwarm"]
+    for (field, (name, max)) in [("Assignee", 3), ("Delegator", 3), ("StoredSwarm", 2)]
         .into_iter()
         .enumerate()
     {
-        for value in 0..=2 {
+        for value in 0..=max {
             action(
                 &mut m,
                 &format!("{name}{value}"),
@@ -194,23 +190,53 @@ fn scoped_close(broken: bool) -> Model {
             );
         }
     }
-    let scope = eq(0, 1).and(eq(1, 1)).or(eq(2, 1));
-    let local = ne(0, 2).and(ne(1, 2));
-    let close = if broken {
-        local.clone()
-    } else {
-        local.clone().and(scope.clone())
+    let present = |field| Int(1).lt(Var(field));
+    let all_absent = present(0).or(present(1)).negate();
+    let needs_stored_swarm = eq(0, 1).or(eq(1, 1)).or(all_absent.clone());
+    let ordinary_scope = |swarm: Expr| {
+        let agrees = |field| {
+            present(field)
+                .negate()
+                .or(Var(field).eq(swarm.clone().plus(Int(1))))
+        };
+        all([
+            swarm.clone().eq(Int(0)).negate(),
+            needs_stored_swarm
+                .clone()
+                .negate()
+                .or(Var(2).eq(swarm.clone())),
+            agrees(0),
+            agrees(1),
+        ])
     };
-    action(
-        &mut m,
-        "CloseAcceptedTask",
-        eq(3, 0).and(close),
-        &[(3, Int(1))],
-    );
-    safe(
-        &mut m,
-        "ClosedTaskHasLocalScope",
-        implies(eq(3, 1), local.and(scope)),
-    );
+    let operator_swarm = present(0).ite(Var(0).minus(Int(1)), Var(2));
+    let orphan = eq(2, 0).and(all_absent);
+    for (caller, name, scope) in [
+        (1, "Oracle", ordinary_scope(Int(1))),
+        (2, "Sudo", ordinary_scope(Int(1))),
+        (3, "Operator", ordinary_scope(operator_swarm)),
+    ] {
+        let authorized = if caller == 1 {
+            scope.clone()
+        } else {
+            scope.clone().or(orphan.clone())
+        };
+        let guard = if broken && caller != 1 {
+            scope.or(eq(2, 0))
+        } else {
+            authorized.clone()
+        };
+        action(
+            &mut m,
+            &format!("CloseAs{name}"),
+            eq(3, 0).and(guard),
+            &[(3, Int(caller))],
+        );
+        safe(
+            &mut m,
+            &format!("{name}ClosesWithAuthority"),
+            implies(eq(3, caller), authorized),
+        );
+    }
     m
 }

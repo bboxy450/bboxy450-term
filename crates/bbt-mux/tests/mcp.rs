@@ -7909,6 +7909,70 @@ fn mcp_task_close_scopes_purged_seats_to_the_recorded_swarm() {
 }
 
 #[test]
+fn mcp_task_orphan_disposition_requires_operator_authority_and_absent_seats() {
+    let f = Fixture::new();
+    f.registry()
+        .update(f.peer.id, |seat| {
+            seat.role.class = Class::Oracle;
+            seat.role.name = bbt_proto::gui::SUDO_ROLE.into();
+            Ok(())
+        })
+        .unwrap();
+    let path = f.task_path();
+    let close = |caller| f.mutate(caller, Ulid::new(), "task_close", json!({"task_path":path}));
+    let mut orphan = f.task_metadata();
+    orphan["status"] = json!("accepted");
+    orphan["assignee"] = json!(format!("seat:{}", Ulid::new()));
+    orphan["delegated_by"] = json!(format!("seat:{}", Ulid::new()));
+    f.task_file(orphan.clone());
+
+    refused(close(f.oracle.id), "task swarm is ambiguous");
+    assert_eq!(f.task_document().metadata["status"], "accepted");
+
+    for field in ["assignee", "delegated_by"] {
+        let mut foreign = orphan.clone();
+        foreign[field] = json!(format!("seat:{}", f.outside.id));
+        f.task_file(foreign);
+        refused(close(f.peer.id), "task swarm is ambiguous");
+        assert_eq!(f.task_document().metadata["status"], "accepted");
+    }
+
+    f.task_file(orphan.clone());
+    refused(
+        f.call(
+            f.peer.id,
+            Ulid::new(),
+            "task_status",
+            json!({"task_path":path}),
+        ),
+        "task swarm is ambiguous",
+    );
+    data(close(f.peer.id));
+    let closed = f.task_document();
+    assert_eq!(closed.metadata["status"], "done");
+    assert_eq!(
+        closed.metadata["closed"]["by"],
+        format!("seat:{}", f.peer.id)
+    );
+    assert_eq!(closed.metadata["delegated_by"], orphan["delegated_by"]);
+
+    orphan["status"] = json!("reported");
+    f.task_file(orphan.clone());
+    data(f.mutate(
+        f.peer.id,
+        Ulid::new(),
+        "task_reconcile",
+        json!({
+            "task_path":path,"disposition":"cancelled","reason":"Historical fixture",
+            "evidence":["fixture: orphaned report"]
+        }),
+    ));
+    let reconciled = f.task_document();
+    assert_eq!(reconciled.metadata["status"], "done");
+    assert_eq!(reconciled.metadata["delegated_by"], orphan["delegated_by"]);
+}
+
+#[test]
 fn mcp_task_amend_adopts_closed_or_purged_delegator_and_keeps_live_owner_exclusive() {
     let f = Fixture::new();
     for seat in [f.peer.id, f.outside.id] {

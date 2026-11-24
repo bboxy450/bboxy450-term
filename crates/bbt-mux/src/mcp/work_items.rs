@@ -532,7 +532,7 @@ fn scoped(
     }) && if args.unassigned {
         open_unassigned()
     } else {
-        authorize(doc, registry, actor).is_ok()
+        authorize(doc, registry, actor, "task_list").is_ok()
     } && (args.unassigned
         || scope.is_none_or(|swarm| {
             reference(doc, "assignee")
@@ -909,8 +909,8 @@ pub(crate) fn prepare(
             let target = target(registry, actor, args.seat_id)?;
             let mut scoped = doc.clone();
             scoped.metadata["assignee"] = json!(format!("seat:{}", target.id));
-            authorize(&scoped, registry, actor)?;
-        } else if authorize(&doc, registry, actor)?
+            authorize(&scoped, registry, actor, &call.tool)?;
+        } else if authorize(&doc, registry, actor, &call.tool)?
             && matches!(
                 call.tool.as_str(),
                 "task_accept" | "task_reject" | "task_reconcile"
@@ -1159,7 +1159,7 @@ pub(crate) fn retained_allowed(
             && item["path"]
                 .as_str()
                 .and_then(|path| index.locate_before(path, deadline).ok())
-                .is_some_and(|doc| authorize(&doc, registry, actor).is_ok())
+                .is_some_and(|doc| authorize(&doc, registry, actor, &call.tool).is_ok())
     };
     match call.tool.as_str() {
         "task_status" => allowed(&value["structuredContent"]),
@@ -1273,7 +1273,12 @@ pub(crate) fn delegator(doc: &Document) -> Checked<Option<Recipient>> {
     }
 }
 /// Check task scope and assignment. A true result also authorizes Oracle succession.
-pub(crate) fn authorize(doc: &Document, registry: &Registry, actor: &Actor) -> Checked<bool> {
+pub(crate) fn authorize(
+    doc: &Document,
+    registry: &Registry,
+    actor: &Actor,
+    tool: &str,
+) -> Checked<bool> {
     if doc.error.is_some() || !is_task(doc) {
         return Err("task frontmatter is invalid".into());
     }
@@ -1287,6 +1292,16 @@ pub(crate) fn authorize(doc: &Document, registry: &Registry, actor: &Actor) -> C
     };
     let assigned_seat = find(assignee)?;
     let delegating_seat = find(delegator)?;
+    if matches!(tool, "task_close" | "task_reconcile")
+        && doc.metadata["swarm"].is_null()
+        && assigned_seat.is_none()
+        && delegating_seat.is_none()
+        && (matches!(actor, Actor::Operator { .. })
+            || actor.seat().is_some_and(super::sudo::is_sudo))
+    {
+        // Recover an orphan without taking over its historical delegation.
+        return Ok(false);
+    }
     let stored_swarm = doc.metadata["swarm"]
         .as_str()
         .and_then(|value| value.parse::<Ulid>().ok())

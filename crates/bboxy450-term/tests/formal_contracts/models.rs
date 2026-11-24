@@ -1357,68 +1357,84 @@ fn import_staging(b: bool) -> Model {
     m
 }
 
-// The authenticated operator may archive old records in the captured native
-// root without manufacturing live seat ownership. Other callers retain the
-// normal ownership check; accepted verification cannot become historical done.
+// Actor: worker, Oracle, sudo, operator. Orphan authority leaves task ownership
+// intact, and accepted verification cannot become historical done.
 fn historical_reconcile(b: bool) -> Model {
     let mut m = model(
         "HistoricalReconcile",
         b,
         &[
             ("chosen", 1, 0),
-            ("actor", 2, 0),
+            ("actor", 3, 0),
             ("native_root", 1, 0),
-            ("owner_current", 1, 0),
+            ("ordinary_scope", 1, 0),
             ("accepted", 1, 0),
             ("attempted", 1, 0),
             ("done", 1, 0),
+            ("seat_present", 1, 0),
+            ("swarm_recorded", 1, 0),
         ],
     );
-    for actor in 0..=2 {
+    for actor in 0..=3 {
         for root in 0..=1 {
-            for owner in 0..=1 {
+            // Without either source of scope, ordinary authorization cannot hold.
+            for (scope, seat, swarm) in [
+                (0, 0, 0),
+                (0, 0, 1),
+                (0, 1, 0),
+                (0, 1, 1),
+                (1, 0, 1),
+                (1, 1, 0),
+                (1, 1, 1),
+            ] {
                 for accepted in 0..=1 {
                     action(
                         &mut m,
-                        &format!("Choose{actor}{root}{owner}{accepted}"),
+                        &format!("Choose{actor}{root}{scope}{seat}{swarm}{accepted}"),
                         eq(0, 0),
                         &[
                             (0, Int(1)),
                             (1, Int(actor)),
                             (2, Int(root)),
-                            (3, Int(owner)),
+                            (3, Int(scope)),
                             (4, Int(accepted)),
+                            (7, Int(seat)),
+                            (8, Int(swarm)),
                         ],
                     );
                 }
             }
         }
     }
-    let authorized = all([
-        eq(2, 1),
-        eq(4, 0),
-        eq(1, 2).or(all([eq(1, 1), if b { Bool(true) } else { eq(3, 1) }])),
-    ]);
+    let orphan = eq(7, 0).and(eq(8, 0));
+    let authorized = eq(4, 0).and(
+        eq(1, 3)
+            .and(eq(2, 1))
+            .or(ne(1, 0).and(eq(3, 1)))
+            .or(eq(1, 2).or(eq(1, 3)).and(orphan.clone())),
+    );
+    let guard = if b {
+        authorized.clone().or(eq(4, 0).and(eq(1, 1)).and(orphan))
+    } else {
+        authorized.clone()
+    };
     let pending = all([eq(0, 1), eq(5, 0)]);
     action(
         &mut m,
         "Reconcile",
-        pending.clone().and(authorized.clone()),
+        pending.clone().and(guard.clone()),
         &[(5, Int(1)), (6, Int(1))],
     );
     action(
         &mut m,
         "Refuse",
-        pending.and(authorized.negate()),
+        pending.and(guard.negate()),
         &[(5, Int(1))],
     );
     safe(
         &mut m,
         "OnlyScopedAuthorityArchivesHistoricalRecords",
-        implies(
-            eq(6, 1),
-            all([eq(2, 1), eq(4, 0), eq(1, 2).or(all([eq(1, 1), eq(3, 1)]))]),
-        ),
+        implies(eq(6, 1), authorized),
     );
     m
 }

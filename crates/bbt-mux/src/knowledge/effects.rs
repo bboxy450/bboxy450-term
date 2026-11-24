@@ -209,7 +209,7 @@ pub(crate) fn prepare(
                         links: Vec::new(),
                         written_header: None,
                     };
-                    let successor = tasks::authorize(&document, registry, actor)
+                    let successor = tasks::authorize(&document, registry, actor, &call.tool)
                         .map_err(|reason| d::CommandError::new("task_field_protected", reason))?;
                     if document.metadata["delegated_by"] != actor.reference() {
                         if !successor {
@@ -309,7 +309,7 @@ pub(crate) fn prepare(
                     links: Vec::new(),
                     written_header: None,
                 };
-                tasks::authorize(&document, registry, actor)
+                tasks::authorize(&document, registry, actor, &call.tool)
                     .map_err(|e| d::CommandError::new("report_task_denied", e))?;
                 if let Some(previous) = request.frontmatter["supersedes"].as_str() {
                     let previous = tool::fetch(source, previous.into())?;

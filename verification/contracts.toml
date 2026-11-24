@@ -510,8 +510,8 @@ title = "Historical closure has scoped authority and preserves fresh acceptance"
 models = ["HistoricalReconcile", "BrokenHistoricalReconcile"]
 sources = ["crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs"]
 implementation_tests = ["crates/bbt-mux/tests/mcp.rs"]
-assumptions = "One captured native root, worker/Oracle/operator actors, present/retired ownership and accepted/unaccepted status. Select context and attempt disposition are atomic. A scheduled attempt completes or refuses; no scheduling fairness is required inside the atomic transition. Device custody, root/actor epoch revalidation and byte preservation/signing use the real native writer tests and existing WorkspaceFence/CustodyDelivery contracts."
-property = "Only the authenticated operator can reconcile historical records without current ownership references in the selected native root; seat callers retain ownership checks. Accepted verification is never overwritten and historical closure sends no wake. The broken control grants the operator exception to an unowned Oracle seat."
+assumptions = "One captured root (native or external), worker/Oracle/sudo/operator actors, ordinary scope eligibility, registry presence, recorded-swarm presence and accepted/unaccepted status. Select context and attempt disposition are atomic. A scheduled attempt completes or refuses without a fairness assumption. Device custody, root/actor epoch revalidation and byte preservation/signing use the real native writer tests and existing WorkspaceFence/CustodyDelivery contracts."
+property = "The authenticated operator retains historical reconciliation in the native root. Outside ordinary task scope and that native operator path, only the signed operator or a sudo seat may reconcile, and only when every referenced seat is absent and the task has no recorded swarm. Accepted verification is preserved and historical closure sends no wake. The broken control grants the orphan exception to an ordinary Oracle."
 checks = ["make test-formal", "make test"]
 
 [[contract]]
@@ -696,12 +696,12 @@ checks = ["make test-formal", "make test"]
 
 [[contract]]
 name = "ScopedTaskClose"
-title = "Purged seats defer accepted-task closure to the recorded swarm"
+title = "Accepted-task closure requires task scope or operator authority over an orphan"
 models = ["ScopedTaskClose", "BrokenScopedTaskClose"]
 sources = ["crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/registry.rs", "crates/bboxy450-term/tests/formal_contracts/task_amend_model.rs"]
-implementation_tests = ["crates/bbt-mux/tests/mcp.rs"]
-assumptions = "One accepted task and an admitted Oracle. Both references can be missing, local (including retained closed records), or foreign. Recorded scope can be absent, matching, or foreign. Close observes scope and updates status atomically. No fairness assumption. Registry IO errors, signing, workspace custody, report integration checks and optional wake delivery are native API concerns."
-property = "Close requires each present seat to be local. A missing seat requires matching recorded scope. The broken control permits missing seats without matching recorded scope."
+implementation_tests = ["crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/src/mcp/work_items_inventory_tests.rs"]
+assumptions = "One accepted task, two swarms, and an admitted ordinary Oracle, sudo seat or signed operator. A seat reference can be unassigned, purged or present in either swarm. Retained closed records count as present. Close observes scope and updates status atomically. No fairness assumption. Registry IO errors, malformed scope metadata, signing, workspace custody and report integration checks are native API concerns."
+property = "Ordinary closure checks present seats against the caller's swarm and requires matching recorded scope when a named seat is missing. Only the signed operator or sudo seat can close without swarm scope when the task has no recorded swarm and every referenced seat is absent. The broken control drops the registry-absence guard and admits a task that still names a foreign seat."
 checks = ["make test-formal", "make test"]
 
 [[contract]]

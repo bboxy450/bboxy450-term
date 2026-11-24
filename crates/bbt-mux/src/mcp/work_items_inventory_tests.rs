@@ -967,6 +967,33 @@ fn task_list_include_unassigned_merges_one_recent_first_operator_view() {
 }
 
 #[test]
+fn signed_operator_can_plan_close_for_an_unscoped_orphan() {
+    let mut f = Fixture::new();
+    let mut orphan = record(1, "task", Some(json!(format!("seat:{}", Ulid::new()))));
+    orphan.frontmatter["status"] = json!("accepted");
+    orphan.frontmatter["delegated_by"] = json!(format!("seat:{}", Ulid::new()));
+    let call = Call {
+        op_id: Ulid::new(),
+        tool: "task_close".into(),
+        args: json!({"task_path":orphan.reference.path}),
+    };
+    let operator = Actor::Operator {
+        device_id: Ulid::new(),
+        door: Door::Ctl,
+        issued_by: None,
+    };
+    f.source.rows = vec![orphan];
+    let tasks = ProviderTasks(&f.source, Some(f.oracle.swarm));
+    let Prepared::Effect(effect) = prepare(&tasks, &f.registry, &operator, &call).unwrap() else {
+        panic!("close must prepare an effect");
+    };
+    let closure = plan(*effect, &operator, &call).unwrap();
+    assert_eq!(closure.writes[0].metadata["status"], "done");
+    assert_eq!(closure.writes[0].metadata["closed"]["by"], operator.reference());
+    assert!(closure.wakes.is_empty());
+}
+
+#[test]
 fn task_list_after_accepts_its_cursor_or_a_bare_id_and_refuses_others() {
     let id = Ulid::from_parts(1_793_498_400_000, 7);
     assert_eq!(
