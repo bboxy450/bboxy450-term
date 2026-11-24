@@ -4881,27 +4881,26 @@ impl Worker {
                     Err(error) => return crate::mcp::error(call.op_id, "held", &error.to_string()),
                 }
             }
-            if !self
+            let Ok(Some(reference)) = self
                 .workspaces
                 .cache
                 .get_mut(&port.binding)
                 .expect("admitted workspace")
                 .provenance
-                .claim_ready(&port.index, reference)
-                .unwrap_or(false)
-            {
+                .claim_ready(&port.index, original, reference)
+            else {
                 return crate::mcp::error(
                     call.op_id,
                     "held",
                     "artifact_not_committed: claim an existing committed artifact; work in progress is not promoted by a claim",
                 );
-            }
+            };
             if let Err(reason) = crate::provenance::artifacts::reconcile_claim(
                 &port.index,
                 &mut plan,
                 seat_actor,
                 call,
-                reference,
+                &reference,
             ) {
                 return crate::mcp::error(call.op_id, "rejected", &reason);
             }

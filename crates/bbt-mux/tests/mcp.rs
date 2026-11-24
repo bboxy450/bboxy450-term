@@ -4314,6 +4314,12 @@ fn committed_claim_fixture(f: &mut Fixture) -> (Ulid, String, String) {
     let id: Ulid = serde_json::from_value(anchor["id"].clone()).unwrap();
     let reference = format!("knowledge:commit/{}", anchor["commit"].as_str().unwrap());
     let digest = anchor["digest"].as_str().unwrap().to_owned();
+    await_claim_projection(f, id);
+    f.restart();
+    (id, reference, digest)
+}
+
+fn await_claim_projection(f: &Fixture, id: Ulid) {
     let path = format!("artifacts/{id}.md");
     let deadline = Instant::now() + Duration::from_secs(10);
     loop {
@@ -4334,8 +4340,76 @@ fn committed_claim_fixture(f: &mut Fixture) -> (Ulid, String, String) {
         );
         std::thread::sleep(Duration::from_millis(20));
     }
-    f.restart();
-    (id, reference, digest)
+}
+
+fn claim_after_catalog_recovery(f: &Fixture, args: Value) -> (Ulid, Value) {
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        let op = Ulid::new();
+        let result = f.mutate(f.own.id, op, "artifact_claim", args.clone());
+        if result["structuredContent"]["error"]["message"] != "artifact catalog recovery pending" {
+            return (op, result);
+        }
+        assert!(Instant::now() < deadline, "{result}");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+}
+
+#[test]
+fn mcp_artifact_claim_resolves_a_committed_report_path_and_checkpoint_id() {
+    let f = Fixture::new();
+    f.task_file(f.task_metadata());
+    let report = "reports/2026-10-31-claim-regression.md";
+    data(f.mutate(
+        f.own.id,
+        Ulid::new(),
+        "knowledge_write",
+        json!({"path":report,"frontmatter":{
+            "type":"report","task":"#1","commits":[],
+            "verify":{"command":"true","exit_code":0},
+            "author":format!("seat:{}", f.own.id),"created":"2026-10-31T00:00:00Z"
+        },"body":"Checkpoint claim regression.\n"}),
+    ));
+    let claim = |f: &Fixture, reference: &str| {
+        claim_after_catalog_recovery(
+            f,
+            json!({"kind":"file","ref":reference,"task":f.task_path()}),
+        )
+        .1
+    };
+    let draft = claim(&f, report);
+    assert_eq!(draft["isError"], true);
+    assert!(
+        draft.to_string().contains("artifact_not_committed"),
+        "{draft}"
+    );
+    assert!(f.task_document().metadata["artifacts"].is_null());
+
+    prepare_knowledge_fixture_git(&f);
+    // Allow this one report to be checkpointed in the private fixture Git.
+    let ignore = f.config.repository.join(".bboxy/.gitignore");
+    let rules = std::fs::read_to_string(&ignore).unwrap();
+    std::fs::write(ignore, format!("{rules}!/reports/\n/reports/*\n!/{report}\n")).unwrap();
+    let committed = data(f.mutate(
+        f.own.id,
+        Ulid::new(),
+        "knowledge_commit",
+        json!({"locators":[report],"message":"Checkpoint report for claim"}),
+    ));
+    let id: Ulid = serde_json::from_value(committed["artifact"]["id"].clone()).unwrap();
+    let fetched = data(knowledge_fetch(&f, f.own.id, report));
+    assert_eq!(fetched["publication_state"], "committed");
+    assert_eq!(fetched["checkpoint"]["id"], id.to_string());
+    await_claim_projection(&f, id);
+
+    for reference in [report, &format!(".bboxy/{report}"), &id.to_string()] {
+        let claimed = data(claim(&f, reference));
+        assert_eq!(claimed["artifact_id"], id.to_string(), "{reference}");
+    }
+    assert_eq!(
+        f.task_document().metadata["artifacts"],
+        json!([format!("[[{id}]]")])
+    );
 }
 
 // keeps: spec mcp-control-plane
@@ -4344,16 +4418,18 @@ fn mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_conte
     let mut f = Fixture::new();
     let original = f.task_file(f.task_metadata());
     let (id, reference, digest) = committed_claim_fixture(&mut f);
-    let rejected=f.mutate(f.own.id,Ulid::new(),"artifact_claim",json!({"kind":"pr","ref":"https://invalid.example/review/123?literal=':","task":f.task_path()}));
+    let (_, rejected) = claim_after_catalog_recovery(
+        &f,
+        json!({"kind":"pr","ref":"https://invalid.example/review/123?literal=':","task":f.task_path()}),
+    );
     assert_eq!(rejected["isError"], true);
     assert!(
         rejected.to_string().contains("artifact_not_committed"),
         "{rejected}"
     );
     assert_eq!(f.task_document().digest, original.digest);
-    let op = Ulid::new();
     let args = json!({"kind":"file","ref":reference,"digest":digest,"task":f.task_path()});
-    let first = f.mutate(f.own.id, op, "artifact_claim", args.clone());
+    let (op, first) = claim_after_catalog_recovery(&f, args.clone());
     let claimed = data(first.clone());
     assert_eq!(claimed["artifact_id"], id.to_string());
     let path = f

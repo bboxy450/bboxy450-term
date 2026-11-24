@@ -437,6 +437,9 @@ impl Engine {
                         self.projection_cursor = row.seq;
                         continue;
                     }
+                    if row.event.source == "knowledge/commit" {
+                        self.apply_catalog(&change);
+                    }
                     let author = Author::observer(status, key);
                     let projected = (|| -> Result<bool> {
                         let update = artifacts::materialize(index, &row, &change)?;
@@ -524,16 +527,60 @@ impl Engine {
                 observed: metadata["observed"] == true,
             });
     }
-    pub fn claim_ready(&self, index: &Index, reference: &str) -> Result<bool> {
-        let Some(entry) = self.entries.get(reference) else {
-            return Ok(false);
+    pub fn claim_ready(
+        &self,
+        index: &Index,
+        original: &str,
+        reference: &str,
+    ) -> Result<Option<String>> {
+        let (reference, checkpoint_id) = if self.entries.contains_key(reference) {
+            (reference.to_owned(), None)
+        } else {
+            let Some((reference, id)) = Self::checkpoint_target(index, original)? else {
+                return Ok(None);
+            };
+            (reference, Some(id))
         };
-        Ok(index
-            .current(&format!("artifacts/{}.md", entry.id))?
-            .is_some_and(|doc| {
-                doc.metadata["ref"] == reference
-                    && doc.metadata["digest"].as_str() == entry.digest.as_deref()
-                    && (doc.metadata["deleted"] == true) == entry.deleted
-            }))
+        let Some(entry) = self.entries.get(&reference) else {
+            return Ok(None);
+        };
+        let path = format!("artifacts/{}.md", entry.id);
+        if checkpoint_id.is_some_and(|id| id != entry.id || !index.documents.contains_key(&path)) {
+            return Ok(None);
+        }
+        let ready = index.current(&path)?.is_some_and(|doc| {
+            doc.metadata["ref"] == reference
+                && doc.metadata["digest"].as_str() == entry.digest.as_deref()
+                && (doc.metadata["deleted"] == true) == entry.deleted
+        });
+        Ok(ready.then_some(reference))
+    }
+
+    fn checkpoint_target(index: &Index, original: &str) -> Result<Option<(String, Ulid)>> {
+        if let Ok((id, None)) = super::stored::Address::target(original) {
+            return Ok(index
+                .documents
+                .get(&format!("artifacts/{id}.md"))
+                .and_then(|doc| doc.metadata["ref"].as_str())
+                .filter(|reference| reference.starts_with("knowledge:commit/"))
+                .map(|reference| (reference.to_owned(), id)));
+        }
+        let path = original.strip_prefix(".bboxy/").unwrap_or(original);
+        if !index.documents.contains_key(path) {
+            return Ok(None);
+        }
+        let Some(doc) = index.current(path)? else {
+            return Ok(None);
+        };
+        // Publication state checks the current revision against the receipt.
+        let publication = crate::knowledge::commit::state(index, &doc.id, &doc.digest)?;
+        let checkpoint = &publication["checkpoint"];
+        let Some(commit) = checkpoint["commit"].as_str() else {
+            return Ok(None);
+        };
+        let Some(id) = checkpoint["id"].as_str().and_then(|id| id.parse().ok()) else {
+            return Ok(None);
+        };
+        Ok(Some((format!("knowledge:commit/{commit}"), id)))
     }
 }

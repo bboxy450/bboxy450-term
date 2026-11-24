@@ -188,11 +188,16 @@ impl Worker {
             .ok()?
             .normalize(seat, generation, reference)
     }
-    pub fn claim_ready(&self, index: &Index, reference: &str) -> Result<bool> {
+    pub fn claim_ready(
+        &self,
+        index: &Index,
+        original: &str,
+        reference: &str,
+    ) -> Result<Option<String>> {
         self.engine
             .try_lock()
             .map_err(|_| invalid("artifact catalog projection pending"))?
-            .claim_ready(index, reference)
+            .claim_ready(index, original, reference)
     }
     pub fn take_refresh(&mut self) -> Option<ScanBatch> {
         let paths = std::mem::take(&mut self.refreshed);

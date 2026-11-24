@@ -310,13 +310,15 @@ pub(crate) fn reconcile_claim(
             "[[{}]]",
             old_op_id.as_str().ok_or("invalid original artifact ID")?
         );
-        let new_link = format!("[[{}]]", id.as_str().ok_or("invalid artifact lineage ID")?);
+        let new_link = json!(format!("[[{}]]", id.as_str().ok_or("invalid artifact lineage ID")?));
         for update in plan.writes.iter_mut().skip(1) {
-            if let Some(links) = update.metadata["artifacts"].as_array_mut() {
-                for link in links {
-                    if link == &old_link {
-                        *link = json!(new_link);
-                    }
+            if let Some(links) = update.metadata["artifacts"].as_array_mut()
+                && let Some(position) = links.iter().position(|link| link == &old_link)
+            {
+                if links.contains(&new_link) {
+                    links.remove(position);
+                } else {
+                    links[position] = new_link.clone();
                 }
             }
         }
