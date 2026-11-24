@@ -11979,14 +11979,21 @@ impl Worker {
                             )));
                             continue;
                         }
-                        let _python_scope = python_execution::scope(expected);
+                        let python_scope = python_execution::scope(expected);
                         // The seat's latest attribution, for the plugin IO this
                         // and its later deferred work run on the seat's behalf.
                         self.seat_attribution.insert(id, (generation, attribution));
                         // Sudo answers here or re-addresses the call to its target seat.
                         let (id, generation, call) = if crate::mcp::sudo::handles(&call.tool) {
                             match self.sudo_call(id, generation, call) {
-                                sudo::Sudo::As(seat, generation, call) => (seat, generation, call),
+                                sudo::Sudo::As(seat, generation, call) => {
+                                    if seat != id {
+                                        // The caller's Python context was checked above.
+                                        // The target captures its own workspace in normal dispatch.
+                                        drop(python_scope);
+                                    }
+                                    (seat, generation, call)
+                                }
                                 sudo::Sudo::Done(value) => {
                                     let _ = reply.send(Ok(value));
                                     continue;

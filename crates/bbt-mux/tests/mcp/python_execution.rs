@@ -98,6 +98,104 @@ fn python_native_context_guard_rejects_foreign_generation_and_keeps_unmanaged_cw
     );
 }
 
+fn sudo_close_fixture() -> (Fixture, SeatRecord, SeatRecord, Value) {
+    let f = Fixture::real();
+    let mut sudo = SeatRecord::new(Ulid::new(), f.oracle.swarm, "Sudo", "zsh");
+    sudo.role.name = bbt_proto::gui::SUDO_ROLE.into();
+    sudo.role.class = Class::Oracle;
+    let mut target = SeatRecord::new(Ulid::new(), f.outside.swarm, "Target Oracle", "zsh");
+    target.role = f.oracle.role.clone();
+    for record in [&sudo, &target] {
+        let mut spec = LaunchSpec::new("/bin/cat", f._temp.path());
+        spec.seat = record.id;
+        spec.generation = record.generation;
+        f.runtime
+            .block_on(f.client().spawn(record.clone(), spec))
+            .unwrap();
+    }
+    let target_source = f._temp.path().join("target-source");
+    let tasks = target_source.join(".bboxy/tasks");
+    std::fs::create_dir_all(&tasks).unwrap();
+    std::fs::write(
+        tasks.join("sudo-close.md"),
+        format!(
+            "---\nid: {}\ntype: task\nnumber: 1\ntitle: Sudo close fixture\nstatus: accepted\nassignee: seat:{}\ndelegated_by: seat:{}\nverify: 'true'\n---\nPrivate fixture.\n",
+            Ulid::new(),
+            f.outside.id,
+            target.id,
+        ),
+    )
+    .unwrap();
+    f.registry()
+        .update_swarm_workdir(target.swarm, Some(target_source.to_str().unwrap()))
+        .unwrap();
+    let arguments = json!({"task_path":"tasks/sudo-close.md"});
+    assert_eq!(
+        data(f.call(target.id, Ulid::new(), "task_status", arguments.clone()))["metadata"]["status"],
+        "accepted"
+    );
+    assert_ne!(
+        context(&f, sudo.id)["knowledge_binding"]["root_id"],
+        context(&f, target.id)["knowledge_binding"]["root_id"]
+    );
+    let call = json!({
+        "seat_id":target.id,
+        "expected_process_generation":target.generation.to_string(),
+        "tool":"task_close",
+        "arguments":arguments,
+    });
+    (f, sudo, target, call)
+}
+
+fn assert_sudo_closed_in_target(f: &Fixture, target: &SeatRecord, call: &Value) {
+    let task = data(f.call(
+        target.id,
+        Ulid::new(),
+        "task_status",
+        call["arguments"].clone(),
+    ));
+    assert_eq!(task["metadata"]["status"], "done", "{task}");
+    assert_eq!(
+        task["metadata"]["closed"]["by"],
+        format!("seat:{}", target.id)
+    );
+}
+
+#[test]
+fn python_guarded_sudo_as_closes_task_in_target_workspace() {
+    let (f, sudo, target, arguments) = sudo_close_fixture();
+    let call = |seat: Ulid, expected: &Value| {
+        let mut bridge = f.bridge(seat);
+        initialize(&mut bridge);
+        rpc(
+            &mut bridge,
+            2,
+            "tools/call",
+            json!({"name":"sudo_as","arguments":arguments,
+                "_meta":{"bboxy450/python_context":expected}}),
+        )
+    };
+    let wrong_caller = call(sudo.id, &context(&f, target.id));
+    assert_eq!(
+        wrong_caller["result"]["structuredContent"]["error"]["code"],
+        "execution_context_changed",
+        "{wrong_caller}"
+    );
+    let non_sudo = call(f.oracle.id, &context(&f, f.oracle.id));
+    assert_eq!(
+        non_sudo["result"]["structuredContent"]["error"]["code"],
+        "rejected",
+        "{non_sudo}"
+    );
+    let closed = call(sudo.id, &context(&f, sudo.id));
+    assert_eq!(
+        closed["result"]["structuredContent"]["task_status"],
+        "done",
+        "{closed}"
+    );
+    assert_sudo_closed_in_target(&f, &target, &arguments);
+}
+
 struct HarnessFixture {
     child: Option<std::process::Child>,
     run: PathBuf,
@@ -306,6 +404,21 @@ impl HarnessFixture {
             std::thread::sleep(Duration::from_millis(10));
         }
     }
+}
+
+#[test]
+#[ignore = "Make builds the private native bridge/Host example first"]
+fn python_runtime_sudo_as_closes_task_in_target_workspace() {
+    let (f, sudo, target, arguments) = sudo_close_fixture();
+    let harness = HarnessFixture::start(&f, sudo.id, &f.config.repository);
+    let result = harness.execute(
+        "response = await mcp.call('native', 'sudo_as', inputs)\nresponse.structured",
+        arguments.clone(),
+    );
+    let execution = &result["structuredContent"];
+    assert_eq!(execution["status"], "completed", "{result}");
+    assert_eq!(execution["result"]["task_status"], "done", "{result}");
+    assert_sudo_closed_in_target(&f, &target, &arguments);
 }
 
 #[test]
