@@ -16,6 +16,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     qos::startup(args.first().map_or("", String::as_str));
     if args == ["--version"] || args == ["-V"] {
         println!("bboxy450-term {}", env!("CARGO_PKG_VERSION"));
+        #[cfg(feature = "browser")]
+        println!("browser: cef {}", bboxy450_cef::engine::version());
         return Ok(());
     }
     if !args

@@ -301,6 +301,13 @@ scope = "The Kitty graphics protocol subset: command parsing, chunk assembly, PN
 sources = ["crates/bboxy450-kitty-graphics/src/lib.rs", "crates/bbt-core/src/vendor/vte/mod.rs", "crates/bbt-core/src/vendor/alacritty/term/mod.rs", "crates/bbt-proto/src/streams.rs", "crates/bbt-mux/src/streams.rs", "crates/bbt-render/src/chrome/images.rs"]
 
 [[crate]]
+name = "bboxy450-cef"
+status = "implementation-tests"
+models = []
+scope = "Chromium defaults and a Chrome DevTools Protocol client. defaults: fixed switches and settings (mock keychain, basic password store, no remote-debugging port, private root) checked by unit tests. cdp: single-owner request/reply correlation with no I/O; the unit tests include an exhaustive small instance (three requests, every reply duplicated, one cancel, all 630 orders) proving each reply is delivered at most once, exactly once unless cancelled first, and nothing stays pending. engine (feature `engine`): CEF glue applying the defaults and carrying CDP bytes, compile-checked against CEF 156; no browser process, transport or lifecycle exists yet, so no concurrency is modelled. The browser host lifecycle gets its model when it lands."
+sources = ["crates/bboxy450-cef/src/lib.rs", "crates/bboxy450-cef/src/defaults.rs", "crates/bboxy450-cef/src/cdp.rs", "crates/bboxy450-cef/src/engine.rs"]
+
+[[crate]]
 name = "bboxy450-canvas"
 status = "contract-model"
 models = ["CanvasConvergence"]

@@ -48,6 +48,7 @@ test-dream-c1-integration:
 
 APP := bboxy450-term
 PROFILE ?= release
+BROWSER ?= 1
 NOTIFICATION_BIN ?= $(INSTALL_DIR)/$(APP).app/Contents/MacOS/$(APP)
 TARGET_DIR ?= target
 
@@ -402,7 +403,7 @@ help:
 	  'make check-license-packages      Inspect all crate package lists; no compilation' \
 	  'make publish-release            Signed tag + GitHub app release (authorization required)' \
 	  'make test-workspace-provisioning Native workspace MCP, Git/process lifecycle and model checks' \
-	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... LAND_GATE_LOG=... BBOXY_CACHE_MODE=auto|off CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2 RUST_TEST_THREADS=2' \
+	  'Overrides: PROFILE=debug|release BROWSER=0 (release without Chromium) TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... LAND_GATE_LOG=... BBOXY_CACHE_MODE=auto|off CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2 RUST_TEST_THREADS=2' \
 	  'GitKB: GITKB_BIN=... PLUGIN_WORKSPACE=/explicit/local/project'
 
 # The Rust workflow every entry point uses: nextest runs tests, kache shares
@@ -446,10 +447,15 @@ bump-harness:
 # signatures then hash headers in insertion order (472 KB records, 2026-11-16).
 # `embedded` is named explicitly: it reached the shipped harness only through
 # that unification, and the native rich actor needs it.
+# Release builds carry Chromium (feature `browser`, crates/bboxy450-cef) unless
+# BROWSER=0; debug builds never do. The CEF distribution is shared per machine
+# through CEF_PATH (scripts/cache-env.sh); its wrapper needs cmake and ninja.
 compile: tools
 	@set -eu; case '$(PROFILE)' in debug) flag='' ;; release) flag='--release' ;; *) echo 'PROFILE must be debug or release' >&2; exit 2 ;; esac; \
+	features=''; if [ '$(PROFILE)' = release ] && [ '$(BROWSER)' != 0 ]; then features='--features browser'; \
+	  for tool in cmake ninja; do command -v $$tool >/dev/null || { echo "browser build needs $$tool: brew install cmake ninja (or BROWSER=0)" >&2; exit 2; }; done; fi; \
 	. ./scripts/cache-env.sh; \
-	cargo build --locked -p $(APP) -p bboxy450-term-remote --target-dir '$(TARGET_DIR)' $$flag; \
+	cargo build --locked -p $(APP) -p bboxy450-term-remote --target-dir '$(TARGET_DIR)' $$flag $$features; \
 	cargo build --locked -p bboxy450-harness --features embedded --target-dir '$(TARGET_DIR)' $$flag
 
 test check: tools test-signatures test-yarn-concurrency

@@ -1,0 +1,20 @@
+[package]
+name = "bboxy450-cef"
+version.workspace = true
+edition.workspace = true
+license-file = "LICENSE"
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+description = "Chromium (CEF) with bboxy450's private, prompt-free defaults, and a Chrome DevTools Protocol client"
+
+[features]
+# Chromium itself. Off by default: building it downloads the CEF distribution
+# (shared through CEF_PATH, see scripts/cache-env.sh) and compiles its C++
+# wrapper with cmake and ninja.
+engine = ["dep:cef"]
+
+[dependencies]
+cef = { version = "=156.7.0", default-features = false, features = ["sandbox"], optional = true }
+serde_json = "1"

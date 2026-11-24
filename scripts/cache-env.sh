@@ -18,6 +18,15 @@ bboxy_cache_env() {
     fi
     unset CARGO_TARGET_DIR CARGO_LOG CARGO_TERM_COLOR CARGO_TERM_PROGRESS_WHEN CARGO_TERM_PROGRESS_WIDTH
     export CARGO_BUILD_JOBS="${BBOXY_CARGO_JOBS:-2}" CARGO_INCREMENTAL=0
+    # The `browser` feature's Chromium distribution: downloaded once per
+    # machine into a versioned subdirectory and shared by every worktree.
+    if [ -z "${CEF_PATH:-}" ] && [ -n "${HOME:-}" ]; then
+        case "$(uname -s)" in
+            Darwin) CEF_PATH=$HOME/Library/Caches/bboxy450-cef ;;
+            *) CEF_PATH=${XDG_CACHE_HOME:-$HOME/.cache}/bboxy450-cef ;;
+        esac
+        export CEF_PATH
+    fi
     # A machine-wide build.build-dir mixes worktrees' same-named crates
     # (rust-lang/cargo#12516) and serializes every build on one lock. Keep
     # intermediates with this worktree's target; kache shares compiled outputs.

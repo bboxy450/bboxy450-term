@@ -28,6 +28,9 @@ desktop = [
     "bbt-mux/canvas-image",
 ]
 notification-probe = ["desktop", "bboxy450-desktop-notifications/probe"]
+# Chromium (CEF). Off for iteration builds; `make build-release`, `make install`
+# and `make release` turn it on (operator, 2026-11-24).
+browser = ["dep:bboxy450-cef", "bboxy450-cef/engine"]
 
 [[bin]]
 name = "bboxy450-term"
@@ -39,6 +42,7 @@ required-features = ["notification-probe"]
 
 [dependencies]
 bboxy450-canvas = { version = "0.2.0", path = "../bboxy450-canvas" }
+bboxy450-cef = { version = "0.2.0", path = "../bboxy450-cef", optional = true }
 bboxy450-code = { version = "0.2.0", path = "../bboxy450-code" }
 bboxy450-harness = { version = "0.2.0", path = "../bboxy450-harness", default-features = false, features = ["embedded"], optional = true }
 bboxy450-usage = { version = "0.2.0", path = "../bboxy450-usage" }
