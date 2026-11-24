@@ -24,21 +24,51 @@ task HarnessCloseAfterAgentCancel {
     3. Make a Close that races an agent-side cancel not end a recoverable seat (or show why it must), with a process witness and a broken control.
     4. A seat whose agent exits while it holds a claimed task sends its delegator one message: last tool call and exit cause.
     5. Update the interrupt model for the Close race, with its negative control.
-  """
+
+    ## Report from seat:01M85BY3GDQWY11RBDP8BNZESC
+
+    Filed by the Oracle via sudo_as: this seat finished at 17:23 but lost task_report/knowledge_write after a server restart. Work: harness 9a4fe75/2973dae/971b2a4 (keep ACP recovery across terminal Close, journal process exits, keep exit evidence on interrupted reads; removes the terminal read-error fallthrough into Close) landed in harness f9f0b4a; term ad7970430/6022eb3a1/968db873b (one delegator notice per ACP agent exit with exit cause and last tool, replay fenced to claims present at exit, process witnesses gated on durable tool admission) landed as 297861f45. Oracle ran make land (formal 1001 models, native/TLC parity, clean receipt) and make test-boundaries on 297861f45: both exit 0.
+
+    ```json
+    {
+      "op_id": "01M8658CAESRJMEN1ZE7VHCK1C",
+      "commit": "297861f4568787f09a9eca82d13fbb288c3a4ad9",
+      "report": null,
+      "verify_result": {
+        "command": "make test-boundaries && make test-formal",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "test-boundaries on landed source",
+            "reference": "/tmp/oracle-cr-bound.log: 2+23+9 tests passed, exit 0"
+          },
+          {
+            "criterion": "formal",
+            "reference": "/tmp/oracle-close-race-land2.log: 1001 models, native/TLC parity, evidence b7701b0a6ee13bbbef06c60d167d58755291630ca1a770cf1e9b3aa9a9c39b76"
+          }
+        ]
+      }
+    }
+    ```
+    """
 
   managed {
     assignee = json"\"seat:01M85BY3GDQWY11RBDP8BNZESC\""
     authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"bGMqsRvbQXvEDVnOwRt47b6crPtdbIu8ioBX1dU/YNs=\",\"signer\":\"seat:01M85BW3PMN3QBFPPMWBS866RA\"}"
+    closed = json"{\"by\":\"seat:01M85BW3PMN3QBFPPMWBS866RA\",\"op_id\":\"01M8658VWQ7AJXY27HZKRCKAV6\"}"
     created = json"\"2026-11-23T18:40:46.560Z\""
     created_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
     delegated_by = json"\"seat:01M85BW3PMN3QBFPPMWBS866RA\""
     id = json"\"01M84VBSSXY2BP2TW4JHFSEV5Y\""
     number = json"1794292861627817"
+    report = json"{\"commit\":\"297861f4568787f09a9eca82d13fbb288c3a4ad9\",\"op_id\":\"01M8658CAESRJMEN1ZE7VHCK1C\",\"reported_by\":\"seat:01M85BY3GDQWY11RBDP8BNZESC\",\"summary\":\"Filed by the Oracle via sudo_as: this seat finished at 17:23 but lost task_report/knowledge_write after a server restart. Work: harness 9a4fe75/2973dae/971b2a4 (keep ACP recovery across terminal Close, journal process exits, keep exit evidence on interrupted reads; removes the terminal read-error fallthrough into Close) landed in harness f9f0b4a; term ad7970430/6022eb3a1/968db873b (one delegator notice per ACP agent exit with exit cause and last tool, replay fenced to claims present at exit, process witnesses gated on durable tool admission) landed as 297861f45. Oracle ran make land (formal 1001 models, native/TLC parity, clean receipt) and make test-boundaries on 297861f45: both exit 0.\",\"verify_revision\":0}"
     role = json"\"executor\""
-    status = Claimed
+    status = Done
     swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
-    updated = json"\"2026-11-23T23:30:24.338Z\""
+    updated = json"\"2026-11-24T06:53:10.962Z\""
     updated_by = json"\"seat:01M85BW3PMN3QBFPPMWBS866RA\""
-    provenance = json"{\"digest\":\"sha256:ecf2cb61a953b5d68d2fb14f10d90d8a2cd6bfe9a70e60a2cc2800fa700db358\",\"frontmatter_digest\":\"sha256:e573aebbed90247c602f7626120dd0653f912e4acd0023def6690543db5da2a4\",\"signer\":\"seat:01M85BW3PMN3QBFPPMWBS866RA\",\"sig\":\"IVRK9Fw8m5Qm4EtcGPHVTD2cm3wrHBwyXj1aT19yvsoBYwBoP2QNi26itTOiw2vKOL+Tg2f6ZSBKKf9GpugnAQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1301\",\"event\":{\"id\":\"01M85BYBX29AWQ2XW82X8QPCJJ\",\"sequence\":1301,\"hash\":\"363623a18dba0bb1c29a0680ec0863b17d1307b55b323f573d9524cdbbd2edf7\"}}"
+    verify_result = json"{\"command\":\"make test-boundaries && make test-formal\",\"evidence\":[{\"criterion\":\"test-boundaries on landed source\",\"reference\":\"/tmp/oracle-cr-bound.log: 2+23+9 tests passed, exit 0\"},{\"criterion\":\"formal\",\"reference\":\"/tmp/oracle-close-race-land2.log: 1001 models, native/TLC parity, evidence b7701b0a6ee13bbbef06c60d167d58755291630ca1a770cf1e9b3aa9a9c39b76\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:34028d667de016f3ae6bc0d00f1dcb917da89f70bb7eceb3b6771d8e6b1311ef\",\"frontmatter_digest\":\"sha256:f3071c7f28158540c40f3b7d5d80d7d08e50b0da0b9dcb4d3e7281c4a2f9580f\",\"signer\":\"seat:01M85BW3PMN3QBFPPMWBS866RA\",\"sig\":\"YFreL9kLYyik3+qj+AVG6XEI4dBbVKMWhMWE+4dZpL4FWWoHs0UMzOCuM+bK0iU3hG9zTA19DUc7JNjDxr+LDg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1602\",\"event\":{\"id\":\"01M8658X1P9XHQ4HAHFRWMNKHR\",\"sequence\":1602,\"hash\":\"7193f3263b704a10e23202cd6cdcc68d41f4ef1bd17c97121996d8982b98b6ff\"}}"
+    body_tail = json"\"\\n\""
   }
 }
