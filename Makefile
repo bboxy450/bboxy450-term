@@ -1029,7 +1029,7 @@ push: land
 .PHONY: land land-full land-gate
 land: tools
 	@BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))' sh scripts/land-fast.sh
-	@python3 -I scripts/formal.py --prune-background || true
+	@python3 -I -B scripts/formal.py --prune-background || true
 
 land-full:
 	@$(MAKE) land-gate LAND_ARGS=--full
@@ -1920,10 +1920,10 @@ test-yarn-concurrency: tools init-submodules
 	@set -eu; . ./scripts/cache-env.sh; python3 -I crates/bbt-yarn/tests/concurrency/run.py '$(TARGET_DIR)'
 
 prune-formal-evidence:
-	@KEEP='$(or $(KEEP),10)' DRY_RUN='$(DRY_RUN)' python3 -I scripts/formal.py --prune-evidence
+	@KEEP='$(or $(KEEP),10)' DRY_RUN='$(DRY_RUN)' python3 -I -B scripts/formal.py --prune-evidence
 
 check-formal-evidence:
-	@python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' --verify-evidence
+	@python3 -I -B scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' --verify-evidence
 
 test-yarn-model:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -1984,7 +1984,7 @@ test-formal:
 	FORMAL_OUT='$(abspath $(TARGET_DIR))/formal/harness' python3 -I scripts/formal-stage.py harness-native -- cargo test --locked -p bboxy450-harness --test formal_models --test formal_nonvacuity --test reactor_projection --target-dir '$(TARGET_DIR)'; \
 	python3 -I scripts/formal-stage.py harness-export -- python3 -I scripts/harness-submodule.py --models '$(abspath $(TARGET_DIR))/formal/harness' --target '$(abspath $(TARGET_DIR))/formal/models'; \
 	python3 -I scripts/formal-stage.py lean -- $(MAKE) test-lean TARGET_DIR='$(TARGET_DIR)'; \
-	python3 -I scripts/formal-stage.py java-parity -- sh scripts/qos.sh utility python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' $(if $(filter 1,$(FORMAL_REUSE)),--reuse,)
+	python3 -I scripts/formal-stage.py java-parity -- sh scripts/qos.sh utility python3 -I -B scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' $(if $(filter 1,$(FORMAL_REUSE)),--reuse,)
 
 # Run just the two first-answer models through the same exporter and reference checker.
 .PHONY: test-question-answer-formal
@@ -2318,7 +2318,7 @@ push-branch:
 	push_branch=$$(git symbolic-ref --short HEAD); test "$$push_branch" != main; \
 	git check-ref-format "refs/heads/$$push_branch"; \
 	python3 -I scripts/verify-signatures.py origin/main..HEAD; \
-	python3 -I scripts/formal.py --target '$(FORMAL_DIR)' --verify-evidence; \
+	python3 -I -B scripts/formal.py --target '$(FORMAL_DIR)' --verify-evidence; \
 	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
 	GIT_TERMINAL_PROMPT=0 git push --set-upstream origin "HEAD:refs/heads/$$push_branch"
 
@@ -2990,7 +2990,7 @@ test-dream-mcp: init-submodules
 .PHONY: check-den
 check-den:
 	@set -eu; . ./scripts/cache-env.sh; \
-	python3 -I scripts/test-kb-record.py; \
+	python3 -I -B scripts/test-kb-record.py; \
 	cargo build --locked -p bboxy450-den --bin bboxy450-den --target-dir '$(TARGET_DIR)'; \
 	git ls-files -z -- '*.den' ':!:crates/bboxy450-den/tests/unsound/*.den' | xargs -0 '$(TARGET_DIR)/debug/bboxy450-den' check
 

@@ -279,6 +279,33 @@ fn managed_workspace_release_refuses_an_open_checkout_handle() {
 }
 
 #[test]
+fn managed_workspace_release_refuses_a_process_with_only_its_cwd_in_the_checkout() {
+    let f = Fixture::new();
+    let r = f.prepare();
+    let mut process = Command::new("/bin/sh")
+        .args(["-c", "read -r stop"])
+        .current_dir(&r.cwd)
+        .stdin(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    let w = f.begin_release(&r);
+    let result = f.service.run(&w);
+    drop(process.stdin.take());
+    process.wait().unwrap();
+    let r = f.service.finish(w.record(), result, true).unwrap();
+    assert!(r.error.as_ref().unwrap().contains("workspace_in_use"));
+    assert!(r.cwd.exists());
+
+    let w = f.begin_release(&r);
+    let r = f
+        .service
+        .finish(w.record(), f.service.run(&w), true)
+        .unwrap();
+    assert_eq!(r.state, State::Released, "{:?}", r.error);
+}
+
+#[test]
 fn managed_workspace_reservation_and_a_b_a_fences() {
     let f = Fixture::new();
     let r = f.prepare();
@@ -656,7 +683,11 @@ fn managed_workspace_submodule_private_data_is_preserved_before_deinit_and_relea
 ",
     )
     .unwrap();
-    std::fs::write(module.join(".gitignore"), "private/\ntarget/\n").unwrap();
+    std::fs::write(
+        module.join(".gitignore"),
+        "private/\n/target\n__pycache__/\n/verification/evidence/\n",
+    )
+    .unwrap();
     git(&module, &["add", "tracked", ".gitignore"]);
     git(&module, &["commit", "-m", "module"]);
     git(
@@ -713,8 +744,12 @@ fn managed_workspace_submodule_private_data_is_preserved_before_deinit_and_relea
         .finish(work.record(), f.service.run(&work), true)
         .unwrap();
     assert_eq!(r.state, State::Ready);
-    std::fs::create_dir(r.cwd.join("module/target")).unwrap();
-    std::fs::write(r.cwd.join("module/target/build"), "generated").unwrap();
+    for path in ["target", "scripts/__pycache__", "verification/evidence"] {
+        std::fs::create_dir_all(r.cwd.join("module").join(path)).unwrap();
+    }
+    for path in ["target/build", "scripts/__pycache__/helper.pyc"] {
+        std::fs::write(r.cwd.join("module").join(path), "generated").unwrap();
+    }
     std::fs::create_dir(r.cwd.join("module/private")).unwrap();
     std::fs::write(r.cwd.join("module/private/evidence"), "retain").unwrap();
     let work = f.begin_release(&r);

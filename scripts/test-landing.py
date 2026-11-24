@@ -1585,7 +1585,15 @@ class FormalRetentionTests(unittest.TestCase):
             self.assertEqual(argv[:2], ["taskpolicy", "-b"])
         self.assertTrue(spawn.call_args.kwargs["start_new_session"])
         makefile = SOURCE.parents[1] / "Makefile"
-        self.assertIn('scripts/land-fast.sh\n\t@python3 -I scripts/formal.py --prune-background', makefile.read_text())
+        self.assertIn('scripts/land-fast.sh\n\t@python3 -I -B scripts/formal.py --prune-background', makefile.read_text())
+
+        # The detached interpreter imports the Den reader while pinning evidence.
+        self.repo.write(".bboxy/tasks/prune.den", "task prune {\n  status done\n}\n")
+        cache = self.repo.root / "scripts/__pycache__"
+        env = dict(self.repo.environment, DRY_RUN="1", PYTHONDONTWRITEBYTECODE="1")
+        for command, writes_bytecode in [(argv, False), ([arg for arg in argv if arg != "-B"], True)]:
+            subprocess.run(command, cwd=self.repo.root, env=env, check=True, timeout=30)
+            self.assertEqual(bool(list(cache.glob("kb_record.*.pyc"))), writes_bytecode)
 
 
 class GateReceiptTests(unittest.TestCase):

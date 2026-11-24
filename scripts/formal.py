@@ -766,7 +766,7 @@ def schedule_prune(root=ROOT):
     used = int(subprocess.check_output(["du", "-sk", str(store)], text=True).split()[0]) * 1024
     if used <= budget:
         return False
-    command = [sys.executable, "-I", str(Path(root) / "scripts/formal.py"), "--prune-evidence"]
+    command = [sys.executable, "-I", "-B", str(Path(root) / "scripts/formal.py"), "--prune-evidence"]
     qos = ["taskpolicy", "-b"] if platform.system() == "Darwin" else []
     with (store / "prune.log").open("ab") as log:
         subprocess.Popen(qos + ["nice", "-n", "19"] + command, cwd=root, stdin=subprocess.DEVNULL,

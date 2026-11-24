@@ -619,12 +619,15 @@ pub(super) fn process_exists(pid: u32) -> bool {
 // Git's matching mode reports an ignored directory once, even when it
 // contains thousands of files. Keep all other ignored paths private.
 fn disposable(path: &Path) -> bool {
+    if path == Path::new("verification/evidence") {
+        return true;
+    }
     let Some(name) = path.file_name().and_then(|name| name.to_str()) else {
         return false;
     };
     matches!(
         name,
-        "target" | "dist" | "node_modules" | ".wrangler" | ".cache"
+        "target" | "dist" | "node_modules" | ".wrangler" | ".cache" | "__pycache__"
     ) || name.starts_with(".chrome-")
 }
 
@@ -1011,6 +1014,7 @@ fn preserve_modules(r: &Record) -> Result<Option<std::path::PathBuf>> {
 }
 
 fn ensure_unused(cwd: &Path) -> Result<()> {
+    // A process's cwd is a checkout handle even when it has no files open.
     let mut lsof = Command::new("lsof");
     lsof.args(["-t", "+D"]).arg(cwd);
     let (open, _) = output(lsof, Duration::from_secs(20))
