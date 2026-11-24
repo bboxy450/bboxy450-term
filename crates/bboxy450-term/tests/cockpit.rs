@@ -5,6 +5,9 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use crate::events;
+#[cfg(target_os = "macos")]
+#[path = "cockpit/codex_close.rs"]
+mod codex_close;
 #[path = "cockpit/launch_environment.rs"]
 mod launch_environment;
 use events::StateEvents;

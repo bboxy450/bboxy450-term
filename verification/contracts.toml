@@ -1445,6 +1445,16 @@ property = "Every emitted delegate/reassign wake retains the task path and is wi
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "SharedCodexClose"
+title = "A final close archives the exact shared Codex thread"
+models = ["SharedCodexClose", "BrokenSharedCodexClose"]
+sources = ["crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/logic/codex_close.rs", "crates/bbt-mux/src/mcp/live_models.rs", "crates/bboxy450-harness-wake-up/src/launch.rs", "crates/bboxy450-harness-wake-up/src/native.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/cockpit/codex_close.rs"]
+assumptions = "One seat, two unique generation/operation tickets, one delayed expiry, one undo, and atomic archive admission. Early TUI exit also finalizes a pending close. The make test-boundaries process witness checks OS timing, daemon peer/cwd and open handles. No availability assumption for the external daemon."
+property = "Only an exact final close admits archive. A retained close dispatched archive or took its unavailable path. The supervisor has a bounded stop independent of the daemon. The broken control retains the close while archive is still pending admission."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "AbsentSeatClose"
 title = "Record-only close requires confirmed process absence"
 models = ["AbsentSeatClose", "BrokenAbsentSeatClose"]

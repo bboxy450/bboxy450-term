@@ -6,7 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Finite MCP authority, pointer-wake and absent-process close contracts.
 use bboxy450_tlc::Expr::{Int, Var};
-use bboxy450_tlc::build::{action, all, eq, model, no_bad};
+use bboxy450_tlc::build::{action, all, eq, implies, model, ne, no_bad, safe};
 use bboxy450_tlc::{Expr, Model};
 
 pub fn live_catalogue(broken: bool) -> Model {
@@ -131,6 +131,60 @@ pub fn absent_seat_close(broken: bool) -> Model {
     m
 }
 
+pub fn shared_codex_close(broken: bool) -> Model {
+    // Each ticket represents the seat generation and its unique close operation.
+    // Expiry callbacks can be delayed even after an undo and second close.
+    let mut m = model(
+        "SharedCodexClose",
+        broken,
+        &[
+            ("lifecycle", 3, 0), // Open, grace, final, retained
+            ("close", 2, 0),
+            ("timer", 2, 0),
+            ("result", 2, 0), // Pending, archived, native deadline/error
+        ],
+    );
+    action(
+        &mut m,
+        "Schedule",
+        all([eq(0, 0), Var(1).lt(Int(2))]),
+        &[(0, Int(1)), (1, Var(1).plus(Int(1)))],
+    );
+    action(&mut m, "QueueExpiry", eq(0, 1), &[(2, Var(1))]);
+    action(&mut m, "Undo", eq(0, 1), &[(0, Int(0))]);
+    action(
+        &mut m,
+        "ApplyExpiry",
+        all([eq(0, 1), Var(2).eq(Var(1))]),
+        &[(0, Int(2))],
+    );
+    action(&mut m, "GraceExit", eq(0, 1), &[(0, Int(2))]);
+    action(&mut m, "Archive", all([eq(0, 2), eq(3, 0)]), &[(3, Int(1))]);
+    action(
+        &mut m,
+        "NativeFailure",
+        all([eq(0, 2), eq(3, 0)]),
+        &[(3, Int(2))],
+    );
+    action(
+        &mut m,
+        "Retain",
+        all([eq(0, 2), if broken { Expr::Bool(true) } else { ne(3, 0) }]),
+        &[(0, Int(3))],
+    );
+    safe(
+        &mut m,
+        "ArchiveRequiresFinalClose",
+        implies(eq(3, 1), Var(0).le(Int(1)).negate()),
+    );
+    safe(
+        &mut m,
+        "RetainedCloseAttemptsArchive",
+        implies(eq(0, 3), ne(3, 0)),
+    );
+    m
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -140,6 +194,7 @@ mod tests {
             live_catalogue,
             delegation_pointer,
             absent_seat_close,
+            shared_codex_close,
             crate::mcp::oracle_hint_model::oracle_in_turn,
         ] {
             assert!(family(false).check(10000).unwrap().violations.is_empty());

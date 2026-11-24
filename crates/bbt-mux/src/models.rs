@@ -21,7 +21,7 @@ mod managed_workspace;
 mod transport_launch;
 mod workspace_ready;
 
-pub fn families() -> [fn(bool) -> Model; 20] {
+pub fn families() -> [fn(bool) -> Model; 21] {
     [
         plugin_activation,
         plugin_connection,
@@ -36,6 +36,7 @@ pub fn families() -> [fn(bool) -> Model; 20] {
         crate::mcp::live_models::live_catalogue,
         crate::mcp::live_models::delegation_pointer,
         crate::mcp::live_models::absent_seat_close,
+        crate::mcp::live_models::shared_codex_close,
         crate::mcp::oracle_hint_model::oracle_in_turn,
         managed_workspace::managed_workspace_create,
         managed_workspace::managed_workspace_writer,

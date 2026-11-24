@@ -485,6 +485,22 @@ async fn open_codex(path: &Path, owner: Option<u32>) -> Result<Socket> {
 }
 async fn read_codex_thread(
     socket: &mut Socket,
+    path: &Path,
+    thread: &str,
+    request_id: u64,
+) -> Result<Value> {
+    let identity = read_exact_codex_thread(socket, path, thread, request_id).await?;
+    if !matches!(
+        identity["thread"]["status"]["type"].as_str(),
+        Some("idle" | "active")
+    ) {
+        return Err(Box::new(UnknownRuntime));
+    }
+    Ok(identity)
+}
+
+async fn read_exact_codex_thread(
+    socket: &mut Socket,
     _path: &Path,
     thread: &str,
     request_id: u64,
@@ -510,12 +526,7 @@ async fn read_codex_thread(
             })
         );
     }
-    if identity["thread"]["id"] != thread
-        || !matches!(
-            identity["thread"]["status"]["type"].as_str(),
-            Some("idle" | "active")
-        )
-    {
+    if identity["thread"]["id"] != thread {
         return Err(Box::new(UnknownRuntime));
     }
     Ok(identity)
@@ -524,6 +535,49 @@ async fn codex_handshake(path: &Path, thread: &str, owner: Option<u32>) -> Resul
     let mut socket = open_codex(path, owner).await?;
     let identity = read_codex_thread(&mut socket, path, thread, 2).await?;
     Ok((socket, identity))
+}
+
+/// Archive the exact authenticated seat thread on its launch-selected shared daemon.
+/// The host owns the final-close fence. The TUI may have exited by this point.
+///
+/// # Errors
+/// Refuses stale identities and returns any transport, timeout or daemon failure.
+pub async fn archive_shared_codex_thread(binding: &Binding, path: &Path) -> Result<()> {
+    binding.validate()?;
+    if binding.session.starts_with("process-") {
+        return Err(Box::new(UnknownRuntime));
+    }
+    let socket = tokio::time::timeout(DEADLINE, async {
+        let runtime = binding.runtime.as_ref();
+        if runtime.is_some() {
+            verify_codex_runtime(binding, path)?;
+        }
+        let (mut socket, pid) = open_codex_peer(path, runtime.map(|r| r.pid)).await?;
+        let pid = pid.ok_or_else(|| invalid("native daemon peer PID unavailable"))?;
+        let stamp = runtime.map_or_else(|| process_start(pid), |r| Ok(r.process_start.clone()))?;
+        let identity = read_exact_codex_thread(&mut socket, path, &binding.session, 2).await?;
+        match identity["thread"]["status"]["type"].as_str() {
+            Some("notLoaded") => return Ok(None),
+            Some("idle" | "active" | "systemError") => {}
+            _ => return Err(UnknownRuntime.into()),
+        }
+        if process_start(pid)? != stamp {
+            return Err(invalid("native runtime process changed"));
+        }
+        send(
+            &mut socket,
+            json!({"id":3,"method":"thread/archive","params":{"threadId":binding.session}}),
+        )
+        .await?;
+        Ok::<_, crate::Error>(Some(socket))
+    })
+    .await??;
+    if let Some(mut socket) = socket {
+        // Active threads may take longer to shut down. The supervisor's
+        // independent stop deadline does not wait for this acknowledgement.
+        tokio::time::timeout(Duration::from_secs(15), reply(&mut socket, 3)).await??;
+    }
+    Ok(())
 }
 
 /// Inspect only the top-level method; unrelated catalog/config fields are skipped.

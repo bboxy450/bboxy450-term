@@ -5,6 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Restartable IO/logic owner. The UI gets an async bounded client, not a DB or PTY.
+mod codex_close;
 mod history;
 pub(crate) mod inbox;
 mod implementation_workspaces;
@@ -526,6 +527,7 @@ enum Command {
         Option<u64>,
         oneshot::Sender<Result<()>>,
     ),
+    CodexCloseDue(Ulid, u64, Ulid),
     Undo(Ulid, u64, u64, u64, oneshot::Sender<Result<Position>>),
     Record(Ulid, oneshot::Sender<Result<SeatRecord>>),
     Endpoint(Ulid, oneshot::Sender<Result<EndpointInfo>>),
@@ -554,6 +556,7 @@ impl Command {
                 | Self::Record(..)
                 | Self::Endpoint(..)
                 | Self::Status(..)
+                | Self::CodexCloseDue(..)
                 | Self::NativeHookFailure(..)
                 | Self::GuiWatchInterest { .. }
                 | Self::GuiDebug(..)
@@ -2546,6 +2549,7 @@ struct ViewState {
     rich_delivery: Option<crate::rich::Delivery>,
     rich_socket: Option<PathBuf>,
     shared_codex_runtime: Option<PathBuf>,
+    codex_close: Option<codex_close::ArchiveTimer>,
     state: Playback,
     view_generation: Ulid,
     checkpoint_bytes: u64,
@@ -7287,6 +7291,7 @@ impl Worker {
                 rich_delivery,
                 rich_socket,
                 shared_codex_runtime,
+                codex_close: None,
                 state,
                 view_generation: Ulid::new(),
                 checkpoint_bytes,
@@ -7344,19 +7349,13 @@ impl Worker {
                 })?;
             }
             if info.exited.is_some() {
+                self.archive_on_exit(&record);
                 self.registry.exited(info.seat, info.generation)?;
                 self.cleanup_overlay(info.seat)?;
             } else if record.lifecycle == Lifecycle::ClosedGrace
                 && let Some(close) = record.close
             {
-                self.request_for_seat(
-                    info.seat,
-                    Action::ScheduleClose {
-                        attachment,
-                        close_id: close.operation,
-                        deadline_ms: close.deadline_ms,
-                    },
-                )?;
+                self.schedule_seat_close(attachment, &close)?;
             }
         }
         Ok(())
@@ -9313,7 +9312,10 @@ impl Worker {
         }
         self.parsed_bytes(id, previous_end);
         self.persist_native_session(id)?;
-        if matches!(event, Event::Exited { .. }) && self.registry.get(id).is_ok() {
+        if matches!(event, Event::Exited { .. })
+            && let Ok(record) = self.registry.get(id)
+        {
+            self.archive_on_exit(&record);
             SqliteStore::open(&object_dir(&self.config.run_dir, &format!("seat-{id}"))?)?
                 .put("process_running", b"0")?;
             self.registry.exited(id, generation)?;
@@ -9336,12 +9338,12 @@ impl Worker {
             if explicit_restart || crash_during_turn {
                 self.restarts.remove(&id);
                 if let Err(error) = self.registry.get(id).and_then(|record| {
-                    if explicit_restart
-                        || (record.generation == generation
-                            && record.location == crate::registry::Location::Local
-                            && record.lifecycle == Lifecycle::Open
-                            && record.harness_kind == "bboxy450-harness"
-                            && record.harness_session_id.is_some())
+                    if record.lifecycle == Lifecycle::Open
+                        && (explicit_restart
+                            || (record.generation == generation
+                                && record.location == crate::registry::Location::Local
+                                && record.harness_kind == "bboxy450-harness"
+                                && record.harness_session_id.is_some()))
                     {
                         self.relaunch(record)
                     } else {
@@ -13075,18 +13077,14 @@ impl Worker {
                                 .get(&id)
                                 .ok_or_else(|| invalid("seat not attached"))?
                                 .clone();
-                            self.request_for_seat(
-                                id,
-                                Action::ScheduleClose {
-                                    attachment,
-                                    close_id: close.operation,
-                                    deadline_ms: close.deadline_ms,
-                                },
-                            )?;
+                            self.schedule_seat_close(attachment, &close)?;
                             self.publish_adapter(id, self.views[&id].adapter.status.clone())?;
                             Ok(())
                         })();
                         let _ = reply.send(result);
+                    }
+                    Command::CodexCloseDue(id, generation, operation) => {
+                        self.archive_due(id, generation, operation);
                     }
                     Command::Undo(id, generation, revision, layout_revision, reply) => {
                         let result = (|| {
@@ -13109,6 +13107,13 @@ impl Worker {
                                 .ok_or_else(|| invalid("seat not attached"))?
                                 .clone();
                             let accepted_at = now_ms();
+                            if accepted_at >= close.deadline_ms
+                                || self.views.get(&id)
+                                    .and_then(|view| view.codex_close.as_ref())
+                                    .is_some_and(|archive| archive.started(close.operation))
+                            {
+                                return Err(invalid("close window expired"));
+                            }
                             self.request_for_seat(
                                 id,
                                 Action::UndoClose {
@@ -13123,6 +13128,9 @@ impl Worker {
                                 layout_revision,
                                 accepted_at,
                             )?;
+                            if let Some(view) = self.views.get_mut(&id) {
+                                view.codex_close = None;
+                            }
                             self.publish_adapter(id, self.views[&id].adapter.status.clone())?;
                             Ok(position)
                         })();

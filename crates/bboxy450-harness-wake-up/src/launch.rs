@@ -907,9 +907,17 @@ pub(super) fn ensure_codex_daemon(endpoint: &Path, program: &str) -> Result<()> 
         return Ok(());
     }
     // Codex owns idempotent startup. Never give a shared daemon seat admission.
+    let program = Path::new(program);
+    let program = if program.is_relative() && program.components().count() > 1 {
+        std::path::absolute(program)?
+    } else {
+        program.to_owned()
+    };
     let mut start = Command::new(program);
     start
         .args(["app-server", "daemon", "start"])
+        // The detached daemon outlives this checkout. Requests carry seat cwd.
+        .current_dir("/")
         .stdin(Stdio::null())
         .stdout(Stdio::null());
     for (key, _) in std::env::vars_os() {

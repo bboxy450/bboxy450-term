@@ -311,6 +311,7 @@ fn add_view(worker: &mut Worker, id: Ulid) {
             rich_delivery: None,
             rich_socket: None,
             shared_codex_runtime: None,
+            codex_close: None,
             state,
             view_generation: Ulid::new(),
             checkpoint_bytes: 0,
