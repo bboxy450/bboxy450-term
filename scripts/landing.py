@@ -652,9 +652,8 @@ def harness_library_selection(packages, root):
 
 
 def lean(range_spec, *, root=None, wide=False):
-    """Lean land plan: one line per touched crate with its test selection, then the
-    dependents that only need to compile. A crate whose source changed runs its lib
-    and bin tests; a changed integration-test file selects its module in `it`."""
+    """Lean land plans unit and integration selections independently, followed by
+    dependents that only need to compile."""
     root = Path(root or repository()).resolve()
     result = affected(range_spec, root=root)
     paths = {(root / p).resolve() for p in changed_paths(range_spec, cwd=root)}
@@ -680,16 +679,15 @@ def lean(range_spec, *, root=None, wide=False):
         package = packages[name]
         base = Path(package["manifest_path"]).parent.resolve()
         targets = package["targets"]
-        tests = sorted(t["name"] for t in targets
-                       if "test" in t["kind"] and Path(t["src_path"]).resolve() in paths)
+        tests = {t["name"] for t in targets
+                 if "test" in t["kind"] and Path(t["src_path"]).resolve() in paths}
         aggregate = next((t for t in targets if t["name"] == "it" and "test" in t["kind"]), None)
         modules = set()
-        whole = False
         if aggregate:
             entry = Path(aggregate["src_path"])
             separate = {Path(t["src_path"]).resolve() for t in targets
                         if "test" in t["kind"] and t["name"] != "it"}
-            declared = set(re.findall(r'#\[path\s*=\s*"([^/\"]+)\.rs"\]\s*mod\s+\w+\s*;', entry.read_text()))
+            declared = dict(re.findall(r'#\[path\s*=\s*"([^/\"]+)\.rs"\]\s*mod\s+(\w+)\s*;', entry.read_text()))
             for path in paths:
                 if path in separate:
                     continue
@@ -697,32 +695,22 @@ def lean(range_spec, *, root=None, wide=False):
                     relative = path.relative_to(base / "tests")
                     module = Path(relative.parts[0]).stem
                     if module in declared:
-                        modules.add(module)
+                        modules.add(declared[module])
                     else:
                         # Entry point, common/support helpers, and shared fixtures
                         # can affect every module in this integration binary.
-                        whole = True
-            if modules or whole:
-                tests = sorted(set(tests) | {"it"})
+                        tests.add("it")
         source = any(p.is_relative_to(base) and not p.is_relative_to(base / "tests")
                      for p in paths)
         selection = []
-        if source or not tests:
+        if source or not (tests or modules):
             selection += ["--lib"] if any(set(t["kind"]) & {"lib", "proc-macro"} for t in targets) else []
             selection += ["--bins"] if any("bin" in t["kind"] for t in targets) else []
-        for test in tests:
-            selection += ["--test", test]
-        if modules and not whole:
-            expressions = ["binary(=it)&test(/^(" + "|".join(sorted(modules)) + ")::/)"]
-            expressions += ["binary(=" + test + ")" for test in tests if test != "it"]
-            if "--lib" in selection:
-                expressions.append("kind(lib)")
-            if "--bins" in selection:
-                expressions.append("kind(bin)")
-            # Serialize an argv, including filters containing shell punctuation.
-            selection += ["-E", "|".join("(" + value + ")" for value in expressions)]
         if selection:
             lines.append(shlex.join(["test", name, *selection]))
+        lines += [shlex.join(["test", name, "--test", "it", "-E", f"test(/^{module}::/)"])
+                  for module in sorted(modules)]
+        lines += [shlex.join(["test", name, "--test", test]) for test in sorted(tests)]
     check = sorted(set(result["affected"]) - set(result["touched"]) - full
                    - ({HARNESS_PACKAGE} if bump else set()))
     if check:
@@ -756,10 +744,14 @@ def lean_test(package, selection):
     family = DREAM_C1_GATE_TESTS.get(package)
     if family:
         argv = restrict_selection(argv, f"not ({family})")
-    # A crate whose planned selection holds no test (its lib tests run in a lane of
-    # their own, or it has none) still passed clippy and check.
-    code = subprocess.run(["sh", "scripts/quarantine-test.sh", "--allow-ignored-only",
-                           "--locked", "-p", package, "--no-tests=pass", *argv]).returncode
+    # Crates can have no unit tests here. An explicit integration selection must
+    # contain tests, with the existing exception for verified ignored-only tests.
+    cargo_args = argv[:argv.index("--")] if "--" in argv else argv
+    integration = "--test" in cargo_args
+    options = ["--allow-ignored-only"] if integration else ["--no-tests=pass"]
+    environment = dict(os.environ, BBOXY_TEST_RUNNER="nextest") if integration else None
+    code = subprocess.run(["sh", "scripts/quarantine-test.sh", "--locked", "-p", package,
+                           *options, *argv], env=environment).returncode
     return code if code >= 0 else 128 - code
 
 

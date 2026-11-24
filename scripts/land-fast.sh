@@ -44,7 +44,7 @@ case "$LAND_MODE" in lean|wide) ;; *) echo "land: LAND_MODE must be lean or wide
 lean_gate() {
     plan=$(python3 -I scripts/landing.py lean origin/main..HEAD "$@") || return 1
     echo "land: lean plan:"; printf '%s\n' "$plan" | sed 's/^/  /'
-    touched=$(printf '%s\n' "$plan" | awk '$1=="test" || $1=="full"{printf " -p %s", $2}')
+    touched=$(printf '%s\n' "$plan" | awk '($1=="test" || $1=="full") && !seen[$2]++ {printf " -p %s", $2}')
     if [ -n "$touched" ]; then
         # shellcheck disable=SC2086
         run cargo clippy --locked -q $touched --all-targets -- -D warnings || return 1
@@ -68,6 +68,9 @@ lean_gate() {
             check) run cargo check --locked -q $(printf -- '-p %s ' $name $selection) || exit 1 ;;
         esac
     done || return 1
+    if printf '%s\n' "$changed" | grep -Fxq 'crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs'; then
+        run make test-rich-app-input || return 1
+    fi
 }
 
 gate() {

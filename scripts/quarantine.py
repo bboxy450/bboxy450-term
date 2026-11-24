@@ -346,7 +346,9 @@ def nextest_run(root, cargo_args, target, api, *, allow_ignored_only=False):
     build, filters = cargo_args[:split], cargo_args[split + 1:]
     junit = Path(target) / "nextest" / os.environ.get("NEXTEST_PROFILE", "default") / "junit.xml"
     junit.unlink(missing_ok=True)
-    argv = ["cargo", "nextest", "run", *nextest_build_args(build), *(["--", *filters] if filters else [])]
+    strict = ["--no-tests=fail"] if allow_ignored_only and "--test" in build else []
+    argv = ["cargo", "nextest", "run", *nextest_build_args(build), *strict,
+            *(["--", *filters] if filters else [])]
     print("quarantine: " + " ".join(argv), flush=True)
     code = subprocess.run(argv, cwd=root, env=test_environment(root)).returncode
     if code == 4 and allow_ignored_only and ignored_integration_suite(root, build, filters, api):

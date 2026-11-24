@@ -1886,11 +1886,12 @@ test-harmony-host-gitkb: build-gitkb-plugin
 
 .PHONY: build-recovery-test test-recovery-built test-recovery-disk test-lean-ignored
 test-lean-ignored:
-	@python3 -I scripts/test-landing.py IgnoredIntegrationTests QuarantineTests
+	@python3 -I scripts/test-landing.py ConsolidatedIntegrationTests IgnoredIntegrationTests QuarantineTests
 	@set -eu; . ./scripts/cache-env.sh; \
 	BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))' BBOXY_TEST_RUNNER=nextest sh scripts/quarantine-test.sh -E 'binary(it)&test(/^(swarm_workdir)::/)' --allow-ignored-only --locked -p $(APP) --test it; \
 	if BBOXY_TEST_RUNNER=nextest sh scripts/quarantine-test.sh --allow-ignored-only --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' -E '(binary(it)&test(/^(swarm_workdir)::/))&(test(lean_missing_test_control))'; then exit 1; else code=$$?; test "$$code" -eq 4; fi; \
 	if BBOXY_TEST_RUNNER=nextest sh scripts/quarantine-test.sh --allow-ignored-only --locked -p $(APP) --test lean_missing_target_control --target-dir '$(TARGET_DIR)'; then exit 1; fi
+	$(MAKE) test-rich-app-input TARGET_DIR='$(TARGET_DIR)'
 
 test-recovery-disk:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -2616,9 +2617,9 @@ test-rich-launch-context: prepare-rich-native-fixture
 	@set -eu; . ./scripts/cache-env.sh; \
 	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo nextest run -E 'binary(it)&test(=swarm_workdir::launch_context::launch_children_receive_workflow_and_call_their_own_admitted_mcp)' --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' -- --ignored --nocapture
 
-test-rich-app-input: init-submodules
+test-rich-app-input: prepare-rich-native-fixture
 	@set -eu; . ./scripts/cache-env.sh; \
-	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo nextest run -E 'binary(it)&test(=swarm_workdir::rich_detach::rich_app_routes_composer_approval_scroll_and_focus)' --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' -- --ignored --nocapture
+	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo nextest run -E 'test(=swarm_workdir::rich_detach::rich_app_routes_composer_approval_scroll_and_focus)' --no-tests=fail --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' -- --ignored --nocapture
 
 .PHONY: test-rich-gui-handoff-control
 test-rich-gui-handoff-control:

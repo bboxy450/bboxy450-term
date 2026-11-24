@@ -709,7 +709,7 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
 
     def test_one_changed_file_selects_only_its_module(self):
         self.assertEqual(self.plan("crates/c/tests/alpha.rs"),
-                         ["test c --test it -E '(binary(=it)&test(/^(alpha)::/))'"])
+                         ["test c --test it -E 'test(/^alpha::/)'"])
 
     def test_separate_allocator_binary_does_not_select_shared_modules(self):
         manifest = self.repo.root / "crates/c/Cargo.toml"
@@ -720,14 +720,14 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
 
     def test_nested_module_and_source_preserve_unit_tests(self):
         self.assertEqual(self.plan("crates/c/tests/alpha/child.rs", "crates/c/src/lib.rs"),
-                         ["test c --lib --test it -E '(binary(=it)&test(/^(alpha)::/))|(kind(lib))'"])
+                         ["test c --lib", "test c --test it -E 'test(/^alpha::/)'"])
 
     def test_quoted_filter_is_one_argument_without_shell_evaluation(self):
         expression = "binary(it) & test(/^alpha::/)"
         with patch.object(landing.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
             self.assertEqual(landing.lean_test("c", shlex.join(["--test", "it", "-E", expression])), 0)
-        self.assertEqual(run.call_args.args[0], ["sh", "scripts/quarantine-test.sh", "--allow-ignored-only",
-                                               "--locked", "-p", "c", "--no-tests=pass", "--test", "it",
+        self.assertEqual(run.call_args.args[0], ["sh", "scripts/quarantine-test.sh", "--locked", "-p", "c",
+                                               "--allow-ignored-only", "--test", "it",
                                                "-E", expression])
 
     def test_dream_c1_family_is_left_to_its_own_gate(self):
@@ -737,20 +737,20 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
                     landing.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
                 self.assertEqual(landing.lean_test("bboxy450-term-mux", selection), 0)
                 self.assertEqual(run.call_count, 1)
-                self.assertEqual(run.call_args.args[0][6:],
+                self.assertEqual(run.call_args.args[0][5:],
                     ["--no-tests=pass", *shlex.split(selection), "-E", f"not ({family})"])
 
     def test_dream_c1_exclusion_conjoins_an_existing_filter_and_keeps_test_arguments(self):
         with patch.object(landing.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
             landing.lean_test("bboxy450-harness-wake-up", shlex.join(["--test", "it", "-E", "binary(=it)", "--", "--nocapture"]))
         family = landing.DREAM_C1_GATE_TESTS["bboxy450-harness-wake-up"]
-        self.assertEqual(run.call_args.args[0][6:], ["--no-tests=pass", "--test", "it", "-E",
+        self.assertEqual(run.call_args.args[0][5:], ["--allow-ignored-only", "--test", "it", "-E",
                                                      f"(binary(=it)) & (not ({family}))", "--", "--nocapture"])
 
     def test_other_packages_run_once_as_before(self):
         with patch.object(landing.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
             landing.lean_test("bboxy450-den", "--lib")
-        self.assertEqual(run.call_args_list[0].args[0][6:], ["--no-tests=pass", "--lib"])
+        self.assertEqual(run.call_args_list[0].args[0][5:], ["--no-tests=pass", "--lib"])
         self.assertEqual(run.call_count, 1)
 
     def test_invariant_selection_and_coverage_use_the_qualified_test(self):
@@ -779,26 +779,63 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertEqual(self.plan(path), ["test c --test it"])
 
-    def test_make_land_runs_only_the_changed_module(self):
+    def test_shared_helper_does_not_mask_an_empty_changed_module(self):
+        self.assertEqual(self.plan("crates/c/tests/common/mod.rs", "crates/c/tests/alpha.rs"),
+                         ["test c --test it -E 'test(/^alpha::/)'", "test c --test it"])
+
+    def prepare_lean_landing(self):
         self.repo.tooling()
         for name in ("land-fast.sh", "affected.sh"):
             shutil.copy2(SOURCE.with_name(name), self.repo.root / "scripts" / name)
         # Use real Cargo/nextest, a private signer, and a local bare origin.
-        # The unselected module panics if the actual land selection is widened.
         (self.repo.bin / "cargo").unlink()
-        environment = dict(self.repo.environment, BBOXY_TEST_RUNNER="nextest",
-                           CARGO_BUILD_BUILD_DIR=str(self.repo.state / "target"))
+        self.repo.environment.update(BBOXY_TEST_RUNNER="nextest",
+                                     CARGO_BUILD_BUILD_DIR=str(self.repo.state / "target"))
         makefile = self.repo.root / "Makefile"
         makefile.write_text(makefile.read_text() + '\nland:\n\t@sh scripts/land-fast.sh\ninit-submodules:\n\t@true\n')
         self.repo.commit("Private lean landing workflow")
         self.repo.remote()
+
+    def run_lean_landing(self):
+        return subprocess.run(["make", "land"], cwd=self.repo.root, env=self.repo.environment,
+                              capture_output=True, text=True, timeout=45)
+
+    def test_make_land_runs_only_the_changed_module(self):
+        self.prepare_lean_landing()
+        # The unselected module panics if the actual land selection is widened.
         self.repo.write("crates/c/tests/alpha.rs", '#[test] fn selected() {} // changed\n')
         candidate = self.repo.commit("Private one-module cut")
-        result = subprocess.run(["make", "land"], cwd=self.repo.root, env=environment,
-                                capture_output=True, text=True, timeout=45)
+        result = self.run_lean_landing()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("1 test run: 1 passed", result.stdout + result.stderr)
         self.assertEqual(self.repo.remote_head(), candidate)
+
+    def test_make_land_rejects_an_empty_module_even_when_another_runs(self):
+        self.prepare_lean_landing()
+        upstream = self.repo.remote_head()
+        self.repo.environment.update(BBOXY_TEST_RUNNER="cargo", NEXTEST_NO_TESTS="pass")
+        self.repo.write("crates/c/tests/alpha.rs", '#[test] fn selected() {} // changed\n')
+        self.repo.write("crates/c/tests/beta.rs", "// All tests removed from this module.\n")
+        self.repo.commit("Private cut with an empty changed module")
+        result = self.run_lean_landing()
+        output = result.stdout + result.stderr
+        self.assertNotEqual(result.returncode, 0, output)
+        self.assertIn("1 test run: 1 passed", output)
+        self.assertIn("no tests to run", output)
+        self.assertEqual(self.repo.remote_head(), upstream)
+
+    def test_make_land_requires_the_rich_input_witness(self):
+        self.prepare_lean_landing()
+        upstream = self.repo.remote_head()
+        self.repo.write("crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs", "// Changed.\n")
+        makefile = self.repo.root / "Makefile"
+        makefile.write_text(makefile.read_text() + '\ntest-rich-app-input:\n\t@echo "private rich witness ran"\n\t@false\n')
+        self.repo.commit("Private cut with a failing native witness")
+        result = self.run_lean_landing()
+        output = result.stdout + result.stderr
+        self.assertNotEqual(result.returncode, 0, output)
+        self.assertIn("private rich witness ran", output)
+        self.assertEqual(self.repo.remote_head(), upstream)
 
 
 class HarnessBumpTests(unittest.TestCase):
@@ -2563,6 +2600,7 @@ class IgnoredIntegrationTests(unittest.TestCase):
         code, listing, argv, output = self.invoke(self.ignored())
         self.assertEqual(code, 0)
         self.assertNotIn("--allow-ignored-only", argv)
+        self.assertIn("--no-tests=fail", argv)
         self.assertNotIn("--no-fail-fast", listing.call_args[0][0])
         self.assertIn("all 1 selected tests are ignored; compiled only", output)
 
