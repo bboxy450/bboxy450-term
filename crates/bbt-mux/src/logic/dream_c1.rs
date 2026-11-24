@@ -10566,7 +10566,7 @@ mod quantum_debt_tests {
                             Some(Err(Code::ResourceLimit));
                     } else if fault == "cpu" {
                         *control.final_admission_sample.lock().unwrap() =
-                            Some(Ok(Duration::from_millis(2)));
+                            Some(Ok(OVERRUN + Duration::from_nanos(1)));
                     }
                     let before = Instant::now();
                     let verdict = final_admission_control(&control, site, || {
@@ -10632,7 +10632,6 @@ mod quantum_debt_tests {
         }
 
         #[test]
-        #[ignore = "KNOWN DEFECT: C1 per-unit CPU overrun at low load (1.05–1.44ms); fix: tasks/2026-11-07-dream-c1-native-unit-budget-overruns"]
         fn dream_c1_final_actual_authority_rechecks_row_head_grant_inode_aba_after_debt() {
             for site in [FinalHandoff::Permit, FinalHandoff::Start] {
                 for fault in ["row", "head", "grant", "inode", "aba", "cell", "expiry"] {
@@ -10642,7 +10641,6 @@ mod quantum_debt_tests {
         }
 
         #[test]
-        #[ignore = "KNOWN DEFECT: C1 journal initialization CPU overrun during lean land (1.293ms); fix: tasks/2026-11-07-dream-c1-native-unit-budget-overruns"]
         fn dream_c1_final_actual_authority_held_clock_cpu_refusals_keep_owned_child() {
             for site in [FinalHandoff::Permit, FinalHandoff::Start] {
                 for fault in ["none", "held", "clock", "cpu"] {

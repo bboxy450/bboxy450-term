@@ -2890,7 +2890,7 @@ check-mermaid-fullscreen:
 .PHONY: check-workspace-provisioning test-workspace-provisioning test-workspace-owner-progress test-workspace-mcp-regressions
 test-workspace-mcp-regressions: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo nextest run --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' --test-threads 1 -E '(binary(it)&test(/^(mcp)::/))&(test(knowledge_types_tests::) | test(mcp_artifact_) | test(mcp_channel_tools_) | test(mcp_knowledge266_class_rows_) | test(mcp_numeric_selectors_) | test(mcp_original_operation_recovers_) | test(task_migration_250_records_authenticated_collision_restart_and_replay))'
+	cargo nextest run --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' --test-threads 1 -E '(binary(it)&test(/^(mcp)::/))&(test(knowledge_types_tests::) | test(mcp_artifact_) | test(mcp_channel_tools_) | test(mcp_knowledge266_class_rows_) | test(mcp_numeric_selectors_) | test(mcp_original_operation_recovers_))'
 
 test-workspace-owner-progress: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \

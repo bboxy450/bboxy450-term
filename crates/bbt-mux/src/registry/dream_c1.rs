@@ -2761,7 +2761,6 @@ mod registry_tests {
         durable.finish().unwrap();
     }
     #[test]
-    #[ignore = "KNOWN DEFECT: C1 schema CPU unit overruns during lean land (1.279ms); fix: tasks/2026-11-07-dream-c1-native-unit-budget-overruns"]
     fn dream_c1_schema_bootstrap_busy_writer_refuses_without_waiting_or_partial_publication() {
         let fixture = Fixture::new();
         let seat = id(996);
@@ -3151,7 +3150,6 @@ mod registry_tests {
     }
 
     #[test]
-    #[ignore = "KNOWN DEFECT: C1 journal initialization CPU overrun during lean land (1.037ms); fix: tasks/2026-11-07-dream-c1-native-unit-budget-overruns"]
     fn dream_c1_registration_commits_close_cursor_original_op_and_source_key_once_after_reopen() {
         let fixture = Fixture::new();
         let before = fs::read(&fixture.source).unwrap();
@@ -3229,7 +3227,6 @@ mod registry_tests {
     }
 
     #[test]
-    #[ignore = "KNOWN DEFECT: C1 journal initialization CPU overrun during lean land (1.126ms); fix: tasks/2026-11-07-dream-c1-native-unit-budget-overruns"]
     fn dream_c1_concurrent_register_original_operation_wins_before_candidate_source_key() {
         let fixture = Fixture::new();
         let source_before = fs::read(&fixture.source).unwrap();
@@ -3769,7 +3766,6 @@ mod registry_tests {
         }
     }
     #[test]
-    #[ignore = "KNOWN DEFECT: C1 per-unit CPU overrun at low load (1.05–1.44ms); fix: tasks/2026-11-07-dream-c1-native-unit-budget-overruns"]
     fn dream_c1_source_failure_is_bounded_immutable_and_fenced_before_any_replay() {
         let f = Fixture::new();
         let record = f.record(90);
