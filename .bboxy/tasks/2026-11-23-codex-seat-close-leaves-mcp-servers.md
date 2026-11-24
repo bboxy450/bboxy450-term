@@ -2,6 +2,7 @@
 allowed_paths:
 - crates/bbt-mux
 - crates/bboxy450-term
+assignee: seat:01M86BFF3067ZDDF0HSF73WVHP
 authorship:
   kind: seat
   process_generation: '1'
@@ -12,23 +13,24 @@ created_by: seat:01M85BW3PMN3QBFPPMWBS866RA
 delegated_by: seat:01M85BW3PMN3QBFPPMWBS866RA
 id: 01M85VJT6DHSQN7F1ZG1T1239W
 number: 1794292861627847
-status: open
+role: executor
+status: claimed
 swarm: 01M7P04CW1T6KY8CMSS6DQM12Q
 title: Closing a Codex seat leaves its MCP servers running inside the checkout
 type: task
-updated: 2026-11-24T04:03:50.467Z
+updated: 2026-11-24T08:41:39.255Z
 updated_by: seat:01M85BW3PMN3QBFPPMWBS866RA
 verify: make test-boundaries
 provenance:
   digest: sha256:5153bb6cf3132a8436a9522fee1f70e0a381f3f8a44a60f55805fdfb8e69eb1e
-  frontmatter_digest: sha256:49d1bede1c3fcfc901bbf3bc3c5927d77c6213ed0cb7636ada8d52bffe4aff39
+  frontmatter_digest: sha256:bf3960030efdfb010160957c40633f46c45653f181c85401fe47f5c58ad0d540
   signer: seat:01M85BW3PMN3QBFPPMWBS866RA
-  sig: aHeDX9EidSrHQFZEQeD2MYrb9Nhil34fQSm2OS88Fl9uj6923w1504NCAmefY9TlkausDN9+aWm3ThNQHzJSDw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1549
+  sig: N/+tJM0ZiCrhQoeYwu4YSNhsM2vU6pTIf/QwthgVPuDiflJPMa/WvuCeTjlSumHpT/HWHRGy1nPYXdHEdBw+Ag==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1652
   event:
-    id: 01M85VJTVWFVFEVPWAZR7PK32B
-    sequence: 1549
-    hash: 9404b2527c3cf53dec3bd3e71164bf5e86c620e7293a00bf885814e76b15f143
+    id: 01M86BFGVCX4R94YNX28R1RHVK
+    sequence: 1652
+    hash: d89f4b5cae3f44d8672a10663099fc98a0a476e8de25b92c870b2f6fa94970cf
 ---
 Our stand: subtract before you add; report what you removed.
 
