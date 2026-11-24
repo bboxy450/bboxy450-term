@@ -3,6 +3,7 @@ allowed_paths:
 - scripts
 - .config
 - Makefile
+assignee: seat:01M85VK1QG9JAYHC7EWN8KVC2R
 authorship:
   kind: seat
   process_generation: '1'
@@ -13,23 +14,24 @@ created_by: seat:01M85BW3PMN3QBFPPMWBS866RA
 delegated_by: seat:01M85BW3PMN3QBFPPMWBS866RA
 id: 01M85H8KS41H79AXW5WVRHYDDX
 number: 1794292861627834
-status: open
+role: executor
+status: claimed
 swarm: 01M7P04CW1T6KY8CMSS6DQM12Q
 title: make land ran 0 of 321 tests for a change to tests/swarm_workdir/rich_detach.rs
 type: task
-updated: 2026-11-24T01:03:30.486Z
+updated: 2026-11-24T04:03:59.220Z
 updated_by: seat:01M85BW3PMN3QBFPPMWBS866RA
 verify: make land-preflight || true
 provenance:
   digest: sha256:9dc082e291c2c6457d09eab66259047240c197aff09615feac383b4901281b90
-  frontmatter_digest: sha256:d4544c179c7ffd6fdef35c9b009a9ca6da99992b6d864ee071c9c0cf14af95a8
+  frontmatter_digest: sha256:f9342ead6b91b6cec8017382e5dde17e24b209d4b5afa937e8d8d4a12a2f52d6
   signer: seat:01M85BW3PMN3QBFPPMWBS866RA
-  sig: 8kZyMoi19pKfTTTOUW9Ltwp3P531ikM2CTZaJQUlX+7E8lEw6DtYPm0eMh2B8EhGu2m78Df86CPU2cbe+c9/BQ==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1496
+  sig: BqWyKWlIlC/uc5/ilgMiS0PFFKbtBZEuXw/irADYNlWiggY9dkqh20zrXEeXamslCXMx9edpvlGyMpgEWDb8Aw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1551
   event:
-    id: 01M85H8ME8TDGV13326J76SKJ6
-    sequence: 1496
-    hash: 784fb32ab51e36ca125bd9035abbd138c8b164cf5f1455e8718bc776329dee89
+    id: 01M85VK381TQYZCW49AQ61DFC0
+    sequence: 1551
+    hash: 90fd7adb7140c2642a6c6f1598ecc5b0b23e3d84956c09689674daa9842194cf
 ---
 Our stand: subtract before you add; report what you removed.
 

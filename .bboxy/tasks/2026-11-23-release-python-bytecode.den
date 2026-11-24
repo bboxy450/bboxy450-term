@@ -20,21 +20,63 @@ task ReleasePythonBytecode {
     2. Treat ignored build output inside submodules (`target/`, `__pycache__/`) as the parent's declared ignore rules are treated;
        keep refusing real private data. Process witness and a broken control.
     3. Find why 01M83BDY… is refused while git sees it clean, and release it.
-  """
+
+    ## Report from seat:01M85NB8C9RRE0976A6G6XYDY5
+
+    Removed the formal pruner’s Python bytecode writes and the false dirty refusal for explicitly ignored submodule build output. `make test-boundaries` passed 39 tests, the focused workspace suite passed 30, and all 1,000 formal models matched native/TLC. The legacy checkout’s refusal came from an empty `verification/evidence/` directory that Git lists in matching mode. An authorized Oracle or operator must release `01M83BDYJEMCBGNQRGDD9SBXT6` with the fixed provider because this seat lacks `workspace_release`. Kache’s working directory is a live checkout handle. The signed worktree is clean.
+
+    ```json
+    {
+      "op_id": "01M85SPW5C9GFC62TAR83QK16J",
+      "commit": "7b51fb2ace83529bcdaaefab3674932f2cc6a3eb",
+      "report": "[[reports/2026-11-23-release-python-bytecode-pip-hollow.den]]",
+      "verify_result": {
+        "command": "make test-boundaries",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Required boundary verification",
+            "reference": "target/pip-boundaries.log"
+          },
+          {
+            "criterion": "Submodule generated outputs release and private files refuse",
+            "reference": "crates/bbt-mux/src/mcp/workspaces/tests.rs:675 and target/pip-workspace-provisioning.log"
+          },
+          {
+            "criterion": "Pruner suppresses bytecode and broken control writes it",
+            "reference": "scripts/test-landing.py:1573"
+          },
+          {
+            "criterion": "Matching-mode diagnosis and open working directory",
+            "reference": "target/pip-live-release-diagnosis.log"
+          },
+          {
+            "criterion": "Clean-source native/TLC parity",
+            "reference": "SHA-256 61071a1bda46e5dc10ad5833f93f91619fdb9ec6f34e7c28fe25d7169c6e3f0e"
+          }
+        ]
+      }
+    }
+    ```
+    """
 
   managed {
     assignee = json"\"seat:01M85NB8C9RRE0976A6G6XYDY5\""
     authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"bGMqsRvbQXvEDVnOwRt47b6crPtdbIu8ioBX1dU/YNs=\",\"signer\":\"seat:01M85BW3PMN3QBFPPMWBS866RA\"}"
+    closed = json"{\"by\":\"seat:01M85BW3PMN3QBFPPMWBS866RA\",\"op_id\":\"01M85VDZDZRXNDDXGYBXF900P7\"}"
     created = json"\"2026-11-23T20:04:08.448Z\""
     created_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
     delegated_by = json"\"seat:01M85BW3PMN3QBFPPMWBS866RA\""
     id = json"\"01M8504ETPG6AM1EAZW5F8E08A\""
     number = json"1794292861627819"
+    report = json"{\"commit\":\"7b51fb2ace83529bcdaaefab3674932f2cc6a3eb\",\"op_id\":\"01M85SPW5C9GFC62TAR83QK16J\",\"report\":\"[[reports/2026-11-23-release-python-bytecode-pip-hollow.den]]\",\"reported_by\":\"seat:01M85NB8C9RRE0976A6G6XYDY5\",\"summary\":\"Removed the formal pruner’s Python bytecode writes and the false dirty refusal for explicitly ignored submodule build output. `make test-boundaries` passed 39 tests, the focused workspace suite passed 30, and all 1,000 formal models matched native/TLC. The legacy checkout’s refusal came from an empty `verification/evidence/` directory that Git lists in matching mode. An authorized Oracle or operator must release `01M83BDYJEMCBGNQRGDD9SBXT6` with the fixed provider because this seat lacks `workspace_release`. Kache’s working directory is a live checkout handle. The signed worktree is clean.\",\"verify_revision\":0}"
     role = json"\"executor\""
-    status = Claimed
+    status = Done
     swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
-    updated = json"\"2026-11-24T02:14:52.228Z\""
+    updated = json"\"2026-11-24T04:01:12.917Z\""
     updated_by = json"\"seat:01M85BW3PMN3QBFPPMWBS866RA\""
-    provenance = json"{\"digest\":\"sha256:63aa930b9719e2913d14ce41d119681382bbf6ea23b98c7e1860c6a52aace2ff\",\"frontmatter_digest\":\"sha256:914c00577ef4eee5db9a281279acd6dcd510dc05c495a30fcecc9d873c520a63\",\"signer\":\"seat:01M85BW3PMN3QBFPPMWBS866RA\",\"sig\":\"VF6+//3okIuCVSwvlgtULS4Bht//TE+OCbp07iLfbt2clTCydkSoxpa+48RZ3wVAEbf2/QkW9xudjIf5W8tfBg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1527\",\"event\":{\"id\":\"01M85NB9P0C36SEYKXFFAGXBJE\",\"sequence\":1527,\"hash\":\"235e1fd50fa67af791a11756fca1fe896fde204ed1266a3692ff3c9c6c9e6025\"}}"
+    verify_result = json"{\"command\":\"make test-boundaries\",\"evidence\":[{\"criterion\":\"Required boundary verification\",\"reference\":\"target/pip-boundaries.log\"},{\"criterion\":\"Submodule generated outputs release and private files refuse\",\"reference\":\"crates/bbt-mux/src/mcp/workspaces/tests.rs:675 and target/pip-workspace-provisioning.log\"},{\"criterion\":\"Pruner suppresses bytecode and broken control writes it\",\"reference\":\"scripts/test-landing.py:1573\"},{\"criterion\":\"Matching-mode diagnosis and open working directory\",\"reference\":\"target/pip-live-release-diagnosis.log\"},{\"criterion\":\"Clean-source native/TLC parity\",\"reference\":\"SHA-256 61071a1bda46e5dc10ad5833f93f91619fdb9ec6f34e7c28fe25d7169c6e3f0e\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:eb3eaca5d8ee449e53311abba72d3c768e0177adc07786a858c97fcb8c354c5a\",\"frontmatter_digest\":\"sha256:5c3969583752c61b10c33eac780bd08696345d01088dba15c9d22919a42a473c\",\"signer\":\"seat:01M85BW3PMN3QBFPPMWBS866RA\",\"sig\":\"JDQtrh7cCNOJDuo5O2K3cw1vzdVey2TCB8P+FsMJ7WZYlt4XoGMwJFgI21cYCCDp+IoJ/PO4mQq8P1Z1GiQMCA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1547\",\"event\":{\"id\":\"01M85VE0TT31T5ZAC4AKP7J0NF\",\"sequence\":1547,\"hash\":\"86e49f3861d29d4b5a615e83f0586547923ba6cccb0f66df67e006011321876b\"}}"
+    body_tail = json"\"\\n\""
   }
 }
