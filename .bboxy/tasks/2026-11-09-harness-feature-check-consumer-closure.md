@@ -1,36 +1,46 @@
 ---
-type: task
-title: Harness feature isolation check reads the term consumer's feature closure, not the workspace union
-role: executor
 allowed_paths:
 - scripts/harness-submodule.py
 - scripts/test-harness-submodule.py
 - .bboxy/reports/
-verify: python3 -I scripts/test-harness-submodule.py && python3 -I scripts/harness-submodule.py --check-json-features && ! python3 -I scripts/harness-submodule.py --check-json-features --acp-control
-id: 01M71PCJGMT10KBHEN361CCQKV
-status: open
-delegated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-10T03:00:23.652Z
-created: 2026-11-10T03:00:23.652Z
-number: 1794274420276163
-created_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-updated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 authorship:
-  signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
   kind: seat
-  public_key: V5Zkz4W1rnaDG/FsjK3//xQX+WByyxD7/fuIYoV6NbU=
   process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-10T03:00:23.652Z
+created_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+id: 01M71PCJGMT10KBHEN361CCQKV
+number: 1794274420276163
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: implemented
+  evidence:
+  - commit 97c1a4d87 — scripts/harness-submodule.py:88-102
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878KJMKKSY7PD6EGQ1BDZ5G
+  previous_status: open
+  reason: Feature check reads the consumer closure.
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Harness feature isolation check reads the term consumer's feature closure, not the workspace union
+type: task
+updated: 2026-11-24T17:10:42.025Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: python3 -I scripts/test-harness-submodule.py && python3 -I scripts/harness-submodule.py --check-json-features && ! python3 -I scripts/harness-submodule.py --check-json-features --acp-control
 provenance:
   digest: sha256:78376255b2007cc13b596513a7d4647edbd822146a9476cb7e951f15beda0887
-  frontmatter_digest: sha256:d3a03e422a799ceaa3924780c55afb6ae607e08e912eab883a91eb6d15b560b7
-  signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-  sig: isdNEPjkkcY+ToO9s+FxxrLZaPDpBXTGClH2M5uBYffNgIZhFkOUOf4WdwxfZnVSWkpDBt3WftW8GOcv7PO/Ag==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151302
+  frontmatter_digest: sha256:6733fcef9da838e7dedc54e2007d5875ef2d0c7e46958960ee32535937699bed
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: f5LY+RDoHXa+sJus09ZqGt5I21xGuUbC/R3tVWdUOpfCBzP1N5ZNLA7eqaxAtrihyNfD4DeFhM7+rvLJHxv1CQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1887
   event:
-    id: 01M71PCK338ZHPR3AMEH0E4Y2V
-    sequence: 151302
-    hash: daaf424f9769dfc84ff5a06d6270de182d717cf0cd711e45fedfc6d10b2e8115
+    id: 01M878KKRB0BKNVMAHKE3EZMXM
+    sequence: 1887
+    hash: 031be70d35c7e74d2aa397d5e11251ed3fabf63b58481ddddaea97676ea7e49b
 ---
 ROLE: EXECUTOR
 

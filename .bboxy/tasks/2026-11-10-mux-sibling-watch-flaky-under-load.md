@@ -1,39 +1,49 @@
 ---
-type: task
-title: 'mux index watcher test times out under full-suite load: sibling_build_writes_do_not_dirty_watch_or_trigger_reconciliation'
-role: executor
 allowed_paths:
 - crates/bbt-mux/src/index.rs
 - crates/bbt-mux/src/logic/workspace_routing_tests.rs
 - crates/bbt-mux/src/logic.rs
 - .bboxy/quarantine.md
 - .bboxy/reports/
-verify: cargo nextest run --locked -p bboxy450-term-mux --lib -E 'test(sibling_build_writes_do_not_dirty_watch_or_trigger_reconciliation) | test(deferred_scan_replaces_failed_watcher_and_observes_later_edits)'
-status: open
-delegated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-swarm: 01M649102FBS60QWNPZS5VAGF9
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-10T21:42:04.277Z
+created_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
 id: 01M73PJDFM5X80SEQ7KND5R5SE
 number: 1794292861627479
-created: 2026-11-10T21:42:04.277Z
-updated: 2026-11-10T22:13:24.521Z
-created_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-updated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-authorship:
-  signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-  kind: seat
-  public_key: V5Zkz4W1rnaDG/FsjK3//xQX+WByyxD7/fuIYoV6NbU=
-  process_generation: '1'
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: superseded
+  evidence:
+  - commit f2d8e4076 — tests and quarantine removed
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878KKVFBE2ZSKE1ZMDAYKW3
+  previous_status: open
+  reason: Both tests deleted with their quarantine rows.
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: 'mux index watcher test times out under full-suite load: sibling_build_writes_do_not_dirty_watch_or_trigger_reconciliation'
+type: task
+updated: 2026-11-24T17:10:43.091Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: cargo nextest run --locked -p bboxy450-term-mux --lib -E 'test(sibling_build_writes_do_not_dirty_watch_or_trigger_reconciliation) | test(deferred_scan_replaces_failed_watcher_and_observes_later_edits)'
 verify_revision: 1
 provenance:
   digest: sha256:7022cb1f16bfa22617bd558d4940f0ee1b9ab3b30d9e20865d0e80ab0cabd744
-  frontmatter_digest: sha256:d4e977cdd69a24db9b9e0a45063bb0fd9f694ad632da47a9f0eb7fa49c8713ef
-  signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-  sig: VwTsN9xTPTW2dVy53bsCvNCAKOoMxk/C12UHJjvsE6DIAegoqct+4FGz+u+un5kCWI7p6mslmYi8GdQBoMPKDw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151596
+  frontmatter_digest: sha256:0e161408f0edda724a9f1a7bd7aa53cb7045e7b5b99b2aa534576489df6df08f
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: v8EilNi+hNj1Kcs9i+Xy/j7V0N6d4h6Xv3XfnGok3fo9aGrc5HjghRH9xRPK9K7kCCGqqdGpewDFiTCwoBlmBA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1889
   event:
-    id: 01M73RBTGZ4469RPKZ3CSWW2B9
-    sequence: 151596
-    hash: 1483b503ec921a5530bfce8a780c46ed8af68a7941214f9adb809018cce5bc06
+    id: 01M878KMSKWRJ7FQD536283CTB
+    sequence: 1889
+    hash: 1e1af68c3984b9033ad52b66853e74e602c3689c152fb143c943a698e57b6b9f
 ---
 # mux file-watcher tests time out under machine-wide build load
 

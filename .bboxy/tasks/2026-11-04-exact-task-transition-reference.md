@@ -1,8 +1,8 @@
 ---
-type: task
-title: Close the two stale launch aliases through exact task-reference resolution
-role: executor
-parent: 01M6KEVVYNZW5H21RPTFW1RVDR
+acceptance:
+- Task transition resolves the original exact id/path/digest even when a report or nested task shares its basename
+- True stale writes still refuse; wrong task/report never changes
+- 'After authorized activation, #19226 and #19209 are reconciled superseded by accepted #19244 with original IDs/history retained'
 allowed_paths:
 - crates/bbt-mux/src/mcp/work_items.rs
 - crates/bbt-mux/src/knowledge/**
@@ -10,31 +10,45 @@ allowed_paths:
 - crates/bbt-mux/tests/mcp/**
 - .bboxy/reports/**
 - .bboxy/runs/exact-task-transition.json
-verify: make verify-task-exact-reference
-acceptance:
-- Task transition resolves the original exact id/path/digest even when a report or nested task shares its basename
-- True stale writes still refuse; wrong task/report never changes
-- 'After authorized activation, #19226 and #19209 are reconciled superseded by accepted #19244 with original IDs/history retained'
-id: 01M6KF9SQBXGNHXFNNFPG95XFG
-status: open
-delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T14:27:10.738Z
-created: 2026-11-04T14:27:10.738Z
-number: 21254
-created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-updated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
 authorship:
-  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
   kind: seat
-  public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
   process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-04T14:27:10.738Z
+created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+id: 01M6KF9SQBXGNHXFNNFPG95XFG
+number: 21254
+parent: 01M6KEVVYNZW5H21RPTFW1RVDR
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: cancelled
+  evidence:
+  - commit 826961a68 — nested copy removed
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878K20C3Z6J3HDN8WGA3XJB
+  previous_status: open
+  reason: Admin alias cleanup; nested .bboxy/.bboxy copy deleted, alias task closed in this sweep.
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Close the two stale launch aliases through exact task-reference resolution
+type: task
+updated: 2026-11-24T17:10:25.027Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: make verify-task-exact-reference
 provenance:
   digest: sha256:bc7f4a5c209a1853195ea294a81a0534feec3cd15c3997a692c6e0837a78cf25
-  frontmatter_digest: sha256:3af40c07aba8ae833dfbec64a59be484d702387705cdbdd9b5d8d960ad4dae46
-  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  sig: M4Bahvl+655LX7BHltY+JaFXBb/G2NQMqGmGm16usKoPLbBDTnCnSm5RMf0lc2hudx2O327Pj5ZAFzwn7uGHDQ==
-  log: .bboxy/log/2026-11-04.jsonl#114158
+  frontmatter_digest: sha256:f040c5cc165ae8d43da068e987acb820a8e3012a1999a8f5dc750711f798889c
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: oqIDBlj5aDlrdoO1tgyAFI0+vyMF/pFK9FFyu9VqwRbq25TdRTY+JC91z8Y9o+5PB1Au5WsBANAnsXK7vVULAQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1857
+  event:
+    id: 01M878K35QW5XMDXCRTF146EQA
+    sequence: 1857
+    hash: 838d9f6b5160af220c6fdf6961bbb6c1d19ed1ab45c9f2e24c82bcf5151f18d0
 ---
 ROLE: EXECUTOR. TRIAGED FOLLOW-UP, NOT YET DELEGATED. No implementation authorization until a scoped worktree and signed task_delegate assignment are provided.
 

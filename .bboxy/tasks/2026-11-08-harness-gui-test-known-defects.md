@@ -1,36 +1,47 @@
 ---
-type: task
-title: Fix 7 pre-existing harness GUI test failures (gui_rich x4, gui_render x3) and remove their KNOWN-DEFECT ignores
-role: executor
 allowed_paths:
 - tests/gui_rich.rs
 - tests/gui_render.rs
 - src/frontends/gui/
-verify: cargo test --offline --locked --jobs 2 --features embedded --test gui_rich --test gui_render
-id: 01M6XZ5XTHSRAAXC9KH7Q1MWEB
-status: open
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-08T16:17:05.327Z
-created: 2026-11-08T16:17:05.327Z
-number: 93377961366386
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
   kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
   process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-08T16:17:05.327Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+id: 01M6XZ5XTHSRAAXC9KH7Q1MWEB
+number: 93377961366386
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: superseded
+  evidence:
+  - harness d2e2a03 — gui_render unignored
+  - 'successor: tasks/2026-11-24-harness-test-debt.md step 3'
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878KEKHN1HS47ZVNPJKH0FV
+  previous_status: open
+  reason: 3 gui_render fixed; 4 gui_rich carried forward.
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Fix 7 pre-existing harness GUI test failures (gui_rich x4, gui_render x3) and remove their KNOWN-DEFECT ignores
+type: task
+updated: 2026-11-24T17:10:37.644Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: cargo test --offline --locked --jobs 2 --features embedded --test gui_rich --test gui_render
 provenance:
   digest: sha256:0670712198469c650ead779d98cb057fc5157513a352bab373b89cbe0c6468bd
-  frontmatter_digest: sha256:53b915215861e01ccd7d5c4cedfe59bd1c8c7785626f91e274286b5fc1f89181
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: 2zLMyuzG0ozz+KGilEelpz+4iCJcroU0PijEQbo2Oon/8mFksCz5ZoXUdklO5dfJasBYTpttiNb3AeiX15V4Ag==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150758
+  frontmatter_digest: sha256:af8b7e3a3fb2d6efc60f30ecf2f1925bfa482ee3e6c75ca223354b81dbb789fd
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: gTt6N5aDbFBXRiT7fZLeRehumThCtV5OrV1rAKFhx8msMvlC6gjIXZJRPWQdsD1QoDKoIq928UzYvAksz9ZbCg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1879
   event:
-    id: 01M6XZ5YGRGP4GB4J1CTDAKA8C
-    sequence: 150758
-    hash: 5e95cc0394a29c46eef6bb21af3743ebb3e6496cf60b7e4281364d1b39266d99
+    id: 01M878KFEK4Y1V87ZNBGVZ1CGH
+    sequence: 1879
+    hash: 7c2e0b6aebf0a97ad30b19bccefc81a60892a15401854a0584118dcec7c48938
 ---
 ROLE: EXECUTOR
 

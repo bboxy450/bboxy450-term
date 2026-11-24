@@ -1,32 +1,46 @@
 ---
-type: task
-title: 'Yarn protocol!: one declaration -> generated reducer + finite model + completeness errors'
-role: executor
-verify: cargo test -p bboxy450-yarn --all-features --test protocol && make test-formal
-id: 01M6GVD3TZVFF49A423FX4VBYB
-status: rejected
-delegated_by: seat:01M6GVBAY1HW6P67GGDZM9XEBY
-swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-03T14:47:54.088Z
-created: 2026-11-03T14:00:59.442Z
-number: 13806
-created_by: seat:01M6GVBAY1HW6P67GGDZM9XEBY
-updated_by: seat:01M6GVBAY1HW6P67GGDZM9XEBY
-authorship:
-  signer: seat:01M6GVBAY1HW6P67GGDZM9XEBY
-  kind: seat
-  public_key: UVOPOaWiKiIlf3/HRaRx9L4rRJKHPpaAXciElGQdQaE=
-  process_generation: '1'
 assignee: seat:01M6GVDER4NMBZMRX9RF479SV9
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: nhSn9xEBWtiSbyjsoGp+NiY6RbpHlYFKdrDAwuakGD8=
+  signer: seat:01M878M634NG1V0HXT0SRPWWY5
+created: 2026-11-03T14:00:59.442Z
+created_by: seat:01M6GVBAY1HW6P67GGDZM9XEBY
+delegated_by: seat:01M878M634NG1V0HXT0SRPWWY5
+id: 01M6GVD3TZVFF49A423FX4VBYB
+number: 13806
+reconciliation:
+- by: seat:01M878M634NG1V0HXT0SRPWWY5
+  disposition: superseded
+  evidence:
+  - successor tasks/2026-11-03-yarn-protocol-frontend-v2.md (done) — commit cf7c96aa5, crates/bbt-yarn-macros/src/protocol.rs
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878M95T6MXD71SVGV1CSZNY
+  previous_status: rejected
+  reason: Rejected in favour of v2, which is done.
 rejection:
-  reason: 'Superseded by #14637: same brief, plus the scripts/source-notices.py OWNED_FORK_FILES exception. The amendment gate refused the delegating Oracle with task_field_protected. Not a rejection of the work; continue it in place under #14637.'
   by: seat:01M6GVBAY1HW6P67GGDZM9XEBY
+  reason: 'Superseded by #14637: same brief, plus the scripts/source-notices.py OWNED_FORK_FILES exception. The amendment gate refused the delegating Oracle with task_field_protected. Not a rejection of the work; continue it in place under #14637.'
+role: executor
+status: done
+swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
+title: 'Yarn protocol!: one declaration -> generated reducer + finite model + completeness errors'
+type: task
+updated: 2026-11-24T17:11:04.655Z
+updated_by: seat:01M878M634NG1V0HXT0SRPWWY5
+verify: cargo test -p bboxy450-yarn --all-features --test protocol && make test-formal
 provenance:
   digest: sha256:2da421d6038570c1cc49ece6d7406b70d5766d9dd17cfd26b729d972f7249e4a
-  frontmatter_digest: sha256:3a834746b74e3c0a26413523527ab02b00770baeaa17ccd4612761a57f55d446
-  signer: seat:01M6GVBAY1HW6P67GGDZM9XEBY
-  sig: ZuK4GuL5EP9FIdGKWPg9ylVIZd655lKaE+tESUSxJvSR+TqZzg3DO/ijhhI9Aj55o0ZZeBrUvkj6sNaQS3cjCQ==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#86837
+  frontmatter_digest: sha256:8ce8a144d93d973b0e055e98c694960af71c535ba9919f3ec3416909abe28fd4
+  signer: seat:01M878M634NG1V0HXT0SRPWWY5
+  sig: w97DATWWwtROydsc7SY4arjBXSF9leGp3ZFY+Yq6Gw24IWoF9eWwnUJBOfHO1KMFcNLpJ7W+mXaxQnA/rNqUBg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1901
+  event:
+    id: 01M878M9TZV8NXRE4D6D8GF385
+    sequence: 1901
+    hash: 863dbed51585d2c1987ea3bf929ca4d5dd78090ed27e500dd46ce2169f41a23f
 ---
 # Yarn `protocol!` — first vertical chain
 

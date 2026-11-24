@@ -1,7 +1,4 @@
 ---
-type: task
-title: 'Bound logic memory: aggregate workspace indexes have no eviction bound; 1.2 GiB RSS unattributed'
-role: executor
 allowed_paths:
 - crates/bbt-mux/src/knowledge/
 - crates/bbt-mux/src/index.rs
@@ -11,31 +8,44 @@ allowed_paths:
 - crates/bbt-mux/models/
 - verification/
 - .bboxy/reports/
-verify: cargo nextest run -p bboxy450-term-mux -E 'test(/index|memory|evict/)' && make test-formal-contracts
-status: open
-id: 01M6V226FT3BZWE6NVS0G920WT
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-07T13:09:46.129Z
-created: 2026-11-07T13:09:46.129Z
-number: 93377961366272
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
   kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
   process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-07T13:09:46.129Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+id: 01M6V226FT3BZWE6NVS0G920WT
+number: 93377961366272
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: superseded
+  evidence:
+  - 'successor: tasks/2026-11-24-workspace-index-bounds.md'
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878K8Z3N51JTRAFFAV74NC2
+  previous_status: open
+  reason: Carried into the live term swarm.
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: 'Bound logic memory: aggregate workspace indexes have no eviction bound; 1.2 GiB RSS unattributed'
+type: task
+updated: 2026-11-24T17:10:31.885Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: cargo nextest run -p bboxy450-term-mux -E 'test(/index|memory|evict/)' && make test-formal-contracts
 provenance:
   digest: sha256:da768ebfaccc8cee824bdd22d9de7d3123e3656c92bac4479fc5f37cef8a87b2
-  frontmatter_digest: sha256:673bfcf3d7c232d6270e7c834adad0505b2c41294b54b2296278f6be7fbf2337
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: Y5fhRrLK26dX14Ce/IGUVE2lhDkrYwz2tcy3eOcuyKsdvU3H327tP/M8shX/cx/lhkxOrnPNI5pl12/tCGXMAw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150350
+  frontmatter_digest: sha256:b6f26ff717b7dfe8e19febc0fd47d4eb54bcc7c048bbde7c2d39c4e90be97149
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: 08eb2y1LJpVjPR9J3uYwi3cDBCyqPLhyYsdHOf2jZTaJDV8olEtDWDX4ok7ArtXYPpJgUi096dJ/dvfW2dKxAw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1869
   event:
-    id: 01M6V227N65A1GJT08CFAFENF1
-    sequence: 150350
-    hash: 6bea489a3dd15e8bbdf29d063ea4b21555862797480c1022c2595725e101feba
+    id: 01M878K9VK24E3S8S6S3JZHHZN
+    sequence: 1869
+    hash: baaaafef221e7695069f6a2db9221ff4cad0d9fe32cf7b6b624b30afcf806c02
 ---
 # Logic memory is not bounded
 

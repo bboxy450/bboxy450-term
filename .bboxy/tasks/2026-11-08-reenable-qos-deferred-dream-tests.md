@@ -1,38 +1,48 @@
 ---
-type: task
-title: Re-enable the 28 QoS-deferred harness Dream budget tests via a serialized interactive-QoS test lane
-role: executor
 allowed_paths:
 - tests/
 - Makefile
 - .config/nextest.toml
-verify: make test-dream-c1 && make test-dream-mcp
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-08T15:54:33.000Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
 derived_from:
 - '[[tasks/2026-11-06-qos-builds-never-starve-mcp]]'
 id: 01M6XXWN6MZVW9ZV6TEV5VCT3Y
-status: open
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-08T15:54:33.000Z
-created: 2026-11-08T15:54:33.000Z
 number: 93377961366385
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: superseded
+  evidence:
+  - 'successor: tasks/2026-11-24-harness-test-debt.md step 1'
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878KFFJWTBFEZ2T6C6GSV08
+  previous_status: open
+  reason: Carried into the live term swarm.
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Re-enable the 28 QoS-deferred harness Dream budget tests via a serialized interactive-QoS test lane
+type: task
+updated: 2026-11-24T17:10:38.594Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: make test-dream-c1 && make test-dream-mcp
 provenance:
   digest: sha256:f316b993a9300928acb7aea00a058e850d7a66a282358e579ece81cdd99cfdc3
-  frontmatter_digest: sha256:666268071b4c2d7233dbe776def730de23485755206683785f1f70f7295742e4
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: 6dsrqU8Z5fhb/FSiSpsgT6fxixR5KeZTZOXrqwAI+ksvr01j1BKEJ3H1fDKecV6wcv1OMXM1SP3x2Rs+cuJDAA==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150754
+  frontmatter_digest: sha256:022d8d92d26d6c218d88bea04f67bae38b072941c974985b596272af768ea3c6
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: vWPimzJJQP5OUkPiuSZcuEHDhbL1Kwkj/IL3Y3P5bMpeibf6XhhBoqbGKGJJtnAn8WO702WxRVRP3FTmW0hxDA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1881
   event:
-    id: 01M6XXWNRPBKWWPYE7CHCV5FTA
-    sequence: 150754
-    hash: 204521e79de5203dcc25ee8de7dda6d133213c622ad656162e43f0c21fb1c93f
+    id: 01M878KGD54DXE808VVTHKZ8K2
+    sequence: 1881
+    hash: dce299da92f09ce9cce23943324a01e4aade9a530c0614d342b460ec00a2813e
 ---
 ROLE: EXECUTOR
 

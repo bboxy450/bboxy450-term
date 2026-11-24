@@ -1,7 +1,4 @@
 ---
-type: task
-title: C1 per-unit CPU budget overruns persist at low load (1.05–1.44 ms vs 1 ms)
-role: executor
 allowed_paths:
 - crates/bbt-mux/src/registry/dream_c1.rs
 - crates/bbt-mux/src/logic/dream_c1.rs
@@ -13,31 +10,45 @@ allowed_paths:
 - scripts/test-dream-c1.py
 - verification/
 - .bboxy/reports/
-verify: make test-dream-c1 && make test-formal-contracts
-status: open
-id: 01M6TGEVN80VQM9D6RAPSXZYKP
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-07T08:02:06.115Z
-created: 2026-11-07T08:02:06.115Z
-number: 93377961366244
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
   kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
   process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-07T08:02:06.115Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+id: 01M6TGEVN80VQM9D6RAPSXZYKP
+number: 93377961366244
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: superseded
+  evidence:
+  - commit ff8109e68 — crates/bbt-mux/src/logic/dream_c1.rs:54 50 ms OVERRUN
+  - 'successor: tasks/2026-11-24-term-stale-known-defect-ignores.md'
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878K7TPEN2G6ASCTRAPC98R
+  previous_status: open
+  reason: Budget fixed; remaining 11 ignores carried forward.
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: C1 per-unit CPU budget overruns persist at low load (1.05–1.44 ms vs 1 ms)
+type: task
+updated: 2026-11-24T17:10:30.854Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: make test-dream-c1 && make test-formal-contracts
 provenance:
   digest: sha256:d5090cec0d5bdf4dd0d10fa3d5656dd0019c9cbd92eb28f92b057295036d9666
-  frontmatter_digest: sha256:0f09e162457070f0d30f6f9c54f46120687be4cbcc6272f2949b309641f8231a
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: hopKx5AOsdGbPbY0Ex0pa4Y+JWaFxKfVSANUXpPS96DKsmh4Axq2CI+VB6NLRoNKEBgG6Y41Iq0YhaMOz6uBDg==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150245
+  frontmatter_digest: sha256:06d5625fe6be8c7f7beda97389ea886e36e2ae0cabb8cdbe7e5a1e00ec3897f3
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: gkXU7gVcWcKkfzVbFoxT4bRugdryjgtml5GMtFvsB2V52foyqzuk/nsxXJSxOFJ9vRsHchMLg9hWdokbPmsIDg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1867
   event:
-    id: 01M6TGEW91SYV7TGBM5W20Z84Z
-    sequence: 150245
-    hash: ddcaf414b1b2bc853e408bf32cbcc14e6fc1a13d6d23f1295f0e276a0bd32db3
+    id: 01M878K8V41NMA8PPW9P53FAAS
+    sequence: 1867
+    hash: 3c135326d9ac4462e58ebf19f290673e30c837a61dccdb43a9e6ef52c70c3c4f
 ---
 # C1 units overrun the 1 ms CPU budget even at low load
 

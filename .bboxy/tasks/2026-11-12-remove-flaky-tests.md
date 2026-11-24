@@ -1,7 +1,4 @@
 ---
-type: task
-title: 'Remove flaky tests: the quarantined six and the swarm_workdir timing witnesses'
-verify: make land
 allowed_paths:
 - crates/bbt-mux/**
 - crates/bboxy450-term/**
@@ -11,30 +8,44 @@ allowed_paths:
 - .bboxy/quarantine.md
 - .bboxy/specs/**
 - LAND.md
-id: 01M78P5SGHVRK4149PTHN65TVP
-status: open
-delegated_by: seat:01M78E743PF9RK3DA9Y3WRWTWD
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-12T20:11:23.317Z
-created: 2026-11-12T20:11:23.317Z
-number: 1794292861627494
-created_by: seat:01M78E743PF9RK3DA9Y3WRWTWD
-updated_by: seat:01M78E743PF9RK3DA9Y3WRWTWD
 authorship:
-  signer: seat:01M78E743PF9RK3DA9Y3WRWTWD
   kind: seat
-  public_key: lZh8jo1S9rWtfvb9+EUefnBFfbJ6FtBuf6dXC19gMpk=
   process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-12T20:11:23.317Z
+created_by: seat:01M78E743PF9RK3DA9Y3WRWTWD
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+id: 01M78P5SGHVRK4149PTHN65TVP
+number: 1794292861627494
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: implemented
+  evidence:
+  - commit f2d8e4076 — quarantine emptied
+  - 'leftover: tasks/2026-11-24-term-stale-known-defect-ignores.md step 2'
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878KNX3RFQ8RBSSM97RNNQY
+  previous_status: open
+  reason: Six quarantined tests deleted; stale Makefile filter carried forward.
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: 'Remove flaky tests: the quarantined six and the swarm_workdir timing witnesses'
+type: task
+updated: 2026-11-24T17:10:45.720Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: make land
 provenance:
   digest: sha256:046b81929735e7db9fdf146da1a3e9997a8b03cbd41fd09a5bdc847adedc4770
-  frontmatter_digest: sha256:1d694cdad748bd2fe0ede64fa58aca049b5bf5e326ea70197b76ce26ef6850b4
-  signer: seat:01M78E743PF9RK3DA9Y3WRWTWD
-  sig: kOzAS9+zO2OIhOjozycnZT39kdWbBiUX1AdiGqSzDidONv5IjMlnCovLqc+mdobUnzTnuVLP0ygkQuDUNmJxDw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151642
+  frontmatter_digest: sha256:1f86f13ac86093f195bf606ff4888ec0737155a5a6f29c71980a129ab6f0a337
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: 5NpDI8kX4FauBaNsc+BGKgWPiTftVgbEWz79SuXJ31q0dxbAUSzn0zBLDiIyKzURsCXEg/tMFFo5EneTche1CQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1893
   event:
-    id: 01M78P5VKD0ZDYBWD219FPQR76
-    sequence: 151642
-    hash: 0e9e4eac91995bc4001510704a61ae03a16d246b11f88124340a62325a6ca6d6
+    id: 01M878KQCE9ASSQFNKX74XJPBM
+    sequence: 1893
+    hash: cad43253fbf4152fb6520724bedd8bd87d58bca0a012058af41934cc318caee3
 ---
 ## Goal
 

@@ -1,7 +1,4 @@
 ---
-type: task
-title: artifact_claim refuses committed reports with artifact_not_committed (seen 3 times)
-role: executor
 allowed_paths:
 - crates/bbt-mux/src/mcp/
 - crates/bbt-mux/src/knowledge/
@@ -11,31 +8,44 @@ allowed_paths:
 - crates/bbt-mux/tests/
 - verification/
 - .bboxy/reports/
-verify: cargo nextest run -p bboxy450-term-mux -E 'test(/artifact/)' && make test-formal-contracts
-status: open
-id: 01M6SEAXBXW6QMYTFVPM2ZKZ6E
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-06T22:05:46.090Z
-created: 2026-11-06T22:05:46.090Z
-number: 93377961366137
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
   kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
   process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-06T22:05:46.090Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+id: 01M6SEAXBXW6QMYTFVPM2ZKZ6E
+number: 93377961366137
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: superseded
+  evidence:
+  - 'successor: tasks/2026-11-24-artifact-claim-after-commit.md'
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878K4CQCGF281EDK4R1X11A
+  previous_status: open
+  reason: Carried into the live term swarm.
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: artifact_claim refuses committed reports with artifact_not_committed (seen 3 times)
+type: task
+updated: 2026-11-24T17:10:27.599Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: cargo nextest run -p bboxy450-term-mux -E 'test(/artifact/)' && make test-formal-contracts
 provenance:
   digest: sha256:e91c141bced52231cc204f8d825cde13e3905075d27c9604c14fc4d9d1b1c16e
-  frontmatter_digest: sha256:0de6e674fc85fba2e315f1a169f1354316aec6c7f03e91cee2c2c5d417969dcf
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: p8f+w49qLXClbA7lqBkAui2rmxx3M5ArinLJO0zipCvzaT5xRUW7CzGLKm7bjjK2QNIhkR/2Vc21aj2coNTwBg==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/149908
+  frontmatter_digest: sha256:234d97d73d77f3a3778f00a16571fdc4c1adeee642894f939a7a9e05e7cbc5c2
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: 6m6wqZXjBVXNeC4wYFWXo9brDcEHeaUilmPM44K1bWK2histOm+Fx+AN9P2UUQgKx2xZ476sN+eS6GC4796PCA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1861
   event:
-    id: 01M6SEAYX8TD8YS0SAXFK0ZRZA
-    sequence: 149908
-    hash: e06784ce51fadb80388b995f644b5693f09241bc55153e334e8bdae4aefac79c
+    id: 01M878K5NSKHP66YG73W4M4AP7
+    sequence: 1861
+    hash: ca184b1a19af0a13cbfc518e4981c91d8e4b4f0797096c4b3d985876a9583094
 ---
 # artifact_claim says "not committed" for committed reports
 

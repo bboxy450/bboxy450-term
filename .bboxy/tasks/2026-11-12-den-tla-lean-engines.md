@@ -1,7 +1,4 @@
 ---
-type: task
-title: 'Den and Yarn: liveness, TLA+ export, Lean proofs and trace conformance over one model'
-verify: cargo nextest run -p bboxy450-tlc -p bboxy450-den -p bboxy450-yarn && make test-formal
 allowed_paths:
 - crates/bboxy450-den/**
 - crates/bboxy450-tlc/**
@@ -15,30 +12,44 @@ allowed_paths:
 - ATTRIBUTION.md
 - Cargo.lock
 - Cargo.toml
-id: 01M78ECVP5ZVY6F98EM82AAQBM
-status: open
-delegated_by: seat:01M78E743PF9RK3DA9Y3WRWTWD
-swarm: 01M649102FBS60QWNPZS5VAGF9
-number: 1794292861627493
-created: 2026-11-12T17:55:25.484Z
-updated: 2026-11-12T18:30:44.535Z
-created_by: seat:01M78E743PF9RK3DA9Y3WRWTWD
-updated_by: seat:01M78E743PF9RK3DA9Y3WRWTWD
 authorship:
-  signer: seat:01M78E743PF9RK3DA9Y3WRWTWD
   kind: seat
-  public_key: lZh8jo1S9rWtfvb9+EUefnBFfbJ6FtBuf6dXC19gMpk=
   process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-12T17:55:25.484Z
+created_by: seat:01M78E743PF9RK3DA9Y3WRWTWD
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+id: 01M78ECVP5ZVY6F98EM82AAQBM
+number: 1794292861627493
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: implemented
+  evidence:
+  - commit c02712486 — Den theorems in Lean 4
+  - commit 794bf5ca6 — Yarn Lean proofs; make test-lean --expect-fail
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878KQFYKX9S2FG60K0MF4R9
+  previous_status: open
+  reason: Den and Yarn proofs in Lean with an expect-fail control.
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: 'Den and Yarn: liveness, TLA+ export, Lean proofs and trace conformance over one model'
+type: task
+updated: 2026-11-24T17:10:47.018Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: cargo nextest run -p bboxy450-tlc -p bboxy450-den -p bboxy450-yarn && make test-formal
 provenance:
   digest: sha256:768ea2f4dbba1f75c37983fb109720ad656c6affcd315576d1e11f13561754af
-  frontmatter_digest: sha256:d8ec4b170986a671753183c2be20030ef41a1a8939baac518366c9d7e7d706a5
-  signer: seat:01M78E743PF9RK3DA9Y3WRWTWD
-  sig: 3vYIEX0OGUKgaH/Xb4CQ2Ynyho7sToINbsR7fnghYmegcOjAksyoljSq2re01hCW0eZwcJexScQl5IoJ77KoBQ==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151640
+  frontmatter_digest: sha256:6fd77e1b1bdc380567e5366e3feed1d57aff15eac7892cd91770141f93902319
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: SMeSaw7XnLS9A07aWMHpbfuigWnC06VRRnlJreI9GRSoVO5twdgTi12tYkEQl0c8IZGvrSo1BArVHyREHp4jCQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1895
   event:
-    id: 01M78GDHNR70YH6W887GRP06RN
-    sequence: 151640
-    hash: 46229d124dbcf1d931de492226fca17d4b74e32a1246cb4bc4082b73a2f99a2a
+    id: 01M878KRKN1TCE3EXJH1PKY75T
+    sequence: 1895
+    hash: 15dd49838f53e90812edc5fd6e1567c04380d638e98ff066fb0f1363844e11e3
 ---
 ## Goal
 

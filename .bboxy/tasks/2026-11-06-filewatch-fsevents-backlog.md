@@ -1,7 +1,4 @@
 ---
-type: task
-title: FileWatch misses real edits for >30s under FSEvents backlog (land-time churn); add a bounded rescan fallback
-role: executor
 allowed_paths:
 - crates/bbt-mux/src/index.rs
 - crates/bbt-mux/src/index/
@@ -12,31 +9,44 @@ allowed_paths:
 - verification/
 - .bboxy/quarantine.md
 - .bboxy/reports/
-verify: cargo nextest run -p bboxy450-term-mux -E 'test(/watch|file_watch|routing/)' && make test-formal-contracts
-status: open
-id: 01M6SR31WT64E5F3TBSHT5YGMT
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-07T00:56:13.385Z
-created: 2026-11-07T00:56:13.385Z
-number: 93377961366183
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
   kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
   process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-07T00:56:13.385Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+id: 01M6SR31WT64E5F3TBSHT5YGMT
+number: 93377961366183
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: superseded
+  evidence:
+  - 'successor: tasks/2026-11-24-kb-watch-rescan-fallback.md'
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878K5RC1TW10Y5HQ5FQ8QTQ
+  previous_status: open
+  reason: Carried into the live term swarm.
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: FileWatch misses real edits for >30s under FSEvents backlog (land-time churn); add a bounded rescan fallback
+type: task
+updated: 2026-11-24T17:10:28.689Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: cargo nextest run -p bboxy450-term-mux -E 'test(/watch|file_watch|routing/)' && make test-formal-contracts
 provenance:
   digest: sha256:5bb4db733571def9810a1d4aa0114d7d322dd53eb4ff23a617b06d308dbfb520
-  frontmatter_digest: sha256:feb8c23788a078abc2da43b9c48ef9f9d8a5cd7504bf536f6b72d9176cf7c86f
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: hx7PLMNC6mt9mAFYhrcNseqWfE5bdzsfoyhLqZHVGWcx0ylXOXIzhKm2Ui6Zbp5AMEmSDcO8wjmiNO1aZ3NwAQ==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150053
+  frontmatter_digest: sha256:970700277b4857d817783dc165696fb018ad122990641e8cb44ca68980d36662
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: JDKa9LnT/sJk9bqpTF+Jmjn7/Ijdtz22bu42VKlHmq5fEsLQlLA6QfxJ18s6yTkvLV/2A57hd022Z5OiyXJpDw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1863
   event:
-    id: 01M6SR32DT36PTXBZKSN1X2QC3
-    sequence: 150053
-    hash: 93c18305b5ddded0dee5eb33e8bedd309ef95d3216c49fbe031553985589d949
+    id: 01M878K6PG9SDHCK9JQJ3C7Z2W
+    sequence: 1863
+    hash: 1a623d4c3dee37b19235ce798bd56545edf019f2e94e3f0365522e9cc7055200
 ---
 # FileWatch goes blind under FSEvents backlog
 

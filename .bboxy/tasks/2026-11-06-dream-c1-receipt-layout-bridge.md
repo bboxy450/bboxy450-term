@@ -1,7 +1,4 @@
 ---
-type: task
-title: Align producer/term C1 runner receipt layout so the joined run gets past Hello into Store/export
-role: executor
 allowed_paths:
 - crates/bbt-mux/src/registry/dream_c1.rs
 - crates/bbt-mux/src/logic/dream_c1.rs
@@ -11,31 +8,44 @@ allowed_paths:
 - verification/
 - .bboxy/interfaces/dream-term-c1.md
 - .bboxy/reports/
-verify: make test-dream-c1 && make test-formal-contracts
-status: open
-id: 01M6S8SCR6ZS4Q2GZVGC19AK76
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-06T20:28:48.103Z
-created: 2026-11-06T20:28:48.103Z
-number: 93377961366112
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
   kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
   process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-06T20:28:48.103Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+id: 01M6S8SCR6ZS4Q2GZVGC19AK76
+number: 93377961366112
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: superseded
+  evidence:
+  - 'successor: tasks/2026-11-24-term-stale-known-defect-ignores.md step 3'
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878K6TJT4QZJ3QCX9VYT4CF
+  previous_status: open
+  reason: Carried into the live term swarm.
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Align producer/term C1 runner receipt layout so the joined run gets past Hello into Store/export
+type: task
+updated: 2026-11-24T17:10:29.685Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: make test-dream-c1 && make test-formal-contracts
 provenance:
   digest: sha256:6c52cfc0679a2ab541ca162ab34dda85b430d0f60939fde36dfb3c80ac51353b
-  frontmatter_digest: sha256:5402210ae667edade8d04159148c87722920efbd41567d6afc19efca319721b2
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: A+pMvFvX8dOlYZ+H5NtnZOuKT2/0ovYSs7V9iBDESfWGhHS+HVA/3GxQUfu851xwBcYMJ+Kr2RXoCoyXm4rAAg==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/149829
+  frontmatter_digest: sha256:3094ae6f71e3ff19da444da4f356bf41f580589a0d4cc7b4df4cb7bd0bc35635
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: hQZIFqfEVSAzyHYM8R740NvwXqOz5JfXmdN/ejuHlbITL5rD2E9g9ZHD+rXCFVYOq0dYSg7olDmudRDO9lBbBg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1865
   event:
-    id: 01M6S8SD6Y30M296GGC8WS01HB
-    sequence: 149829
-    hash: 6a02b479d7671f25061ea62cedba0c83bd1810de07d95945842e0b334089488a
+    id: 01M878K7PTGRF6H23X8TVBP4C4
+    sequence: 1865
+    hash: 0bfb9bdbf79a2c2526183f38e5096b82a2bedd3d70393d735dff4532eb2b01bc
 ---
 # C1 joined run stops at the receipt layout
 

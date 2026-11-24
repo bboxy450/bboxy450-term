@@ -1,40 +1,50 @@
 ---
-type: task
-title: 'Architect review: external-helper budget enforcement after INPUT54-69 (continuous observation vs kernel rlimits)'
-role: architect
 allowed_paths:
 - .bboxy/decisions/
 - .bboxy/specs/
 - .bboxy/interfaces/
-verify: review-only
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-09T12:15:47.503Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
 derived_from:
 - '[[decisions/d93377961366280-dream-q2-external-helper-budget]]'
 - '[[decisions/d93377961366331-dream-q2-process-create-wall-ceiling]]'
 - '[[tasks/2026-11-05-dream-proof-tools-provisioner]]'
 id: 01M703RTB5MD2D9V70AV66SPND
-status: open
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-09T12:15:47.503Z
-created: 2026-11-09T12:15:47.503Z
 number: 93377961366456
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
-  process_generation: '1'
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: implemented
+  evidence:
+  - decision d93377961366459-dream-external-helper-shim-enforcement.md — derived_from this task
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878KGG3NYPYPC56XMEVTCBH
+  previous_status: open
+  reason: Decision written.
+role: architect
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: 'Architect review: external-helper budget enforcement after INPUT54-69 (continuous observation vs kernel rlimits)'
+type: task
+updated: 2026-11-24T17:10:39.624Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: review-only
 provenance:
   digest: sha256:84938fafe24673af8225f1585c8b323d5627e948dc15601266fc1d9488f754f2
-  frontmatter_digest: sha256:97adbece3a4145dc45cf1e5a19cfd08e87c009dbc220281b0f38e9a0d50ee213
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: 0R1VME9l3pVVl5qiheRal2uIARWn7VvvENAGnp1u3/FVg+PbODvYIpRFSA14H0HuJu+PzFZuMTPEDb+mGJ2rDg==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151009
+  frontmatter_digest: sha256:3769c14dda764172b2f7d9d81c62c0a12eb58d7972cb9f6e2040d0a936ffa1c3
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: aVpsWgF/bN5naPb73ZYa/2tvnB/Bp9ikMknlvp040Pp7vPdpiEXHDOtXCxd5nNzX/0bTdt+2q0fLXFVnYgL3CA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1883
   event:
-    id: 01M703RTXVXT203MR5CJFDBTVN
-    sequence: 151009
-    hash: aab9af75f1df73666ac03dd0a104ee87f092a19fdfd7abd27caa62bbc7df6b6c
+    id: 01M878KHD07YE8MSJS9YENA9TW
+    sequence: 1883
+    hash: d7b85bd8476953532fd626cea7e3c873a6ae7f4a9831e8374c53748eb164451d
 ---
 ROLE: ARCHITECT
 

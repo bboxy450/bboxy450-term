@@ -1,34 +1,44 @@
 ---
-type: task
-title: 'Harness: intermittent "known bill precedes group-proof upgrade" race in external_total_budget_terminal_wait4 test'
-role: executor
 allowed_paths:
 - src/dream/resolve.rs
-verify: 'cargo test --offline --locked --release --lib dream::resolve::selected_helper_process_tests:: -- --test-threads=1'
-id: 01M6Z19AWMH2VVHJTN7ZCHYBDG
-status: open
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-09T02:13:08.881Z
-created: 2026-11-09T02:13:08.881Z
-number: 93377961366420
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
   kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
   process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-09T02:13:08.881Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+id: 01M6Z19AWMH2VVHJTN7ZCHYBDG
+number: 93377961366420
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: superseded
+  evidence:
+  - 'successor: tasks/2026-11-24-harness-test-debt.md step 2'
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878KDEM1S3DT1DB195S3Y53
+  previous_status: open
+  reason: Carried into the live term swarm.
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: 'Harness: intermittent "known bill precedes group-proof upgrade" race in external_total_budget_terminal_wait4 test'
+type: task
+updated: 2026-11-24T17:10:36.632Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: 'cargo test --offline --locked --release --lib dream::resolve::selected_helper_process_tests:: -- --test-threads=1'
 provenance:
   digest: sha256:bada31bc35ed976af91df36027a017dc72391cc910650cf1a679dfb92eba362e
-  frontmatter_digest: sha256:ced24ffd03f333e2b9938b3300fc75c4159f6bdd0cb7185c25b33eeb500abb73
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: xqMA5NKOu72A6h4lGbtmF5WKC8zbrYenzVXlPT2rnRCJe27Hs1qHIf70kJzqke9CuMp8IZGneKpeaqP5P2S1Aw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150884
+  frontmatter_digest: sha256:aa6c08e3427b335b5c79d181126a0f1fd3c3de96aa67db5885e5cf7f0b9c4c80
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: GUJF+XTiEeCwCyJcEtNHGP0g05yIb/dWEb4GRRdSCpw/Mu2SOX5MDoV8dzFkUDyoUnHbAGxtJC9VbhplMnF1Bw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1877
   event:
-    id: 01M6Z19BR4PCA2GQKXY29A6DX2
-    sequence: 150884
-    hash: 5bf85ea1a517bfc6dc11e02e6147364805b6eaeca35b736f16e6417c894d781e
+    id: 01M878KEG2WJF1485BVN1MZ13P
+    sequence: 1877
+    hash: b3a76cb9c37e3f5d353ad4a9c2f8f8d7687ad1b9c1310f7ae9c9bd716acada5b
 ---
 ROLE: EXECUTOR
 

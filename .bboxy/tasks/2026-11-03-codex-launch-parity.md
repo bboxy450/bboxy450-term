@@ -1,8 +1,9 @@
 ---
-type: task
-title: Preserve admitted prompts, MCP tools and launch semantics through ACP/exec harness backends
-role: executor
-worktree: /Users/feral/mydev/bboxy450-harness-pane-b12
+acceptance:
+- Downstream process receives admitted launch prompt/context and can call scoped MCP tools across ACP/exec fixtures
+- Precedence, flags semantics, cwd and session/generation lifecycle retain context without cross-seat transfer
+- Native/TLC ownership/failure model parity and causal broken controls pass
+- Clean canonical make test and current-source formal evidence pass; signed report and exact logs retained
 allowed_paths:
 - src/backend/acp_agent.rs
 - src/backend/acp_agent/**
@@ -25,33 +26,46 @@ allowed_paths:
 - ATTRIBUTION.md
 - .bboxy/reports/**
 - .bboxy/runs/codex-launch-parity.json
-verify: RUSTC_WRAPPER= make test
-parent: 01M6HCH1SJHDSB6SDAC2ZF1BXX
-acceptance:
-- Downstream process receives admitted launch prompt/context and can call scoped MCP tools across ACP/exec fixtures
-- Precedence, flags semantics, cwd and session/generation lifecycle retain context without cross-seat transfer
-- Native/TLC ownership/failure model parity and causal broken controls pass
-- Clean canonical make test and current-source formal evidence pass; signed report and exact logs retained
-status: open
-id: 01M6HREVGM5DB1KQ1P4CZ20VWH
-delegated_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-03T22:28:44.778Z
-created: 2026-11-03T22:28:44.778Z
-number: 19226
-created_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
-updated_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
 authorship:
-  signer: seat:01M6H97SAX3GN1BYB4YG76P3P0
   kind: seat
-  public_key: B3hFSjBIE1Nnj7mw9Eg9pqyRpYHF/GQaKXPyV1KAod0=
   process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-03T22:28:44.778Z
+created_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+id: 01M6HREVGM5DB1KQ1P4CZ20VWH
+number: 19226
+parent: 01M6HCH1SJHDSB6SDAC2ZF1BXX
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: superseded
+  evidence:
+  - harness d3aede7 forwards launch context and MCP — acp_agent.rs:2167 sends self.mcp_servers
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878K0Z5BEKGSVG3VBK0J618
+  previous_status: open
+  reason: Duplicate of tasks/2026-11-03-codex-agent-context.md (done).
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: Preserve admitted prompts, MCP tools and launch semantics through ACP/exec harness backends
+type: task
+updated: 2026-11-24T17:10:23.815Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: RUSTC_WRAPPER= make test
+worktree: /Users/feral/mydev/bboxy450-harness-pane-b12
 provenance:
   digest: sha256:6cf66e5ddd082e4f3cd6c7ce440f602ef737f9932b23d87add2b558160ed27fa
-  frontmatter_digest: sha256:16bb14bd4257ade504204427672a52cf8586d375b8c9ef433a3050a5ccc92903
-  signer: seat:01M6H97SAX3GN1BYB4YG76P3P0
-  sig: 1+QfyDeWARW8gzQNpQBiq/SA8p1EMwvmj0aA2nNCumnHfvuNLd2n/KQAUAWBa1lc37bGWv36Pxu12HaezgxWAQ==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#106805
+  frontmatter_digest: sha256:ede64e0e27f4929f95ea5894b33dfa8baeb9ec57c00119786077590d27936441
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: QeLZkB/LmeddSXRS/c29S9HlKWRAvZeZBwcPqcqrwuKkwQJeylAkFY2k0DP+Wl9xFc9nASN+p3idQvQGI5tbAA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1855
+  event:
+    id: 01M878K1YCFJ5D54BSJFSCC19D
+    sequence: 1855
+    hash: 0c7ca8815350fa28e595dbc61ddf06c4e00fd9070b9312aac34adc38ef7d1f51
 ---
 ROLE: EXECUTOR. Implement launch-context parity in /Users/feral/mydev/bboxy450-harness-pane-b12, branch codex-launch-parity-20261103, base published2fb78a017992f73468b6fa9fe5edbc48ba27f05c. The prior socket task is accepted and its seat exited; preserve pane/b1-b2, all original refs/source/reports/formal receipts. Reuse the existing warm worktree target to limit disk use. Read project instructions, Make help and relevant source/ICDs before edits. Exact allowed_paths only, exact staging, approved Boxy signed commits, attribution. No recruiting, push/merge/publication/trusted install, actual Claude launch, paid inference, credentials, global configs, desktop control or other worktrees.
 

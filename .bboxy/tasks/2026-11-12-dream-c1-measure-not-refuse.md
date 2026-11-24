@@ -1,7 +1,4 @@
 ---
-type: task
-title: 'Dream C1: a CPU overrun is measured, not refused; restore the Dream tests'
-verify: cargo nextest run -p bboxy450-term-mux --lib --retries 0
 allowed_paths:
 - crates/bbt-mux/**
 - crates/bboxy450-harness-wake-up/**
@@ -13,30 +10,43 @@ allowed_paths:
 - .bboxy/specs/**
 - .bboxy/decisions/**
 - .bboxy/bugs/**
-id: 01M78WFC54943HGK458NRD1SHF
-status: open
-delegated_by: seat:01M78E743PF9RK3DA9Y3WRWTWD
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-12T22:01:28.010Z
-created: 2026-11-12T22:01:28.010Z
-number: 1794292861627495
-created_by: seat:01M78E743PF9RK3DA9Y3WRWTWD
-updated_by: seat:01M78E743PF9RK3DA9Y3WRWTWD
 authorship:
-  signer: seat:01M78E743PF9RK3DA9Y3WRWTWD
   kind: seat
-  public_key: lZh8jo1S9rWtfvb9+EUefnBFfbJ6FtBuf6dXC19gMpk=
   process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-12T22:01:28.010Z
+created_by: seat:01M78E743PF9RK3DA9Y3WRWTWD
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+id: 01M78WFC54943HGK458NRD1SHF
+number: 1794292861627495
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: implemented
+  evidence:
+  - commit ff8109e68 + decision d1794292861627496
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878KMWRHJ19AABW6A0FGFWR
+  previous_status: open
+  reason: Refusal became a 50 ms OVERRUN measure (recorded deviation).
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: 'Dream C1: a CPU overrun is measured, not refused; restore the Dream tests'
+type: task
+updated: 2026-11-24T17:10:44.110Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: cargo nextest run -p bboxy450-term-mux --lib --retries 0
 provenance:
   digest: sha256:717548573519e58df0938c480226cd1e4a02848cede8f0e4b5b4ace3acd64098
-  frontmatter_digest: sha256:c0c53cb91dce57387b92046e0bbb40e3ed8e89f15205a5ef112d4fc42f890739
-  signer: seat:01M78E743PF9RK3DA9Y3WRWTWD
-  sig: /w8077pn3KmJjf6kDL0Hv5E0Bt07VXOF8AMXexPVEFwxHEFhx8UuICtQ8VsCvQpzKDm4LLL/QK15jiIXcU8SCg==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151644
+  frontmatter_digest: sha256:8fb8c68c6e73308e3cd2abdc0d252278a6b15a15fb21979748cfff6241c4b994
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: 1t/o6t1QpSWNLKuNBe8zsK/alGtXZ8xxdvU0mjSeaj9t64TSECzx592nj4dQTYS6L0+xi9dKZdb8O4h21cyJAQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1891
   event:
-    id: 01M78WFD309J1RM25Q9ED9HN4K
-    sequence: 151644
-    hash: 7cbda76a1312c7574cb04c2227cd26bcffddcd6eec6f669531a861a83e674dc4
+    id: 01M878KNS0VEG282H7G2J7G4V9
+    sequence: 1891
+    hash: 844f3d4f84a1da31bb95a40ee08b838d6b791b774594c30b1c10eee69fd5f890
 ---
 ## Goal
 

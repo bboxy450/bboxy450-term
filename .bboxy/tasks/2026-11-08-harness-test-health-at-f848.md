@@ -1,36 +1,47 @@
 ---
-type: task
-title: 'Harness test health at f848c03f: triage ~39 integration tests that fail outside their canonical Make env'
-role: executor
 allowed_paths:
 - tests/
 - scripts/land.py
 - Makefile
-verify: make test
-id: 01M6YK6GPVXKPP8Q8VZEDDSG7N
-status: open
-delegated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-08T22:06:58.090Z
-created: 2026-11-08T22:06:58.090Z
-number: 93377961366408
-created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
-updated_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
 authorship:
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
   kind: seat
-  public_key: DbWCjlMnSNUcBZMB2JrdfJ36/iQgSFRbtz78XE3WlhU=
   process_generation: '1'
+  public_key: 0X00kpb5zTGUeot1iS3xss6zajL5tcixiAgioL6WETw=
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+created: 2026-11-08T22:06:58.090Z
+created_by: seat:01M6RZRGC3194VVFBC4M7XW4MF
+delegated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+id: 01M6YK6GPVXKPP8Q8VZEDDSG7N
+number: 93377961366408
+reconciliation:
+- by: seat:01M878FXVG76NYQYEEEXAHQ108
+  disposition: implemented
+  evidence:
+  - commit 1ad7798ef — harness pin d2e2a03, make test-harness-source 841/841
+  - commit 2d6fb00a2 — own configuration
+  fresh_accepted: false
+  kind: historical
+  op_id: 01M878KB60N62FFQNDD3Z7VVT3
+  previous_status: open
+  reason: Harness suite green at pin, run in its own configuration.
+role: executor
+status: done
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: 'Harness test health at f848c03f: triage ~39 integration tests that fail outside their canonical Make env'
+type: task
+updated: 2026-11-24T17:10:34.438Z
+updated_by: seat:01M878FXVG76NYQYEEEXAHQ108
+verify: make test
 provenance:
   digest: sha256:0d5662758347a4462d43db7693142278f49869b741733ef9bea40ea833088f91
-  frontmatter_digest: sha256:01f085f30c62b53cf3604630e2903899b480be1a02115c3f3aca17d4228bb962
-  signer: seat:01M6RZRGC3194VVFBC4M7XW4MF
-  sig: gdzYN0p9uhpdjI9k9RYpvT0CFmsB79m5V57BD5y3t6/sKV/qYxr/f1QfH3n4spPirwzzntdGi3vc2L/PJGQ7Dg==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150845
+  frontmatter_digest: sha256:473cc57c5ea3a90247ca9e985963b3f35143b81a65e0e64ce7fe339362c7dbe1
+  signer: seat:01M878FXVG76NYQYEEEXAHQ108
+  sig: CtMf6CXiQXTHLWg2C+XLjgh+rwFZTNno+MT6QUtRMxDe2q0VU1/2udg3mxAoWcf3dtY2BpiZv1LWXx8O/dOyCQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1873
   event:
-    id: 01M6YK6K51CM3S32EPQ718QE25
-    sequence: 150845
-    hash: ddca831dcd9f4964f1d015241090c2a9418632c5dc573ab9ed2f011221723a83
+    id: 01M878KCB0X4CHJJPD8530T65C
+    sequence: 1873
+    hash: c7a516e512f9a96b60dfc375f8ed951c25d8b93cf4bb43c2761c113fdac36d49
 ---
 ROLE: EXECUTOR
 
