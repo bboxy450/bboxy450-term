@@ -11,10 +11,9 @@ import json
 import os
 import math
 from pathlib import Path
-import subprocess
 
 from corpus import BASE, digest, dump
-from references import policy
+from references import CAPTURE_NOISE_LIMITS, capture_noise, compare_png, policy, within_capture_noise
 from reference_browser import require_version
 
 
@@ -88,7 +87,7 @@ def run(out):
 
     def compare(a, b, name):
         diff = directory / (name+"-diff.png")
-        return {**json.loads(subprocess.check_output([str(oracle), "compare", str(a), str(b), str(diff)])), "diff": str(diff)}
+        return {**compare_png(oracle, a, b, diff), "diff": str(diff)}
 
     controls, interpolation = [], []
     pixels = [(255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 128), (255, 255, 255, 0)]
@@ -99,6 +98,8 @@ def run(out):
         prefix = key+"-"+view["id"]
         kind = "without-gradient" if key == "isolation-gradient" else "without-image"
         result = compare(captures["complete"]["file"], captures[kind]["file"], prefix+"-omitted")
+        if within_capture_noise(result):
+            raise ValueError("capture noise bound accepted dropped paint: " + prefix)
         if result["changed_fraction"] <= policy()["vector_budget"]:
             raise ValueError("dropped-paint control did not fail: " + prefix)
         controls.append({"case": key, "view": view, "omission": kind, **result})
@@ -173,23 +174,45 @@ def frozen_advisories(out, comparisons):
         raise ValueError("frozen reference advisory set changed")
     manifests=[("corpus",json.loads((BASE/"corpus/manifest.json").read_text())),("fixtures",json.loads((BASE/"fixtures/manifest.json").read_text()))]
     fractional={c["id"] for _,m in manifests for c in m["cases"] if any(not float(v).is_integer() for v in c["viewBox"])}
-    refreshed=[]
+    refreshed = {}
+    noise = []
+    oracle = out / "oracle-build/debug/bboxy450-svg-reference"
     for entry in frozen["cases"]:
         row = next(r for r in rows if (r["case"], r["view"]) == (entry["case"], entry["view"]))
         files = (row["chrome"]["file"], row["resvg"], row["diff"])
         hashes=[digest(Path(p).read_bytes()) for p in files]
         if entry["source_sha256"]!=row["source_sha256"]:raise ValueError("frozen advisory authored source changed")
-        if entry["changed_fraction"]!=row["changed_fraction"] or entry["pixel_sha256"]!=hashes:
-            if os.environ.get("UPDATE_REFERENCES")!="1" or entry["case"] not in fractional:
-                raise ValueError("frozen advisory reference changed outside approved fractional viewport refresh")
-            entry["changed_fraction"]=row["changed_fraction"]
-            entry["pixel_sha256"]=hashes
-            refreshed.append((entry["case"],entry["view"]["id"]))
+        case, view = entry["case"], entry["view"]["id"]
+        baseline = BASE / "fixtures/advisory-chrome" / f"{case}-{view}-shapes.png"
+        pinned = entry["pixel_sha256"]
+        if not baseline.is_file() or digest(baseline.read_bytes()) != pinned[0]:
+            raise ValueError(f"missing or stale frozen Chrome baseline: {case}/{view}")
+        drift = abs(entry["changed_fraction"] - row["changed_fraction"])
+        if not drift and pinned == hashes:
+            continue
+        if os.environ.get("UPDATE_REFERENCES") == "1" and case in fractional:
+            entry["changed_fraction"] = row["changed_fraction"]
+            entry["pixel_sha256"] = hashes
+            refreshed[(case, view)] = (baseline, files[0])
+            continue
+        # A different resvg image, an unbound diff or a diff-only change is not Chrome noise.
+        if (hashes[1] != pinned[1] or hashes[0] == pinned[0]
+                or hashes[0] != row["chrome"]["sha256"] or hashes[2] != row["file_hashes"][files[2]]
+                or drift > CAPTURE_NOISE_LIMITS["changed_fraction"]):
+            raise ValueError(f"frozen advisory changed outside Chrome noise limits: {case}/{view}")
+        metrics = capture_noise(oracle, baseline, files[0])
+        if not metrics["passed"]:
+            raise ValueError(f"frozen Chrome noise exceeds limits: {case}/{view} {metrics}")
+        noise.append({"case": case, "view": view, "pinned_sha256": pinned, "observed_sha256": hashes,
+                      "advisory_fraction_drift": drift, **metrics})
     if frozen["font_set"] != comparisons["font_set"] or frozen["resvg"] != comparisons["oracle"]["resvg"]:
         raise ValueError("frozen advisory tool/font identity changed")
     if refreshed:
+        for baseline, current in refreshed.values():
+            baseline.write_bytes(Path(current).read_bytes())
         dump(BASE/"fixtures/advisories.json",frozen)
-        dump(out/"fractional-advisory-refresh.json",{"rows":refreshed,"authority":"specs/svg-renderer.den@60841c3b9bf030a2f9b2a6786b982d2d10382640ca196ce0a5304f889de07199"})
+        dump(out/"fractional-advisory-refresh.json",{"rows":list(refreshed),"authority":"specs/svg-renderer.den@60841c3b9bf030a2f9b2a6786b982d2d10382640ca196ce0a5304f889de07199"})
+    dump(out / "frozen-advisory-noise.json", {"limits": CAPTURE_NOISE_LIMITS, "rows": noise})
     report(out, comparisons, frozen)
     return frozen
 

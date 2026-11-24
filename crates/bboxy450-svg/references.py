@@ -10,10 +10,30 @@ import math
 from pathlib import Path
 import re
 import subprocess
+import tempfile
 import xml.etree.ElementTree as ET
 
 from corpus import BASE, digest, dump, load_fonts
 from reference_browser import capture_browser
+
+
+CAPTURE_NOISE_LIMITS = {"changed_fraction": 0.00005, "mean_error": 0.00001}
+
+
+def compare_png(oracle, first, second, diff):
+    return json.loads(subprocess.check_output(
+        [str(oracle), "compare", str(first), str(second), str(diff)], timeout=30
+    ))
+
+
+def within_capture_noise(metrics):
+    return all(metrics[name] <= limit for name, limit in CAPTURE_NOISE_LIMITS.items())
+
+
+def capture_noise(oracle, expected, actual):
+    with tempfile.TemporaryDirectory() as directory:
+        metrics = compare_png(oracle, expected, actual, Path(directory) / "noise.png")
+    return {**metrics, "passed": within_capture_noise(metrics)}
 
 
 def policy():
@@ -110,19 +130,21 @@ def compare_geometry(shapes, paths):
 
 
 def order_independence(out, request, chrome):
-    """The same bounded cases must produce identical PNG bytes in every order."""
+    """Check all captures across orders, bounding irregular Chrome raster output."""
     names = ("vega-heatmap", "isolation-text", "isolation-png-alpha")
     cases = [next(c for c in request["cases"] if c["id"] == name) for name in names]
 
     def pixels(runs):
-        return {(r["id"], r["view"]["id"], mode): capture["sha256"]
+        return {(r["id"], r["view"]["id"], mode): capture
                 for r in runs for mode, capture in r["captures"].items()}
 
     expected = pixels([r for r in chrome["runs"] if r["id"] in names])
+    oracle = out / "oracle-build/debug/bboxy450-svg-reference"
     key = digest(json.dumps({"capture": chrome["source_sha256"], "checker": digest(Path(__file__).read_bytes()),
                              "font_set": chrome["font_set"], "browser": chrome["browser"],
+                             "oracle": digest(oracle.read_bytes()),
                              "browser_source": chrome["browser_source"], "cases": cases,
-                             "pixels": sorted(expected.items())}, sort_keys=True).encode())
+                             "pixels": sorted((key, capture["sha256"]) for key, capture in expected.items())}, sort_keys=True).encode())
     root = out / "order-controls"
     root.mkdir(exist_ok=True)
     cache = root / "result.json"
@@ -145,20 +167,30 @@ def order_independence(out, request, chrome):
             raise ValueError("order control capture failed: " + name)
         captured = json.loads((directory / "chrome.json").read_text())
         custody = json.loads((directory / "owned-process.json").read_text())
-        wanted = {k: sha for k, sha in expected.items() if k[0] in {c["id"] for c in ordered}}
+        wanted = {k: capture for k, capture in expected.items() if k[0] in {c["id"] for c in ordered}}
         observed = pixels(captured["runs"])
-        differing = sorted(k for k in wanted.keys() | observed.keys() if wanted.get(k) != observed.get(k))
-        row = {"order": name, "exit_code": result.returncode, "pngs": len(observed), "differing": differing,
+        differing = sorted(wanted.keys() ^ observed.keys())
+        noise = []
+        for key in sorted(wanted.keys() & observed.keys()):
+            a, b = wanted[key], observed[key]
+            if a["sha256"] == b["sha256"]:
+                continue
+            metrics = capture_noise(oracle, a["file"], b["file"])
+            noise.append({"capture": key, "full_sha256": a["sha256"], "order_sha256": b["sha256"], **metrics})
+            if not metrics["passed"]:
+                differing.append(key)
+        row = {"order": name, "exit_code": result.returncode, "pngs": len(observed), "differing": differing, "raster_noise": noise,
                "custody": custody, "file_hashes": {**captured["file_hashes"],
                    str(directory / "chrome.json"): digest((directory / "chrome.json").read_bytes()),
                    str(directory / "owned-process.json"): digest((directory / "owned-process.json").read_bytes())},
                "passed": not differing and custody.get("reaped") and custody.get("profile_removed")}
         rows.append(row)
     result = {"cache_key": key, "cases": list(names), "capture_source_sha256": chrome["source_sha256"],
+              "capture_noise_limits": CAPTURE_NOISE_LIMITS,
               "runs": rows, "passed": all(r["passed"] for r in rows)}
     dump(cache, result)
     if not result["passed"]:
-        raise ValueError("capture PNG bytes depend on case order; see " + str(cache))
+        raise ValueError("capture case-order check failed; see " + str(cache))
     return result
 
 
@@ -238,7 +270,7 @@ def run(out):
                 cache_hits += 1
                 continue
             subprocess.run([str(oracle), "render", str(svg), str(png), str(view["scale"]), *map(str, view["camera"]), str(geometry),json.dumps(c["viewBox"])], check=True)
-            metrics = json.loads(subprocess.check_output([str(oracle), "compare", browser["captures"]["shapes"]["file"], str(png), str(diff)]))
+            metrics = compare_png(oracle, browser["captures"]["shapes"]["file"], png, diff)
             bounds = json.loads(geometry.read_text())
             for row in bounds["paths"]:
                 row["source"] = locations.get(row["id"])

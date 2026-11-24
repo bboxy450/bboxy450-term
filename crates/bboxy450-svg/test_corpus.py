@@ -19,7 +19,7 @@ import corpus
 from census import census
 from measurements import advance_containment
 from reference_browser import capture_browser, frozen_version
-from references import policy
+from references import policy, within_capture_noise
 from review import comparison_images, inspect_images, require_inspection
 
 
@@ -27,6 +27,12 @@ class CorpusChecks(unittest.TestCase):
     def setUp(self):
         self.temp_root = corpus.BASE.parents[1] / "target/svg-loop/test-temp"
         self.temp_root.mkdir(parents=True, exist_ok=True)
+
+    def test_capture_noise_limits_both_metrics(self):
+        metrics = {"changed_fraction": 0.00005, "mean_error": 0.00001}
+        self.assertTrue(within_capture_noise(metrics))
+        self.assertFalse(within_capture_noise({**metrics, "changed_fraction": 0.000051}))
+        self.assertFalse(within_capture_noise({**metrics, "mean_error": 0.000011}))
 
     def test_image_inspection_refuses_missing_and_changed_images(self):
         from PIL import Image

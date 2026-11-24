@@ -28,6 +28,18 @@ The frozen common-vector advisory keys retain complete renders as inspected
 evidence without waiving isolated text, images, geometry or diagnostics. New
 composition and fractional-viewport cases cannot become advisory.
 
+The pinned Chrome can rasterize the same SVG with small pixel differences.
+For a differing case-order capture or frozen advisory, the shared comparator
+allows at most 0.005% of pixels to exceed its eight-level channel tolerance
+and normalized mean channel error of at most 0.00001. The reference loop
+records the observed metrics and hashes. For an advisory, the comparison
+uses the original Chrome PNG in `fixtures/advisory-chrome/`, verified against
+its existing digest in `fixtures/advisories.json`. The resvg hash and advisory
+keys stay exact, and the changed fraction against resvg may move by at most
+0.00005. These Chrome PNGs were rendered from the pinned corpus and isolation
+fixtures credited below. The dropped-paint controls must exceed the noise
+bound. Native comparison budgets and inspection record digests stay exact.
+
 `make svg-native-check` reuses intact exact-key captures and runs native causal
 controls. The loop writes private images, geometry, worst-first triplets and
 reports under `target/svg-loop/`. The gate decodes each comparison PNG, checks

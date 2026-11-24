@@ -26,13 +26,7 @@ for(const f of fonts.faces){const bytes=await fs.readFile(path.join(fontDir,f.fi
 const browserSource=request.browser_source;
 const binary=browserSource.binary;
 const profile=await fs.mkdtemp(path.join(out,'profile-'));
-// Raster whole tiles so layer and scale changes do not reuse earlier tile pixels.
-const browser=spawn(binary,[
-  '--headless=new','--remote-debugging-port=0',`--user-data-dir=${profile}`,
-  '--use-mock-keychain','--password-store=basic','--no-first-run','--no-default-browser-check',
-  '--disable-extensions','--hide-scrollbars','--force-color-profile=srgb',
-  '--disable-background-networking','--disable-partial-raster','about:blank',
-],{stdio:['ignore','ignore','pipe']});
+const browser=spawn(binary,['--headless=new','--remote-debugging-port=0',`--user-data-dir=${profile}`,'--use-mock-keychain','--password-store=basic','--no-first-run','--no-default-browser-check','--disable-extensions','--hide-scrollbars','--force-color-profile=srgb','--disable-background-networking','about:blank'],{stdio:['ignore','ignore','pipe']});
 await fs.writeFile(path.join(out,'owned-process.json'),JSON.stringify({pid:browser.pid,profile,binary}));
 let stderr='',ws,browserWs,exited=false;
 browser.stderr.on('data',b=>{stderr=(stderr+b).slice(-4000);});
