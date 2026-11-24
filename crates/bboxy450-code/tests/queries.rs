@@ -20,11 +20,7 @@ fn fixture() -> (tempfile::TempDir, Root) {
     std::fs::create_dir_all(dir.path().join("src")).unwrap();
     std::fs::write(dir.path().join("src/lib.rs"), LIB).unwrap();
     std::fs::write(dir.path().join("notes.md"), "Seat notes\nnothing here\n").unwrap();
-    std::fs::write(
-        dir.path().join("blob.bin"),
-        [0u8, 1, 2, b'S', b'e', b'a', b't'],
-    )
-    .unwrap();
+    std::fs::write(dir.path().join("blob.bin"), b"Seat\n\0Seat").unwrap();
     std::fs::write(dir.path().join(".gitignore"), "ignored.rs\n").unwrap();
     std::fs::write(dir.path().join("ignored.rs"), "pub struct Seat;\n").unwrap();
     std::fs::create_dir(dir.path().join(".git")).unwrap();
@@ -52,10 +48,10 @@ fn search_names_the_containing_item_counts_each_pattern_and_reports_missing_path
         json!({"pattern": "absent", "hits": 0})
     );
     assert_eq!(
-        found["hits"][0],
-        json!({"path": "src/lib.rs", "line": 14, "text": "    Closed,", "item": "enum State :: variant Closed"})
+        found["text"],
+        "src/lib.rs:14:     Closed, [enum State :: variant Closed]\n\
+         src/lib.rs:18:     vec![Seat::open(1)] [fn all]\n"
     );
-    assert_eq!(found["hits"][1]["item"], "fn all");
     // Ignored and binary files are never searched.
     let everywhere = call(
         &root,
@@ -82,8 +78,10 @@ fn search_names_the_containing_item_counts_each_pattern_and_reports_missing_path
     )
     .unwrap();
     assert_eq!(
-        after["hits"][0]["after"],
-        json!(["    Open,", "    Closed,"])
+        after["text"],
+        "src/lib.rs:12: pub enum State { [enum State]\n\
+         src/lib.rs:13:     Open,\n\
+         src/lib.rs:14:     Closed,\n"
     );
     let literal = call(
         &root,
@@ -99,8 +97,10 @@ fn search_names_the_containing_item_counts_each_pattern_and_reports_missing_path
     )
     .unwrap();
     assert_eq!(
-        lead["hits"][0]["before"],
-        json!(["pub enum State {", "    Open,"])
+        lead["text"],
+        "src/lib.rs:12: pub enum State {\n\
+         src/lib.rs:13:     Open,\n\
+         src/lib.rs:14:     Closed, [enum State :: variant Closed]\n"
     );
     let first = call(
         &root,
@@ -109,8 +109,7 @@ fn search_names_the_containing_item_counts_each_pattern_and_reports_missing_path
     )
     .unwrap();
     assert_eq!(
-        first["hits"][0]["before"],
-        json!([]),
+        first["text"], "src/lib.rs:1: pub struct Seat { [struct Seat]\n",
         "no lines before line 1"
     );
     let folded = call(
@@ -133,7 +132,10 @@ fn search_names_the_containing_item_counts_each_pattern_and_reports_missing_path
         &json!({"patterns": ["pub struct Seat;"], "all": true}),
     )
     .unwrap();
-    assert_eq!(every["hits"][0]["path"], "ignored.rs");
+    assert_eq!(
+        every["text"],
+        "ignored.rs:1: pub struct Seat; [struct Seat]\n"
+    );
     std::fs::write(_dir.path().join(".git/HEAD"), "pub struct Seat; in git\n").unwrap();
     let every = call(
         &root,
@@ -158,6 +160,92 @@ fn search_names_the_containing_item_counts_each_pattern_and_reports_missing_path
         "{names:?}"
     );
     assert!(!names.iter().any(|n| n.starts_with(".git/")), "{names:?}");
+}
+
+#[test]
+fn search_merges_overlapping_context_windows_and_matches_rg() {
+    let (dir, root) = fixture();
+    let path = "notes.txt";
+    std::fs::write(
+        dir.path().join(path),
+        "lead\nneedle\nshared\nneedle again\ntail\ngap\ngap\nnext\nneedle last\nend\n",
+    )
+    .unwrap();
+
+    let args = json!({"patterns": ["needle"], "paths": [path], "before": 1, "context": 1});
+    let result = call(&root, "search", &args).unwrap();
+    let actual = result["text"].as_str().unwrap();
+    let rg = std::env::var_os("BBOXY_CODE_RG").unwrap_or_else(|| "rg".into());
+    let oracle = |context: &[&str]| {
+        let output = std::process::Command::new(&rg)
+            .current_dir(dir.path())
+            .args(["--no-config", "--color", "never", "-n", "-H"])
+            .args(context)
+            .args(["needle", path])
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{output:?}");
+        String::from_utf8(output.stdout).unwrap()
+    };
+
+    let with_context = oracle(&["-C", "1"]).replace("notes.txt-", "notes.txt:");
+    let expected = with_context
+        .lines()
+        .map(|line| match line.split_once(":") {
+            Some((file, line)) => {
+                let (number, code) = line.split_once([':', '-']).unwrap();
+                format!("{file}:{number}: {code}\n")
+            }
+            None => format!("{line}\n"),
+        })
+        .collect::<String>();
+    assert_eq!(
+        actual, expected,
+        "overlapping windows contain each row once"
+    );
+    assert_eq!(actual.matches("notes.txt:3: shared").count(), 1);
+    assert_eq!(actual.split("\n--\n").count(), 2);
+
+    let hits = call(
+        &root,
+        "search",
+        &json!({"patterns": ["needle"], "paths": [path]}),
+    )
+    .unwrap();
+    assert_eq!(
+        hits["text"].as_str().unwrap().replace(": ", ":"),
+        oracle(&[])
+    );
+    let limited = call(
+        &root,
+        "search",
+        &json!({"patterns": ["needle"], "paths": [path], "before": 1, "context": 1, "limit": 1}),
+    )
+    .unwrap();
+    assert_eq!(
+        limited["text"],
+        "notes.txt:1: lead\nnotes.txt:2: needle\nnotes.txt:3: shared\n"
+    );
+    assert_eq!(limited["cut"]["omitted"], 2);
+}
+
+#[test]
+fn separate_patterns_count_overlaps_and_duplicate_paths_once() {
+    let (dir, root) = fixture();
+    std::fs::write(dir.path().join("src/words.txt"), "shell test\nshell\n").unwrap();
+    let result = call(
+        &root,
+        "search",
+        &json!({"patterns": ["shell", "shell test", "test", "shell"], "paths": ["src", "src/words.txt"], "mode": "count"}),
+    ).unwrap();
+    assert_eq!(result["total"], 2);
+    assert_eq!(
+        result["patterns"],
+        json!([
+            {"pattern": "shell", "hits": 2}, {"pattern": "shell test", "hits": 1},
+            {"pattern": "test", "hits": 1}, {"pattern": "shell", "hits": 2}
+        ])
+    );
 }
 
 #[test]
@@ -382,8 +470,21 @@ fn den_lean_and_source_tier_files_have_outlines_and_enclosing_items() {
         &json!({"patterns": ["return key", "return \\{ id"]}),
     )
     .unwrap();
-    assert_eq!(hit["hits"][0]["item"], "class Store :: fn get");
-    assert_eq!(hit["hits"][1]["item"], "class Hub :: method open");
+    let lines = hit["text"].as_str().unwrap();
+    assert!(
+        lines
+            .lines()
+            .next()
+            .unwrap()
+            .ends_with("[class Store :: fn get]")
+    );
+    assert!(
+        lines
+            .lines()
+            .nth(1)
+            .unwrap()
+            .ends_with("[class Hub :: method open]")
+    );
     let found = call(&root, "symbol", &json!({"names": ["Turnstile", "main"]})).unwrap();
     assert_eq!(found["symbols"][0]["definitions"][0]["kind"], "spec");
     assert_eq!(
@@ -791,9 +892,11 @@ fn the_server_answers_initialize_list_and_call_on_stdio() {
     let called = ask(json!({"jsonrpc": "2.0", "id": 3, "method": "tools/call",
         "params": {"name": "search", "arguments": {"patterns": ["pub enum"]}}}));
     assert_eq!(called["result"]["isError"], false);
-    let text: Value =
-        serde_json::from_str(called["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
-    assert_eq!(text["hits"][0]["item"], "enum State");
+    let text = called["result"]["content"][0]["text"].as_str().unwrap();
+    let (hits, summary) = text.rsplit_once('\n').unwrap();
+    assert_eq!(hits, "src/lib.rs:12: pub enum State { [enum State]");
+    let summary: Value = serde_json::from_str(summary).unwrap();
+    assert_eq!(summary["total"], 1);
     let stated = ask(json!({"jsonrpc": "2.0", "id": 9, "method": "tools/call",
         "params": {"name": "files", "arguments": {"glob": "*.rs", "intent": "count the Rust files"}}}));
     assert_eq!(

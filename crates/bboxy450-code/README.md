@@ -11,7 +11,7 @@ come from measured agent use, recorded in that repository's
 | Tool | Answers |
 |---|---|
 | `read` | numbered lines of files: a range, the whole item around a line, or a file at a git revision |
-| `search` | lines matching any of several patterns, each with the function, impl or type that contains it |
+| `search` | ripgrep matches as `path:line: text`, with enclosing items on hits and shared context shown once |
 | `symbol` | where Rust names are defined, and optionally where they are used |
 | `files` | files under paths or matching a glob, with line counts |
 | `outline` | a Rust file's items in order |
@@ -31,6 +31,14 @@ bboxy450-code search '{"patterns":["fn main"],"paths":["crates"]}'
 let root = bboxy450_code::Root::new(".")?;
 let hits = bboxy450_code::search(&root, &serde_json::json!({"patterns": ["fn main"]}))?;
 ```
+
+`search` uses a sibling `rg` executable when bundled, or the system path
+`/opt/homebrew/bin/rg` (Apple Silicon), `/usr/local/bin/rg` (Intel Mac), or
+`/usr/bin/rg` (other Unix). Set `BBOXY_CODE_RG` to an absolute path to use a
+different installation. Search ignores user ripgrep configuration. Library and
+CLI line results carry the listing in `text`. MCP displays the listing directly,
+followed by one JSON summary line with counts, missing paths and any cut.
+The `files` and `count` modes return JSON summaries.
 
 `contracts` reads `verification/{contracts,coverage,corpus}.toml` under the root
 and answers `unavailable` where there is none.

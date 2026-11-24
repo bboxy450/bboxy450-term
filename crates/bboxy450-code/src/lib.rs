@@ -17,14 +17,16 @@
     clippy::disallowed_methods,
     reason = "A standalone query tool reads files and runs git synchronously; no UI thread exists here."
 )]
-use regex::{Regex, RegexSet};
+use regex::Regex;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::path::{Component, Path, PathBuf};
 
 mod formal;
+mod search;
 mod syntax;
 pub use formal::{contracts, den_check, den_statechart};
+pub use search::search;
 pub use syntax::{Item, enclosing, items, items_of, supported};
 
 /// A whole result stays under this many bytes.
@@ -150,6 +152,7 @@ fn clip(line: &str) -> String {
 
 /// Bytes a result may still spend. A producer that cannot afford its next
 /// element stops and says so.
+#[derive(Clone)]
 struct Budget(usize);
 impl Budget {
     fn new() -> Self {
@@ -291,158 +294,6 @@ fn at_revision(root: &Root, rev: &str, path: &str) -> Result<String, String> {
         return Err("no such file at that revision".into());
     }
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
-}
-
-// ---------- search ----------
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Search {
-    patterns: Vec<String>,
-    #[serde(default)]
-    paths: Vec<String>,
-    #[serde(default)]
-    glob: Option<String>,
-    /// Lines of context after each hit (most readers read down from a hit).
-    #[serde(default)]
-    context: usize,
-    /// Lines of context before each hit (rg -B).
-    #[serde(default)]
-    before: usize,
-    /// Match regardless of case (rg -i).
-    #[serde(default)]
-    ignore_case: bool,
-    /// Also search hidden and gitignored files (rg --hidden --no-ignore).
-    #[serde(default)]
-    all: bool,
-    #[serde(default)]
-    limit: Option<usize>,
-    #[serde(default)]
-    mode: Mode,
-    /// Take the patterns literally.
-    #[serde(default)]
-    fixed: bool,
-}
-#[derive(Deserialize, Default, PartialEq)]
-#[serde(rename_all = "snake_case")]
-enum Mode {
-    #[default]
-    Lines,
-    Files,
-    Count,
-}
-
-fn compile(patterns: &[String], fixed: bool, ignore_case: bool) -> Result<Vec<Regex>, String> {
-    if patterns.is_empty() {
-        return Err("give at least one pattern".into());
-    }
-    patterns
-        .iter()
-        .map(|pattern| {
-            if !fixed && pattern.contains("\\|") {
-                return Err(format!(
-                    "pattern {pattern:?} uses the grep spelling \\| ; alternation here is | , or pass each alternative as its own pattern"
-                ));
-            }
-            let source = if fixed { regex::escape(pattern) } else { pattern.clone() };
-            let source = if ignore_case { format!("(?i:{source})") } else { source };
-            Regex::new(&source).map_err(|e| format!("invalid pattern {pattern:?}: {e}"))
-        })
-        .collect()
-}
-
-/// Lines matching any pattern, each with the item that contains it.
-pub fn search(root: &Root, args: &Value) -> Result<Value, String> {
-    let args: Search = parse(args)?;
-    let regexes = compile(&args.patterns, args.fixed, args.ignore_case)?;
-    let set = RegexSet::new(regexes.iter().map(Regex::as_str)).map_err(|e| e.to_string())?;
-    let (found, missing) = root.walk(&args.paths, args.glob.as_deref(), None, args.all)?;
-    let limit = args.limit.unwrap_or(50).clamp(1, 500);
-    let context = args.context.min(20);
-    let before = args.before.min(20);
-    let mut budget = Budget::new();
-    let (mut hits, mut by_file) = (vec![], vec![]);
-    let mut per_pattern = vec![0usize; regexes.len()];
-    let (mut total, mut cut) = (0usize, 0usize);
-    for path in &found {
-        let Some(body) = text(path) else { continue };
-        let lines: Vec<&str> = body.lines().collect();
-        let mut in_file = 0usize;
-        let mut parsed: Option<Vec<Item>> = None;
-        for (index, line) in lines.iter().enumerate() {
-            let matched = set.matches(line);
-            if !matched.matched_any() {
-                continue;
-            }
-            for pattern in matched.iter() {
-                per_pattern[pattern] += 1;
-            }
-            total += 1;
-            in_file += 1;
-            if args.mode != Mode::Lines || hits.len() >= limit || cut > 0 {
-                cut += usize::from(args.mode == Mode::Lines);
-                continue;
-            }
-            let found = parsed.get_or_insert_with(|| {
-                if body.len() <= PARSE_BYTES {
-                    items_of(path, &body)
-                } else {
-                    vec![]
-                }
-            });
-            let mut hit = json!({"path": root.show(path), "line": index + 1, "text": clip(line)});
-            if let Some(label) = enclosing(found, index + 1) {
-                hit["item"] = json!(label);
-            }
-            if before > 0 {
-                let lead: Vec<String> = lines[index.saturating_sub(before)..index]
-                    .iter()
-                    .map(|l| clip(l))
-                    .collect();
-                hit["before"] = json!(lead);
-            }
-            if context > 0 {
-                let after: Vec<String> = lines[index + 1..lines.len().min(index + 1 + context)]
-                    .iter()
-                    .map(|l| clip(l))
-                    .collect();
-                hit["after"] = json!(after);
-            }
-            if budget.spend(&hit) {
-                hits.push(hit);
-            } else {
-                cut += 1;
-            }
-        }
-        if in_file > 0 && args.mode == Mode::Files {
-            let row = json!({"path": root.show(path), "hits": in_file});
-            if by_file.len() < FILE_ROWS && budget.spend(&row) {
-                by_file.push(row);
-            } else {
-                cut += 1;
-            }
-        }
-    }
-    let patterns: Vec<Value> = args
-        .patterns
-        .iter()
-        .zip(&per_pattern)
-        .map(|(pattern, count)| json!({"pattern": pattern, "hits": count}))
-        .collect();
-    let mut value = json!({"total": total, "patterns": patterns});
-    match args.mode {
-        Mode::Lines => value["hits"] = json!(hits),
-        Mode::Files => value["files"] = json!(by_file),
-        Mode::Count => {}
-    }
-    if !missing.is_empty() {
-        value["missing"] = json!(missing);
-    }
-    Ok(with_cut(
-        value,
-        cut,
-        "more matched than fit; narrow paths or patterns, raise limit, or use mode files or count",
-    ))
 }
 
 // ---------- symbol ----------
@@ -687,7 +538,7 @@ fn definitions() -> Value {
             "path": path, "start": {"type": "integer", "minimum": 1}, "end": {"type": "integer", "minimum": 1},
             "around": {"type": "integer", "minimum": 1, "description": "Return the whole function, impl or type containing this line"},
             "rev": {"type": "string", "description": "Git revision, e.g. HEAD~1 or origin/main"}}}}}}},
-        {"name": "search", "description": "Search text with several regular expressions at once (Rust regex syntax; alternation is |). Each hit names the function, impl or type that contains it. Bounded: default 50 hits, with totals per pattern. Use instead of rg, grep and git grep; from python_execute: tools.bboxy_code.search(patterns=[...]).",
+        {"name": "search", "description": "Search text with several regular expressions at once (Rust regex syntax; alternation is |). Returns compact path:line text with merged context and enclosing items. Bounded: default 50 hits, with totals per pattern. Use instead of rg, grep and git grep; from python_execute: tools.bboxy_code.search(patterns=[...]).",
          "inputSchema": {"type": "object", "additionalProperties": false, "required": ["patterns"], "properties": {
             "patterns": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "A line matching any pattern is a hit"},
             "paths": paths, "glob": {"type": "string", "description": "Only files matching this glob, e.g. *.rs or !tests/**"},
@@ -696,7 +547,7 @@ fn definitions() -> Value {
             "ignore_case": {"type": "boolean", "description": "Match regardless of case (rg -i)"},
             "all": {"type": "boolean", "description": "Also search hidden and gitignored files (rg --hidden --no-ignore)"},
             "limit": {"type": "integer", "minimum": 1, "maximum": 500},
-            "mode": {"enum": ["lines", "files", "count"], "description": "lines: hits; files: hit counts per file; count: totals only"},
+            "mode": {"enum": ["lines", "files", "count"], "description": "lines: compact text; files: hit counts per file; count: totals only"},
             "fixed": {"type": "boolean", "description": "Take patterns literally"}}}},
         {"name": "symbol", "description": "Find where names are defined, with signature and line range: Rust items in full, Den declarations (spec, event, invariant, theorem...), and Python, TypeScript, Go and Lean by syntax. refs also lists uses with their containing items. Use instead of grepping for 'fn name'.",
          "inputSchema": {"type": "object", "additionalProperties": false, "required": ["names"], "properties": {
@@ -789,10 +640,14 @@ fn answer(root: &Root, message: &Value) -> Option<Value> {
             let name = message["params"]["name"].as_str().unwrap_or_default();
             let empty = json!({});
             let args = message["params"].get("arguments").unwrap_or(&empty);
-            // One copy of the result: compact JSON text.
             Ok(match call(root, name, args) {
-                Ok(value) => {
-                    json!({"content": [{"type": "text", "text": value.to_string()}], "isError": false})
+                Ok(mut value) => {
+                    let text = if name == "search" {
+                        search::mcp_text(&mut value)
+                    } else {
+                        value.to_string()
+                    };
+                    json!({"content": [{"type": "text", "text": text}], "isError": false})
                 }
                 Err(error) => {
                     json!({"content": [{"type": "text", "text": error}], "isError": true})
