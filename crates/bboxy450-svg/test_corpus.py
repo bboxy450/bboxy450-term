@@ -20,12 +20,48 @@ from census import census
 from measurements import advance_containment
 from reference_browser import capture_browser, frozen_version
 from references import policy
+from review import comparison_images, inspect_images, require_inspection
 
 
 class CorpusChecks(unittest.TestCase):
     def setUp(self):
         self.temp_root = corpus.BASE.parents[1] / "target/svg-loop/test-temp"
         self.temp_root.mkdir(parents=True, exist_ok=True)
+
+    def test_image_inspection_refuses_missing_and_changed_images(self):
+        from PIL import Image
+
+        with tempfile.TemporaryDirectory(dir=self.temp_root) as tmp:
+            root = Path(tmp)
+            reference, native, diff = (root / name for name in ("reference.png", "native.png", "diff.png"))
+            for path in (reference, native, diff):
+                Image.new("RGBA", (2, 1), "black").save(path)
+            row = {"diff": diff, "width": 2, "height": 1, "changed_fraction": 0.0}
+            files = comparison_images(root, [(reference, native, row)])
+            receipt = "inspected.json"
+
+            with self.assertRaisesRegex(ValueError, "missing or invalid image inspection"):
+                require_inspection(root, receipt, files)
+            inspect_images(root, receipt, files)
+            require_inspection(root, receipt, files)
+
+            Image.new("RGBA", (2, 1), "red").save(native)
+            with self.assertRaisesRegex(ValueError, "stale image inspection: native[.]png"):
+                require_inspection(root, receipt, files)
+            native.unlink()
+            with self.assertRaisesRegex(ValueError, "missing or stale image inspection: native[.]png"):
+                require_inspection(root, receipt, files)
+
+    def test_image_inspection_rejects_a_diff_that_disagrees_with_comparison(self):
+        from PIL import Image
+
+        with tempfile.TemporaryDirectory(dir=self.temp_root) as tmp:
+            root = Path(tmp)
+            diff = root / "diff.png"
+            Image.new("RGBA", (2, 1), "red").save(diff)
+            with self.assertRaisesRegex(ValueError, "inspection diff does not match"):
+                inspect_images(root, "inspected.json", {diff.name: ((2, 1), 0.0)})
+            self.assertFalse((root / "inspected.json").exists())
 
     def test_wrong_browser_is_refused_before_capture(self):
         with tempfile.TemporaryDirectory(dir=self.temp_root) as tmp:

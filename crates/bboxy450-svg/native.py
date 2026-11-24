@@ -16,7 +16,7 @@ import subprocess
 from corpus import BASE, digest, dump, load_fonts
 from measurements import advance_containment
 from references import policy, run as reference_run
-from review import frozen_advisories, run as review_run
+from review import comparison_images, frozen_advisories, inspect_images, require_inspection, run as review_run
 
 
 def shapes(reference, native):
@@ -184,11 +184,13 @@ def run(out, selected=None, refresh_references=True):
     if refresh_references:
         reference_run(out)
     references=json.loads((out/"references/chrome.json").read_text())
-    capture_order=json.loads((out/"reference-comparisons.json").read_text())["capture_order"]
+    comparisons=json.loads((out/"reference-comparisons.json").read_text())
     frozen=json.loads((BASE/"fixtures/advisories.json").read_text())
     advisory_error=None
     try:
-        frozen_advisories(out,review_run(out))
+        if refresh_references:
+            review_run(out)
+        frozen_advisories(out,comparisons)
     except ValueError as error:
         advisory_error=str(error)
     if frozen["policy"]!=policy(): raise ValueError("numeric policy changed")
@@ -290,14 +292,21 @@ def run(out, selected=None, refresh_references=True):
     if not selected:
         result["admission"]=admission(out,program)
         result["broken_controls"]=broken_controls(out,program,rows,references)
-    inspection=out/"native-inspected.json"
-    recorded=json.loads(inspection.read_text()) if inspection.is_file() else {"files":{}}
-    inspection_files={r["native"] for r in rows}
-    for row in rows:
-        for target in ("chrome","resvg"):
-            if target in row:inspection_files.update((row[target]["reference"],row[target]["diff"]))
-    result["missing_inspections"]=len(inspection_files-recorded["files"].keys())
-    result["inspection_current"]=not result["missing_inspections"] and bool(recorded["files"]) and all(Path(p).is_file() and digest(Path(p).read_bytes())==sha for p,sha in recorded["files"].items())
+    result["inspection_current"] = False
+    if not selected and not result["failures"]:
+        receipt = "native-inspected.json"
+        files = comparison_images(
+            out,
+            ((row[target]["reference"], row["native"], row[target])
+             for row in rows for target in ("chrome", "resvg") if target in row),
+        )
+        try:
+            inspect_images(out, receipt, files)
+            require_inspection(out, receipt, files)
+            result["inspection_current"] = True
+        except ValueError as error:
+            result["inspection_error"] = str(error)
+    capture_order=comparisons["capture_order"]
     result["capture_order"]=capture_order
     result["passed"]= capture_order["passed"] and result["complete_manifest"] and result["advisories_current"] and not result["failures"] and not result["missing_captures"] and result.get("admission",{}).get("passed",False) and result.get("broken_controls",{}).get("passed",False) and result["inspection_current"]
     dump(out/"native-results.json",result)

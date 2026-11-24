@@ -317,7 +317,7 @@ def main():
     measurements = compare_exporters(args.out)
     from review import run as review_run, frozen_advisories
     review = review_run(args.out)
-    advisories = frozen_advisories(args.out, review)
+    advisories = frozen_advisories(args.out, review["comparisons"])
     result["reference_status"] = f"{references['captures']} full Chrome captures and {len(references['comparisons'])} compatible shape-layer comparisons recorded"
     result["font_refusal_controls"] = len(controls["controls"])
     result["measurement_failures"] = len(measurements["failures"])

@@ -30,10 +30,11 @@ composition and fractional-viewport cases cannot become advisory.
 
 `make svg-native-check` reuses intact exact-key captures and runs native causal
 controls. The loop writes private images, geometry, worst-first triplets and
-reports under `target/svg-loop/`. Actual image inspection records bind the
-files viewed; missing or stale inspection prevents acceptance. Only owned
-Chrome PIDs and private profiles are removed. The private loop CLI is a Cargo
-example, not an installable application binary.
+reports under `target/svg-loop/`. The gate decodes each comparison PNG, checks
+its dimensions and the diff's changed-pixel count, then records the inspected
+bytes by relative path and SHA-256. Missing or stale inspection prevents
+acceptance. Only owned Chrome PIDs and private profiles are removed. The
+private loop CLI is a Cargo example, not an installable application binary.
 
 Source/exporter/font attribution and preserved upstream terms are recorded in
 [ATTRIBUTION.md](ATTRIBUTION.md), [fonts/manifest.json](fonts/manifest.json) and

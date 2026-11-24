@@ -6,6 +6,7 @@
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """Reference-only causal paint controls, PNG sampling witness and review index."""
 import html
+from io import BytesIO
 import json
 import os
 import math
@@ -15,6 +16,66 @@ import subprocess
 from corpus import BASE, digest, dump
 from references import policy
 from reference_browser import require_version
+
+
+REFERENCE_INSPECTION = "phase-a-inspected.json"
+
+
+def comparison_images(out, comparisons):
+    files = {}
+    for first, second, row in comparisons:
+        size = (row["width"], row["height"])
+        for path in (first, second):
+            files[str(Path(path).relative_to(out))] = (size, None)
+        files[str(Path(row["diff"]).relative_to(out))] = (size, row["changed_fraction"])
+    return files
+
+
+def inspect_images(out, receipt, files):
+    from PIL import Image
+
+    if not files:
+        raise ValueError(f"no comparison images for {receipt}")
+    hashes = {}
+    for path, (size, changed_fraction) in files.items():
+        try:
+            raw = (out / path).read_bytes()
+            with Image.open(BytesIO(raw), formats=("PNG",)) as png:
+                if png.size != size:
+                    raise ValueError(f"inspection dimensions differ: {path}")
+                png.load()
+                if changed_fraction is not None:
+                    # The shared Rust comparator uses red=255 for changed pixels
+                    # and gray <=127 for the rest (bbt-render/src/chrome/diff.rs).
+                    if (png.mode != "RGBA"
+                            or png.histogram()[255] / (size[0] * size[1]) != changed_fraction):
+                        raise ValueError(f"inspection diff does not match the changed fraction: {path}")
+        except OSError as error:
+            raise ValueError(f"cannot inspect image: {path}") from error
+        hashes[path] = digest(raw)
+    dump(out / receipt, {"files": hashes})
+
+
+def require_inspection(out, receipt, files):
+    try:
+        recorded = json.loads((out / receipt).read_text())["files"]
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise ValueError(f"missing or invalid image inspection: {receipt}") from error
+    if not files or not isinstance(recorded, dict) or recorded.keys() != files.keys():
+        raise ValueError(f"incomplete image inspection: {receipt}")
+    for path, expected in recorded.items():
+        try:
+            actual = digest((out / path).read_bytes())
+        except OSError as error:
+            raise ValueError(f"missing or stale image inspection: {path}") from error
+        if actual != expected:
+            raise ValueError(f"missing or stale image inspection: {path}")
+
+
+def reference_images(out, comparisons):
+    return comparison_images(
+        out, ((row["chrome"]["file"], row["resvg"], row) for row in comparisons["comparisons"])
+    )
 
 
 def run(out):
@@ -78,11 +139,12 @@ def run(out):
         raise ValueError("missing paint/isolation scale")
     dump(out / "paint-controls.json", {"controls": controls, "interpolation": interpolation,
          "sampling": "premultiplied-alpha bilinear sRGB; default image placement; nearest must visibly disagree"})
+    inspect_images(out, REFERENCE_INSPECTION, reference_images(out, comparisons))
     return {"controls": controls, "interpolation": interpolation, "comparisons": comparisons}
 
 
-def report(out, review, advisories):
-    rows = sorted(review["comparisons"]["comparisons"], key=lambda r: r["changed_fraction"], reverse=True)
+def report(out, comparisons, advisories):
+    rows = sorted(comparisons["comparisons"], key=lambda r: r["changed_fraction"], reverse=True)
     text = ["# SVG corpus reference review", "", "Reference captures only. Native acceptance is recorded by native.py.", "",
             f"{len(rows)} compatible vector-layer pairs; {len(advisories['cases'])} frozen pixel advisories. Geometry remains measured and cannot become advisory.", ""]
     cells = []
@@ -98,12 +160,13 @@ def report(out, review, advisories):
     (out / "index.html").write_text('<!doctype html><meta charset="utf-8"><title>SVG corpus references</title><style>body{font:16px system-ui}img{max-width:32%;image-rendering:pixelated}section{border-top:1px solid #aaa}</style><h1>SVG corpus references</h1><p>Reference-only Chrome / resvg / difference, worst first.</p>'+"".join(cells))
 
 
-def frozen_advisories(out, review):
+def frozen_advisories(out, comparisons):
+    require_inspection(out, REFERENCE_INSPECTION, reference_images(out, comparisons))
     frozen = json.loads((BASE / "fixtures/advisories.json").read_text())
-    require_version(review["comparisons"]["chrome"]["Browser"], frozen["chrome"])
+    require_version(comparisons["chrome"]["Browser"], frozen["chrome"])
     if frozen["policy"] != policy():
         raise ValueError("frozen numeric comparison policy differs from canonical constants")
-    rows = review["comparisons"]["comparisons"]
+    rows = comparisons["comparisons"]
     expected = {(r["case"], r["view"]["id"]) for r in rows if r["over_vector_budget"]}
     actual = {(r["case"], r["view"]["id"]) for r in frozen["cases"]}
     if actual != expected or len(actual) != len(frozen["cases"]):
@@ -122,15 +185,12 @@ def frozen_advisories(out, review):
             entry["changed_fraction"]=row["changed_fraction"]
             entry["pixel_sha256"]=hashes
             refreshed.append((entry["case"],entry["view"]["id"]))
-    if frozen["font_set"] != review["comparisons"]["font_set"] or frozen["resvg"] != review["comparisons"]["oracle"]["resvg"]:
+    if frozen["font_set"] != comparisons["font_set"] or frozen["resvg"] != comparisons["oracle"]["resvg"]:
         raise ValueError("frozen advisory tool/font identity changed")
     if refreshed:
         dump(BASE/"fixtures/advisories.json",frozen)
         dump(out/"fractional-advisory-refresh.json",{"rows":refreshed,"authority":"specs/svg-renderer.den@60841c3b9bf030a2f9b2a6786b982d2d10382640ca196ce0a5304f889de07199"})
-    inspected = json.loads((out / "phase-a-inspected.json").read_text())
-    if not inspected["files"] or any(digest(Path(p).read_bytes()) != sha for p, sha in inspected["files"].items()):
-        raise ValueError("missing/stale actual image inspection")
-    report(out, review, frozen)
+    report(out, comparisons, frozen)
     return frozen
 
 
