@@ -88,7 +88,7 @@ const WORDS: &[Word] = &[
         "Done",
         Tone::Success,
         "✓",
-        &["complete", "completed", "ok", "finished"],
+        &["complete", "completed", "ok", "finished", "implemented"],
     ),
     ("Passed", Tone::Success, "✓", &["pass"]),
     ("Observed", Tone::Success, "◉", &[]),
@@ -288,6 +288,7 @@ mod tests {
     fn words_synonyms_and_detail_read_as_one_pill() {
         assert_eq!(pill("Done").unwrap().tone, Tone::Success);
         assert_eq!(pill("completed").unwrap().text, "Done");
+        assert_eq!(pill("Implemented").unwrap().text, "Done");
         assert_eq!(pill("Passed 212/212").unwrap().text, "Passed 212/212");
         assert_eq!(pill("Failed: 3 tests").unwrap().text, "Failed: 3 tests");
         assert_eq!(pill("needs review").unwrap().text, "Review");
