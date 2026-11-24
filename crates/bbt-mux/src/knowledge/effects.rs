@@ -103,7 +103,11 @@ pub(crate) fn prepare(
             }
             Ok(Prepared::Commit(request))
         }
-        tool::Request::Write(mut request) => {
+        tool::Request::Write(mut request, locator) => {
+            if let Some(locator) = locator {
+                request.reference = Some(tool::resolve(source, locator)?);
+                tool::write_target(&mut request, call.op_id).map_err(rejected)?;
+            }
             let mut report_task = None;
             let current = request
                 .reference
@@ -265,6 +269,8 @@ pub(crate) fn prepare(
                     if !swarm.is_nil() {
                         request.frontmatter["swarm"] = serde_json::json!(swarm);
                     }
+                } else if let Some(old) = &current {
+                    tool::retain_host_fields(&mut request.frontmatter, &old.frontmatter)?;
                 }
             }
             if request.frontmatter["type"] == "report" {

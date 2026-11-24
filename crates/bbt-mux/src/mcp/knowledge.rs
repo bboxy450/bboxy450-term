@@ -27,18 +27,8 @@ pub(crate) fn handles(tool: &str) -> bool {
     )
 }
 pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
-    let contract = d::method_schema("write", false).expect("contract write schema");
-    let mut write = contract["$defs"]["WriteRequest"].clone();
-    // Advertise only this tool's fields and referenced type, like the other
-    // MCP catalogues. Create/update conditions are enforced by prepare/Index.
-    write.as_object_mut().unwrap().remove("allOf");
-    write["$defs"] = json!({"RecordRef":contract["$defs"]["RecordRef"]});
+    let mut write = write_schema();
     let definition = &mut write;
-    definition["additionalProperties"] = json!(false);
-    definition["properties"]
-        .as_object_mut()
-        .unwrap()
-        .remove("signed_record");
     definition["properties"]["op_id"] =
         json!({"type":"string","pattern":"^[0-7][0-9A-HJKMNP-TV-Z]{25}$"});
     definition["required"]
@@ -51,18 +41,17 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
         json!({"type":"string","enum":WORKER_TYPES})
     };
     definition["properties"]["frontmatter"]["properties"] = json!({"type":type_schema});
-    definition["properties"]["frontmatter"]["required"] = json!(["type"]);
     definition["properties"]["frontmatter"]["description"] = json!(format!(
         "Type-specific metadata; call knowledge_types for guidance. Reports require task ([[locator]] or #N), author (seat:{} for this authenticated seat), created (timestamp), commits (full SHA list, possibly empty), and verify (command plus integer exit_code).",
         actor.seat_id
     ));
     let write_help = if actor.role.class == Class::Oracle {
-        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.den; the Index returns its numbered final path. Reports are append-only at reports/YYYY-MM-DD-slug.den; corrections create a new report with supersedes. Tasks are created open; their delegating Oracle may amend only brief/verify/allowed_paths while nonterminal. A same-swarm Oracle takes over on amendment if the delegating seat is closed or missing. To initialize a provider's blank, open, unowned task reservation, fetch it, preserve ref/etag and all other frontmatter, and write its brief, verify and allowed_paths. The host records you as its delegator in your swarm before delegation. This initialization applies only to blank, unowned reservations. Amendments wake the assignee in the task thread; changed verify requires a fresh report. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools. Updates retain type, ref and etag."
+        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.den; the Index returns its numbered final path. Reports are append-only at reports/YYYY-MM-DD-slug.den; corrections create a new report with supersedes. Tasks are created open; their delegating Oracle may amend only brief/verify/allowed_paths while nonterminal. A same-swarm Oracle takes over on amendment if the delegating seat is closed or missing. To initialize a provider's blank, open, unowned task reservation, fetch it and write its brief, verify and allowed_paths. The host records you as its delegator in your swarm before delegation. This initialization applies only to blank, unowned reservations. Amendments wake the assignee in the task thread; changed verify requires a fresh report. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools."
     } else {
-        "Create/update e2e, comment, research, note and artifact records as your seat. Create append-only reports at reports/YYYY-MM-DD-slug.den for your assigned task; corrections create a new report with supersedes. For your assigned task preserve every other field and the body, changing only report.summary, report.commit, report.report and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
+        "Create/update e2e, comment, research, note and artifact records as your seat. Create append-only reports at reports/YYYY-MM-DD-slug.den for your assigned task; corrections create a new report with supersedes. For your assigned task retain its body and change only report.summary, report.commit, report.report and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools."
     };
     let write_help = format!(
-        "{write_help} Call knowledge_orient first: it loads the writing workflow once, so this description does not repeat it. knowledge_types gives each type's purpose, path and writing rules; frontmatter lists the report fields. Create takes a document-type path (tasks/slug.md, specs/slug.md, concerns/slug.md, etc.); top-level slugs are refused. Update takes the ref a fetch or search returned. Writes are drafts that other harnesses can read; knowledge_commit checkpoints them and never pushes. The host stamps authorship and a signed mutation audit. {IDENTIFIERS}"
+        "{write_help} Call knowledge_orient first. knowledge_types gives each type's purpose, path and writing rules; frontmatter lists the report fields. Create takes a document-type path (tasks/slug.md, specs/slug.md, concerns/slug.md, etc.); top-level slugs are refused. {UPDATE_INPUTS} Writes are drafts that other harnesses can read; knowledge_commit checkpoints them and never pushes. The host stamps authorship and a signed mutation audit. {IDENTIFIERS}"
     );
     let kinds: Vec<_> = DOCUMENT_TYPES.iter().map(|entry| entry.kind).collect();
     let mut tools = vec![
@@ -92,6 +81,30 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
     tools
 }
 
+const UPDATE_INPUTS: &str = "On update, retain frontmatter.type and supply ref as the fetched id or path string with its etag, or pass the full RecordRef. Use top-level path only on create. Omitted protected fields keep their values. Each supplied protected value must match the current record.";
+
+fn write_schema() -> Value {
+    let contract = d::method_schema("write", false).expect("contract write schema");
+    let mut write = contract["$defs"]["WriteRequest"].clone();
+    // Shorthand belongs to the seat API. Providers still receive a RecordRef.
+    write.as_object_mut().unwrap().remove("allOf");
+    write["$defs"] = json!({"RecordRef":contract["$defs"]["RecordRef"]});
+    write["additionalProperties"] = json!(false);
+    write["properties"]
+        .as_object_mut()
+        .unwrap()
+        .remove("signed_record");
+    write["properties"]["ref"] = json!({
+        "type":["string","object","null"], "minLength":1, "maxLength":4096,
+        "if":{"type":"object"}, "then":{"$ref":"#/$defs/RecordRef"},
+        "description":"Fetched id or path string with its etag, or a full RecordRef."
+    });
+    write["properties"]["frontmatter"]["required"] = json!(["type"]);
+    write["properties"]["frontmatter"]["properties"] =
+        json!({"type":{"type":"string","minLength":1}});
+    write
+}
+
 /// Static host guidance; never route this read through a workspace or provider.
 pub(crate) fn type_info(args: &Value) -> Result<Value, String> {
     #[derive(Deserialize)]
@@ -112,7 +125,7 @@ pub(crate) fn type_info(args: &Value) -> Result<Value, String> {
         "types":entries,
         "writing":{
             "create":"Call knowledge_write with a root-relative Markdown path under a document-type directory (such as concerns/session-continuity.md), frontmatter containing type and title, and a Markdown body. The host assigns identity, number, timestamps, authorship and signatures; do not invent them.",
-            "update":"Fetch the current record with knowledge_fetch, then pass its ref and etag to knowledge_write, preserving type and other frontmatter. Omit path on update.",
+            "update":format!("Fetch the current record with knowledge_fetch. {UPDATE_INPUTS}"),
             "publication":"Draft -> committed checkpoint -> draft on later edits. Use knowledge_write freely for work in progress. Use knowledge_commit deliberately to prepare cross-machine sharing, preserve substantial document changes, or record finally accepted/done work. Commit creates artifact provenance; it does not push. knowledge_fetch exposes publication_state and a matching checkpoint.",
             "authority":"Follow your role-filtered knowledge_write schema and task_* or artifact_* controls. This dictionary describes types and conventions; it grants no permissions and a selected provider may refuse unsupported writes.",
             "custom_types":"Oracle-class writes may also use custom types; these entries describe the built-in vocabulary rather than a closed storage schema."
@@ -139,7 +152,7 @@ struct Search {
 #[serde(deny_unknown_fields)]
 struct Write {
     #[serde(default, rename = "ref")]
-    reference: Option<d::RecordRef>,
+    reference: Option<WriteRef>,
     #[serde(default)]
     path: Option<String>,
     frontmatter: Value,
@@ -147,10 +160,17 @@ struct Write {
     #[serde(default)]
     etag: Option<String>,
 }
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum WriteRef {
+    Locator(String),
+    Full(d::RecordRef),
+}
+
 pub(crate) enum Request {
     Fetch(String),
     Search(d::SearchRequest),
-    Write(Box<d::WriteRequest>),
+    Write(Box<d::WriteRequest>, Option<String>),
     Commit {
         locators: Vec<String>,
         message: String,
@@ -221,61 +241,91 @@ pub(crate) fn prepare(call: &Call) -> Result<Request, String> {
             }))
         }
         "knowledge_write" => {
-            let mut args: Write = super::tools::parse(&call.args)?;
-            let path = args
-                .reference
-                .as_ref()
-                .map(|r| r.path.as_str())
-                .or(args.path.as_deref())
-                .ok_or("knowledge create requires a root-relative Markdown path")?;
-            if !permitted(path) {
-                return Err(
-                    "knowledge write requires a relative Markdown path inside the root".into(),
-                );
-            }
+            let args: Write = super::tools::parse(&call.args)
+                .map_err(|fallback| write_schema_error(&call.args).unwrap_or(fallback))?;
             if args.reference.is_some() && args.path.is_some() {
-                return Err("knowledge update uses ref, without a path".into());
+                return Err("path is only for create; an update uses ref".into());
             }
-            let metadata = args
-                .frontmatter
-                .as_object_mut()
-                .ok_or("frontmatter must be an object")?;
-            if metadata
-                .get("type")
-                .and_then(Value::as_str)
-                .is_none_or(str::is_empty)
+            if !args.frontmatter.is_object()
+                || args.frontmatter["type"].as_str().is_none_or(str::is_empty)
             {
-                return Err("knowledge write requires a record type".into());
+                return Err(write_schema_error(&call.args)
+                    .expect("the write schema requires an object with a nonempty type"));
             }
-            crate::knowledge::validate_document_path(
-                path,
-                metadata["type"].as_str().unwrap_or_default(),
-            )
-            .map_err(|error| format!("{}: {}", error.code, error.message))?;
-            let id = args
-                .reference
-                .as_ref()
-                .map_or_else(|| call.op_id.to_string(), |r| r.id.clone());
-            if id.parse::<crate::Ulid>().is_err() || id == crate::Ulid::nil().to_string() {
-                return Err("knowledge record reference requires a non-nil record id".into());
-            }
-            if metadata
-                .get("id")
-                .is_some_and(|value| value.as_str() != Some(id.as_str()))
-            {
-                return Err("knowledge create id must equal op_id; update id cannot change".into());
-            }
-            metadata.insert("id".into(), json!(id));
-            Ok(Request::Write(Box::new(d::WriteRequest {
-                reference: args.reference,
+            let (reference, locator) = match args.reference {
+                Some(WriteRef::Locator(locator)) => {
+                    if !permitted(&locator)
+                        && !locator.parse::<crate::Ulid>().is_ok_and(|id| !id.is_nil())
+                    {
+                        return Err("ref must be a record ULID, a root-relative record path, or a full RecordRef".into());
+                    }
+                    if args.etag.as_deref().is_none_or(str::is_empty) {
+                        return Err("etag must be the fetched record's etag when ref is an id or path string".into());
+                    }
+                    (None, Some(locator))
+                }
+                Some(WriteRef::Full(reference)) => (Some(reference), None),
+                None => (None, None),
+            };
+            let mut request = Box::new(d::WriteRequest {
+                reference,
                 path: args.path,
                 frontmatter: args.frontmatter,
                 body: args.body,
                 etag: args.etag,
-            })))
+            });
+            if locator.is_none() {
+                write_target(&mut request, call.op_id)?;
+            }
+            Ok(Request::Write(request, locator))
         }
         _ => Err("knowledge tool is unavailable".into()),
     }
+}
+
+fn write_schema_error(args: &Value) -> Option<String> {
+    static SCHEMA: std::sync::LazyLock<jsonschema::Validator> = std::sync::LazyLock::new(|| {
+        jsonschema::validator_for(&write_schema()).expect("valid knowledge write schema")
+    });
+    let error = SCHEMA.validate(args).err()?;
+    let field = error.instance_path();
+    Some(format!(
+        "arguments do not match the tool schema: {field} {}",
+        error.masked()
+    ))
+}
+
+pub(crate) fn write_target(request: &mut d::WriteRequest, op: crate::Ulid) -> Result<(), String> {
+    let path = request
+        .reference
+        .as_ref()
+        .map(|r| r.path.as_str())
+        .or(request.path.as_deref())
+        .ok_or("path must be a root-relative Markdown or Den path on create")?;
+    if !permitted(path) {
+        return Err("knowledge write requires a relative Markdown path inside the root".into());
+    }
+    crate::knowledge::validate_document_path(
+        path,
+        request.frontmatter["type"].as_str().unwrap_or_default(),
+    )
+    .map_err(|error| format!("{}: {}", error.code, error.message))?;
+    let id = request
+        .reference
+        .as_ref()
+        .map_or_else(|| op.to_string(), |r| r.id.clone());
+    if !id.parse::<crate::Ulid>().is_ok_and(|id| !id.is_nil()) {
+        return Err("ref.id must be a non-nil record ULID".into());
+    }
+    if request
+        .frontmatter
+        .get("id")
+        .is_some_and(|value| value.as_str() != Some(id.as_str()))
+    {
+        return Err("knowledge create id must equal op_id; update id cannot change".into());
+    }
+    request.frontmatter["id"] = json!(id);
+    Ok(())
 }
 
 pub(crate) fn fetch_page_args(call: &Call) -> Result<(usize, Option<String>), String> {
@@ -310,7 +360,7 @@ pub(crate) fn record_locator(locator: &str) -> &str {
     target.strip_prefix(".bboxy/").unwrap_or(target)
 }
 
-pub(crate) fn fetch(source: &dyn DataSource, locator: String) -> d::Result<d::Record> {
+pub(crate) fn resolve(source: &dyn DataSource, locator: String) -> d::Result<d::RecordRef> {
     // Do not reflect outside-root candidates or parse failures into a scoped
     // tool response. The lower provider still retains its full command error.
     let locator = record_locator(&locator).to_owned();
@@ -325,18 +375,22 @@ pub(crate) fn fetch(source: &dyn DataSource, locator: String) -> d::Result<d::Re
     if !permitted(&reference.path) {
         return Err(d::CommandError::new(
             "invalid_path",
-            "knowledge reads require a relative Markdown path inside the root",
+            "knowledge records require a relative Markdown path inside the root",
         ));
     }
-    let record = source
+    Ok(reference)
+}
+
+pub(crate) fn fetch(source: &dyn DataSource, locator: String) -> d::Result<d::Record> {
+    let reference = resolve(source, locator)?;
+    source
         .fetch(d::FetchRequest { reference })
         .map_err(|error| {
             d::CommandError::new(
                 &error.code,
                 format!("knowledge fetch refused: {}", error.code),
             )
-        })?;
-    Ok(record)
+        })
 }
 
 const WORKER_TYPES: &[&str] = &[
@@ -424,8 +478,7 @@ pub(crate) fn write_plan(
                 )
             })?;
             if request.body != old.body
-                || task_report_remainder(&request.frontmatter)?
-                    != task_report_remainder(&old.frontmatter)?
+                || protected_report_fields_changed(&request.frontmatter, &old.frontmatter)?
             {
                 return Err(denied(
                     "task_field_protected",
@@ -450,34 +503,18 @@ pub(crate) fn write_plan(
         }
         if let Some(old) = current {
             let reservation = task_reservation(old);
-            // Missing host stamps are not authored changes. Explicit replacements
-            // still compare below, including the protected verification revision.
             let after = request
                 .frontmatter
                 .as_object_mut()
                 .expect("validated frontmatter");
-            for field in [
-                "id",
-                "number",
-                "created",
-                "updated",
-                "created_by",
-                "updated_by",
-                "authorship",
-                "provenance",
-                "verify_revision",
-            ] {
-                if let Some(value) = old.frontmatter.get(field) {
-                    after.entry(field).or_insert_with(|| value.clone());
-                }
-            }
             let before = old.frontmatter.as_object().expect("record frontmatter");
-            let differences: std::collections::BTreeSet<_> = before
-                .keys()
-                .chain(after.keys())
-                .filter(|field| !matches!(field.as_str(), "verify" | "allowed_paths"))
-                .filter(|field| before.get(*field) != after.get(*field))
-                .cloned()
+            let differences: std::collections::BTreeSet<_> = after
+                .iter()
+                .filter(|(field, value)| {
+                    !matches!(field.as_str(), "verify" | "allowed_paths")
+                        && before.get(*field) != Some(*value)
+                })
+                .map(|(field, _)| field.as_str())
                 .collect();
             if !differences.is_empty() {
                 return Err(denied(
@@ -487,6 +524,9 @@ pub(crate) fn write_plan(
                         differences.into_iter().collect::<Vec<_>>().join(", ")
                     ),
                 ));
+            }
+            for (field, value) in before {
+                after.entry(field).or_insert_with(|| value.clone());
             }
             if !reservation
                 && !matches!(
@@ -507,7 +547,7 @@ pub(crate) fn write_plan(
                 {
                     return Err(denied(
                         "task_field_protected",
-                        "initialize a reserved task with a nonempty brief and verify command; preserve its ref, etag and other frontmatter",
+                        "initialize a reserved task with a nonempty brief and verify command",
                     ));
                 }
                 // The host supplies custody. Caller-supplied ownership cannot
@@ -542,12 +582,15 @@ pub(crate) fn write_plan(
             );
             metadata.insert("swarm".into(), json!(actor.swarm_id));
         }
-    } else if kind == "artifact" {
-        artifact_fields(
-            actor,
-            &mut request.frontmatter,
-            current.map(|old| &old.frontmatter),
-        )?;
+    } else {
+        let artifact = kind == "artifact";
+        let old = current.map(|record| &record.frontmatter);
+        if let Some(old) = old {
+            retain_host_fields(&mut request.frontmatter, old)?;
+        }
+        if artifact {
+            artifact_fields(actor, &mut request.frontmatter, old)?;
+        }
     }
     Ok(WritePlan::Record(Box::new(request)))
 }
@@ -598,24 +641,53 @@ pub(crate) fn operator_task(request: &mut d::WriteRequest, device: crate::Ulid) 
     Ok(())
 }
 
-fn task_report_remainder(metadata: &Value) -> d::Result<Value> {
-    let mut value = metadata.clone();
-    let object = value
-        .as_object_mut()
-        .ok_or_else(|| denied("task_field_protected", "task frontmatter must be an object"))?;
-    object.remove("verify_result");
-    if let Some(report) = object.get_mut("report") {
+fn protected_report_fields_changed(metadata: &Value, old: &Value) -> d::Result<bool> {
+    let object = metadata.as_object().expect("validated frontmatter");
+    if let Some(report) = object.get("report") {
         let report = report
-            .as_object_mut()
+            .as_object()
             .ok_or_else(|| denied("task_field_protected", "report must be an object"))?;
-        report.remove("summary");
-        report.remove("commit");
-        report.remove("report");
-        if report.is_empty() {
-            object.remove("report");
+        if report.iter().any(|(field, value)| {
+            !matches!(field.as_str(), "summary" | "commit" | "report")
+                && old["report"].get(field) != Some(value)
+        }) {
+            return Ok(true);
         }
     }
-    Ok(value)
+    Ok(object.iter().any(|(field, value)| {
+        !matches!(field.as_str(), "report" | "verify_result") && old.get(field) != Some(value)
+    }))
+}
+
+pub(crate) fn retain_host_fields(metadata: &mut Value, old: &Value) -> d::Result<()> {
+    for field in [
+        "number",
+        "created",
+        "updated",
+        "created_by",
+        "updated_by",
+        "authorship",
+        "provenance",
+        "issued_by",
+    ] {
+        if !retain_field(metadata, old, field) {
+            return Err(d::CommandError::new(
+                "frontmatter_field_protected",
+                format!("frontmatter.{field} is managed by the host"),
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn retain_field(metadata: &mut Value, old: &Value, field: &str) -> bool {
+    if let Some(supplied) = metadata.get(field) {
+        return old.get(field) == Some(supplied);
+    }
+    if let Some(value) = old.get(field) {
+        metadata[field] = value.clone();
+    }
+    true
 }
 
 fn artifact_fields(actor: &SeatActor, metadata: &mut Value, old: Option<&Value>) -> d::Result<()> {
@@ -632,19 +704,19 @@ fn artifact_fields(actor: &SeatActor, metadata: &mut Value, old: Option<&Value>)
     if let Some(old) = old {
         if protected
             .iter()
-            .any(|field| metadata.get(*field) != old.get(*field))
+            .any(|field| !retain_field(metadata, old, field))
         {
             return Err(denied(
                 "artifact_field_protected",
                 "claim, observation and lineage fields require their existing artifact/detector path",
             ));
         }
-        if ["ref", "digest"]
-            .iter()
-            .any(|field| metadata.get(*field) != old.get(*field))
-            && (old["claimed"] == true
-                || old["observed"] == true
-                || old["produced_by"] != format!("seat:{}", actor.seat_id))
+        if (old["claimed"] == true
+            || old["observed"] == true
+            || old["produced_by"] != format!("seat:{}", actor.seat_id))
+            && ["ref", "digest"]
+                .iter()
+                .any(|field| !retain_field(metadata, old, field))
         {
             return Err(denied(
                 "artifact_field_protected",

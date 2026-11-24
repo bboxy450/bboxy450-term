@@ -7257,10 +7257,9 @@ fn mcp_knowledge266_worker_task_results_use_report_notice_and_acceptance_guards(
     f.task_file(f.task_metadata());
     let initial = data(knowledge_fetch(&f, f.own.id, "#1"));
     let original_body = initial["body"].as_str().unwrap().to_owned();
-    let mut args = knowledge_update_args(&initial);
-    args["frontmatter"]["report"] =
-        json!({"summary":"knowledge Report via canonical transition","commit":"abc123"});
-    args["frontmatter"]["verify_result"] = verification("false", 0, json!([]));
+    let args = json!({"ref":initial["path"],"etag":initial["etag"],"body":initial["body"],
+        "frontmatter":{"type":"task","report":{"summary":"knowledge Report via canonical transition","commit":"abc123"},
+            "verify_result":verification("false", 0, json!([]))}});
     let op = Ulid::new();
     let first = f.mutate(f.own.id, op, "knowledge_write", args.clone());
     let record = data(first.clone())["record"].clone();
@@ -7658,6 +7657,101 @@ fn mcp_task_reservation_cannot_adopt_an_existing_unowned_brief_or_evidence() {
         assert_eq!(
             data(knowledge_fetch(&f, f.oracle.id, "#1"))["etag"],
             old["etag"]
+        );
+    }
+}
+
+#[test]
+fn mcp_knowledge_write_accepts_short_refs_and_preserves_omitted_task_fields() {
+    let f = Fixture::new();
+    let mut metadata = f.task_metadata();
+    metadata["swarm"] = json!(f.own.swarm);
+    metadata["role"] = json!("executor");
+    f.task_file(metadata);
+    let original = data(knowledge_fetch(&f, f.oracle.id, "#1"));
+
+    let amend = |args| f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", args);
+    let args = json!({"ref":original["id"],"etag":original["etag"],"body":original["body"],
+        "frontmatter":{"type":"task","verify":"true && true"}});
+    for (field, bad_value, expected) in [
+        ("ref", json!(17), "string"),
+        ("ref", json!({"id":original["id"]}), "number"),
+        ("body", json!({}), "string"),
+        ("etag", Value::Null, "fetched record's etag"),
+    ] {
+        let mut malformed = args.clone();
+        malformed[field] = bad_value;
+        let result = refused(amend(malformed), field);
+        assert!(result.to_string().contains(expected), "{result}");
+    }
+    let mut forged = args.clone();
+    forged["frontmatter"]["assignee"] = Value::Null;
+    knowledge_denied(amend(forged), "task_field_protected");
+    assert_eq!(
+        data(knowledge_fetch(&f, f.oracle.id, "#1"))["etag"],
+        original["etag"]
+    );
+
+    let amended = data(amend(args.clone()))["record"].clone();
+    assert_eq!(amended["frontmatter"]["verify"], "true && true");
+    assert_eq!(amended["frontmatter"]["verify_revision"], 1);
+    for field in [
+        "id",
+        "number",
+        "title",
+        "status",
+        "assignee",
+        "delegated_by",
+        "role",
+        "swarm",
+        "allowed_paths",
+        "custom",
+    ] {
+        assert_eq!(
+            amended["frontmatter"][field], original["frontmatter"][field],
+            "{field}"
+        );
+    }
+    knowledge_denied(amend(args), "etag_mismatch");
+
+    let path_update = data(amend(json!({"ref":amended["path"],"etag":amended["etag"],
+        "frontmatter":{"type":"task"},"body":"Amended by path."})));
+    assert_eq!(path_update["record"]["body"], "Amended by path.");
+    assert_eq!(path_update["record"]["frontmatter"]["verify_revision"], 1);
+}
+
+#[test]
+fn mcp_knowledge_write_retains_omitted_host_and_artifact_fields() {
+    let f = Fixture::new();
+    let record = knowledge_create(&f, f.own.id, "artifact", "artifacts/update.md", "Original.");
+    let update = |frontmatter| {
+        f.mutate(f.own.id, Ulid::new(), "knowledge_write", json!({
+        "ref":record["path"],"etag":record["etag"],"body":"Updated.","frontmatter":frontmatter
+    }))
+    };
+    knowledge_denied(
+        update(json!({"type":"artifact","claimed":true})),
+        "artifact_field_protected",
+    );
+    knowledge_denied(
+        update(json!({"type":"artifact","created_by":null})),
+        "frontmatter_field_protected",
+    );
+    let changed = data(update(
+        json!({"type":"artifact","title":"Updated artifact"}),
+    ));
+    assert_eq!(changed["record"]["body"], "Updated.");
+    for field in [
+        "created",
+        "created_by",
+        "number",
+        "produced_by",
+        "claimed",
+        "observed",
+    ] {
+        assert_eq!(
+            changed["record"]["frontmatter"][field], record["frontmatter"][field],
+            "{field}"
         );
     }
 }

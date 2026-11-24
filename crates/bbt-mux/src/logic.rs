@@ -4703,7 +4703,7 @@ impl Worker {
                 };
                 journal.checked(actor, call, value)
             }
-            Ok(tool::Request::Commit { .. } | tool::Request::Write(_)) => journal.checked(
+            Ok(tool::Request::Commit { .. } | tool::Request::Write(..)) => journal.checked(
                 actor,
                 call,
                 mcp::error(
