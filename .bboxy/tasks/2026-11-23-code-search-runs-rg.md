@@ -3,6 +3,7 @@ allowed_paths:
 - crates/bboxy450-code
 - crates/bboxy450-harness
 - scripts
+assignee: seat:01M86G92ZCH7KJ28YMGPGTRNYR
 authorship:
   kind: seat
   process_generation: '1'
@@ -13,23 +14,24 @@ created_by: seat:01M85BW3PMN3QBFPPMWBS866RA
 delegated_by: seat:01M85BW3PMN3QBFPPMWBS866RA
 id: 01M85CHZHNAD2H6MCGMRT0Q6VR
 number: 1794292861627826
-status: open
+role: executor
+status: claimed
 swarm: 01M7P04CW1T6KY8CMSS6DQM12Q
 title: 'bboxy_code.search: run ripgrep underneath and return compact rg-style hits'
 type: task
-updated: 2026-11-23T23:41:14.817Z
+updated: 2026-11-24T10:05:33.806Z
 updated_by: seat:01M85BW3PMN3QBFPPMWBS866RA
 verify: cargo nextest run -p bboxy450-code
 provenance:
   digest: sha256:495a8f21840f55185403e7908715574e5dc9876fe2cb5ce4d6f4b6c99cac60b1
-  frontmatter_digest: sha256:80d13f2f575ea57c4b9c15caa1b9439f0a7a017bfb3b0d7384c935a103dab8eb
+  frontmatter_digest: sha256:c8b0856bc0323a3d2448105eca37768836f23e33d9c095aff147b2e3a5175d97
   signer: seat:01M85BW3PMN3QBFPPMWBS866RA
-  sig: AVgDJwYaSL6GFig57vbr0TIvXMqZItJVEu0y8vIF3jPrVgPppDNocEryrZbsST22JKLNUnA6aV4TbRwO827xCQ==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1462
+  sig: ruTBil4Mv+XM/zowH2tvUKa5MpSm9iGG7VmZU1UpyCOFjJxTa2kLnO4Xu7EqNzJIeRWz3yaawV8nqtWUTZXRBg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1681
   event:
-    id: 01M85CJ09QVM7J95F92WA3B815
-    sequence: 1462
-    hash: c9622b2b5fb38278a04aed9dbd928a6bfc3bf9a9c3ffc9b169994dc84a66781f
+    id: 01M86G95DKFS90QXXN3SDM34DA
+    sequence: 1681
+    hash: 0f7e1afc50c109275c9889e82d0116eee9a64fc06ba4365ee6a09937073feb2e
 ---
 Our stand: subtract before you add; report what you removed.
 
