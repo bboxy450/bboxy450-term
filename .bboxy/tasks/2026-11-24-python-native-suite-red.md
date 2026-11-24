@@ -3,6 +3,7 @@ allowed_paths:
 - crates/bbt-mux
 - crates/bboxy450-term
 - Makefile
+assignee: seat:01M86NEZ4J2DKQE0MMGA2V5SNC
 authorship:
   kind: seat
   process_generation: '1'
@@ -13,23 +14,24 @@ created_by: seat:01M85BW3PMN3QBFPPMWBS866RA
 delegated_by: seat:01M85BW3PMN3QBFPPMWBS866RA
 id: 01M86G8VBBFZFF5XH8NNTW9KNM
 number: 1794292861627875
-status: open
+role: executor
+status: claimed
 swarm: 01M7P04CW1T6KY8CMSS6DQM12Q
 title: 'make test-python-execute-native is red on main: managed-worktree orient has no hints; chart test needs its install'
 type: task
-updated: 2026-11-24T10:05:24.043Z
+updated: 2026-11-24T11:36:12.785Z
 updated_by: seat:01M85BW3PMN3QBFPPMWBS866RA
 verify: make test-python-execute-native
 provenance:
   digest: sha256:1d8357086062b6fd663633cb0f3a8e95ce0c38272accea8a73371407646aeb4f
-  frontmatter_digest: sha256:e95cdaa93718007bc779876e4380f4ca8eafbad4eec1cefed22726a89cd45a9c
+  frontmatter_digest: sha256:97232807c7e0d4c19adbdf66a3faf2e6c4adac8c611d47070c3dd478ce2e9c70
   signer: seat:01M85BW3PMN3QBFPPMWBS866RA
-  sig: YWOZl+zrdiFAwFBTCzq/i+QZqw3iHxu1L8TN/J2PfHh0biiuHkUOaxctL1JjztvftbnShJpGYKM3tVZl2cmXAg==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1679
+  sig: kNCvJBWHBh2L9PSHYu99Xk+UHt2ERCMXqMkKFQSdueiQnUKhwhSINLC1USlAPW5VYhTEhw2YOLGV9+yNFRuiBQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1706
   event:
-    id: 01M86G8VW0ZMJ83S1RQWP2NJ45
-    sequence: 1679
-    hash: 840a0e96f1695c9fb8d10080c2d05ad4ff2d14632e68b897b32231d8f7c2682f
+    id: 01M86NF52WMK9QF08K8TE9CBM7
+    sequence: 1706
+    hash: 71f7e824eb6cd9c9e2d59c707c094071bb7e6c490adf45e2d612369bb8dbe182
 ---
 Our stand: subtract before you add; report what you removed.
 
