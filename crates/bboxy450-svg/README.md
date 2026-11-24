@@ -16,10 +16,17 @@ installation is used. Other platforms report chart export unavailable.
 and upstream license to `Contents/Resources/chart-fonts/`.
 
 Every declared case runs at 1x, 2x and an 8x camera crop. The shared viewport
-function preserves user units and camera identity. The native parser refuses
-unsupported paint, foreign namespaces, unverified fonts and bounded-input
-violations before painting. `make test-svg` and `make test-svg-admission` check
-parser/refusal fixtures and both sides of resource ceilings.
+function preserves user units and camera identity. Admission is permissive:
+what a browser would draw, we draw. Unknown elements, attributes, CSS
+properties and foreign namespaces are ignored; basic shapes (circle, ellipse,
+polygon, polyline, rounded rect), simple CSS selectors and `currentColor`
+render; gradients we cannot paint exactly fall back to their first stop; any
+font family renders with the bundled faces. The parser still refuses active
+content (script, event handlers, foreignObject), references outside the
+document, entities, a declared font identity naming another set, and
+bounded-input violations, before painting. `make test-svg` and
+`make test-svg-admission` check parser/refusal fixtures (`expected: rendered`
+marks inputs the permissive parser must draw) and both sides of resource ceilings.
 
 Vector bounds/endpoints must match resvg exactly. Native and resvg reuse the
 same tiny-skia coverage engine; independent coverage comes from Chrome on every

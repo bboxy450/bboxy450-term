@@ -96,6 +96,12 @@ fn length(value: &str) -> Result<f32> {
     let scale = match length.unit {
         U::None | U::Px => 1.,
         U::Pt => 96. / 72.,
+        U::Pc => 16.,
+        U::In => 96.,
+        U::Cm => 96. / 2.54,
+        U::Mm => 96. / 25.4,
+        U::Em => 16.,
+        U::Ex => 8.,
         _ => return Err(Diagnostic::unsupported(format!("length unit in {value}"))),
     };
     number(&(length.number * scale).to_string())
@@ -104,15 +110,16 @@ fn attr_number(n: Node<'_, '_>, name: &str, default: f32) -> Result<f32> {
     n.attribute(name).map(number).unwrap_or(Ok(default))
 }
 fn unit(value: &str) -> Result<f32> {
-    let n = number(value)?;
-    if !(0. ..=1.).contains(&n) {
-        return Err(refused("opacity", "value outside 0..1"));
-    }
-    Ok(n)
+    let value = value.trim();
+    let n = match value.strip_suffix('%') {
+        Some(percent) => number(percent)? / 100.,
+        None => number(value)?,
+    };
+    Ok(n.clamp(0., 1.))
 }
 fn transform(value: Option<&str>) -> Result<Affine> {
-    let t = svgtypes::Transform::from_str(value.unwrap_or(""))
-        .map_err(|e| refused("transform", e.to_string()))?;
+    // Browsers ignore an unparsable transform attribute; so do we.
+    let t = svgtypes::Transform::from_str(value.unwrap_or("")).unwrap_or_default();
     let t = Affine([
         t.a as f32, t.b as f32, t.c as f32, t.d as f32, t.e as f32, t.f as f32,
     ]);
@@ -129,11 +136,10 @@ fn color(value: &str) -> Result<Color> {
     ]))
 }
 fn rule(value: &str) -> Result<FillRule> {
-    match value {
-        "nonzero" => Ok(FillRule::NonZero),
-        "evenodd" => Ok(FillRule::EvenOdd),
-        _ => Err(refused("fill_rule", value)),
-    }
+    Ok(match value {
+        "evenodd" => FillRule::EvenOdd,
+        _ => FillRule::NonZero,
+    })
 }
 fn style_property(name: &str) -> bool {
     matches!(
@@ -157,6 +163,7 @@ fn style_property(name: &str) -> bool {
             | "font-size"
             | "font-weight"
             | "text-anchor"
+            | "color"
     )
 }
 fn declarations(value: &str) -> Result<Style> {
@@ -165,16 +172,15 @@ fn declarations(value: &str) -> Result<Style> {
         let (name, value) = declaration
             .split_once(':')
             .ok_or_else(|| refused("style", "malformed declaration"))?;
-        if !style_property(name.trim()) {
-            return Err(Diagnostic::unsupported(format!(
-                "CSS property {}",
-                name.trim()
-            )));
-        }
-        if value.contains(['{', '}', '!', '@']) {
+        let value = value.trim();
+        let value = value.strip_suffix("!important").unwrap_or(value).trim();
+        if value.contains(['{', '}', '@']) {
             return Err(refused("style", "unsupported CSS syntax"));
         }
-        style.insert(name.trim().into(), value.trim().into());
+        // Like a browser, an unknown property is ignored rather than refused.
+        if style_property(name.trim()) {
+            style.insert(name.trim().into(), value.into());
+        }
     }
     Ok(style)
 }
@@ -216,7 +222,9 @@ fn href<'a>(n: Node<'a, '_>) -> Result<&'a str> {
         .ok_or_else(|| refused("href", "reference is missing"))
 }
 
-/// Complete attribute/element census before lowering; no partial picture is returned.
+/// Safety census before lowering. Like a browser, anything merely unknown
+/// (elements, attributes, foreign namespaces) is ignored; only active content
+/// and references that could reach outside the document are refused.
 fn audit(doc: &Document<'_>) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     for n in doc.descendants().filter(Node::is_element) {
@@ -224,107 +232,29 @@ fn audit(doc: &Document<'_>) -> Vec<Diagnostic> {
             continue;
         }
         let tag = n.tag_name().name();
-        if n.tag_name().namespace() != Some(SVG) {
-            diagnostics.push(Diagnostic::unsupported(format!("foreign element {tag}")));
+        if matches!(tag, "script" | "foreignObject" | "iframe") {
+            diagnostics.push(refused("active_content", tag));
             continue;
-        }
-        let known = matches!(
-            tag,
-            "svg"
-                | "g"
-                | "defs"
-                | "path"
-                | "rect"
-                | "line"
-                | "use"
-                | "clipPath"
-                | "linearGradient"
-                | "stop"
-                | "image"
-                | "style"
-                | "text"
-                | "tspan"
-        );
-        if !known {
-            diagnostics.push(if matches!(tag, "script" | "foreignObject") {
-                refused("active_content", tag)
-            } else {
-                Diagnostic::unsupported(format!("element {tag}"))
-            });
         }
         for a in n.attributes() {
             let name = a.name();
             let value = a.value();
-            if a.namespace()
-                .is_some_and(|ns| ns != "http://www.w3.org/1999/xlink" || name != "href")
-            {
-                diagnostics.push(Diagnostic::unsupported(format!(
-                    "foreign attribute {{{}}}{name}",
-                    a.namespace().unwrap()
-                )));
-                continue;
-            }
             if name.starts_with("on") {
                 diagnostics.push(refused("active_content", name));
                 continue;
             }
             if name == "href" {
-                if tag == "image" && value.starts_with("data:image/png;base64,") {
+                if value.starts_with('#') && value.len() > 1 {
                     continue;
                 }
-                if tag != "use" || !value.starts_with('#') || value.len() == 1 {
-                    diagnostics.push(refused("external_reference", value));
+                if tag == "image" && value.starts_with("data:image/") {
+                    continue;
                 }
+                diagnostics.push(refused("external_reference", value));
                 continue;
             }
             if value.contains("url(") && !value.trim().starts_with("url(#") {
                 diagnostics.push(refused("external_reference", value));
-                continue;
-            }
-            let common = matches!(name, "id" | "class" | "style" | "role" | "pointer-events")
-                || name.starts_with("aria-")
-                || style_property(name);
-            let specific = match tag {
-                "svg" => matches!(
-                    name,
-                    "width"
-                        | "height"
-                        | "viewBox"
-                        | "version"
-                        | "x"
-                        | "y"
-                        | "preserveAspectRatio"
-                        | "data-bboxy-font-set"
-                ),
-                "g" | "use" => matches!(name, "transform" | "x" | "y"),
-                "path" => matches!(name, "d" | "transform"),
-                "rect" => matches!(name, "x" | "y" | "width" | "height" | "transform"),
-                "line" => matches!(name, "x1" | "y1" | "x2" | "y2" | "transform"),
-                "clipPath" => matches!(name, "transform" | "clipPathUnits"),
-                "linearGradient" => matches!(
-                    name,
-                    "x1" | "y1"
-                        | "x2"
-                        | "y2"
-                        | "gradientUnits"
-                        | "spreadMethod"
-                        | "color-interpolation"
-                ),
-                "stop" => matches!(name, "offset" | "stop-color" | "stop-opacity"),
-                "image" => matches!(
-                    name,
-                    "x" | "y" | "width" | "height" | "transform" | "preserveAspectRatio"
-                ),
-                "style" => name == "type",
-                "text" | "tspan" => matches!(name, "x" | "y" | "dx" | "dy" | "transform"),
-                _ => false,
-            };
-            if !common && !specific {
-                diagnostics.push(if tag == "image" || tag == "linearGradient" {
-                    refused("paint_option", format!("{tag}/@{name}"))
-                } else {
-                    Diagnostic::unsupported(format!("{tag}/@{name}"))
-                });
             }
         }
     }
@@ -335,7 +265,7 @@ struct Context<'a, 'input> {
     doc: &'a Document<'input>,
     fonts: Option<&'a FontSet>,
     ids: HashMap<String, NodeId>,
-    global: Style,
+    rules: Vec<(Vec<Selector>, Style)>,
     gradients: HashMap<String, Paint>,
     images: HashMap<NodeId, Arc<bbt_render::image::Image>>,
     stack: Vec<NodeId>,
@@ -355,7 +285,11 @@ impl<'a, 'input> Context<'a, 'input> {
         {
             style.insert(a.name().into(), a.value().into());
         }
-        style.extend(self.global.clone());
+        for (selectors, declared) in &self.rules {
+            if selectors.iter().any(|s| s.matches(n)) {
+                style.extend(declared.clone());
+            }
+        }
         style.extend(declarations(n.attribute("style").unwrap_or(""))?);
         Ok(style)
     }
@@ -372,22 +306,33 @@ impl<'a, 'input> Context<'a, 'input> {
             .get_node(*id)
             .ok_or_else(|| refused("missing_reference", reference))
     }
-    fn paint(&self, value: &str) -> Result<Option<Paint>> {
+    /// Browser-style paint: `url(#id) fallback`, `currentColor`, and an
+    /// unparsable value falls back to the property's initial paint.
+    fn paint(&self, value: &str, style: &Style, initial: Option<Paint>) -> Result<Option<Paint>> {
+        let value = value.trim();
         if value == "none" {
             return Ok(None);
         }
-        if let Some(id) = value
-            .strip_prefix("url(#")
-            .and_then(|s| s.strip_suffix(')'))
-        {
-            return self
-                .gradients
-                .get(id)
-                .cloned()
-                .map(Some)
-                .ok_or_else(|| refused("paint_reference", id));
+        if let Some(rest) = value.strip_prefix("url(#") {
+            let (id, fallback) = rest.split_once(')').unwrap_or((rest, ""));
+            if let Some(paint) = self.gradients.get(id.trim()) {
+                return Ok(Some(paint.clone()));
+            }
+            let fallback = fallback.trim();
+            return if fallback.is_empty() {
+                Ok(None)
+            } else {
+                self.paint(fallback, style, initial)
+            };
         }
-        Ok(Some(Paint::Solid(color(value)?)))
+        if value.eq_ignore_ascii_case("currentcolor") {
+            let current = get(style, "color", "black");
+            if current.eq_ignore_ascii_case("currentcolor") {
+                return Ok(Some(Paint::Solid(Color([0., 0., 0., 1.]))));
+            }
+            return self.paint(current, style, initial);
+        }
+        Ok(color(value).map(Paint::Solid).ok().or(initial))
     }
     fn path(
         &mut self,
@@ -406,18 +351,18 @@ impl<'a, 'input> Context<'a, 'input> {
                 "scene exceeds lowered command bound",
             ));
         }
-        let width = length(get(style, "stroke-width", "1"))?;
+        let width = length(get(style, "stroke-width", "1"))
+            .unwrap_or(1.)
+            .max(0.);
         let cap = match get(style, "stroke-linecap", "butt") {
-            "butt" => LineCap::Butt,
             "round" => LineCap::Round,
             "square" => LineCap::Square,
-            _ => return Err(refused("stroke", "line cap")),
+            _ => LineCap::Butt,
         };
         let join = match get(style, "stroke-linejoin", "miter") {
-            "miter" => LineJoin::Miter,
             "round" => LineJoin::Round,
             "bevel" => LineJoin::Bevel,
-            _ => return Err(refused("stroke", "line join")),
+            _ => LineJoin::Miter,
         };
         let dash = get(style, "stroke-dasharray", "none");
         let dash: Vec<f32> = if dash == "none" {
@@ -438,12 +383,12 @@ impl<'a, 'input> Context<'a, 'input> {
             dash: dash.into(),
         };
         stroke.validate(&points).map_err(|e| refused("path", e))?;
-        let miter_limit = number(get(style, "stroke-miterlimit", "4"))?;
-        if miter_limit < 1. {
-            return Err(refused("stroke", "miter limit must be at least one"));
-        }
-        let fill = self.paint(get(style, "fill", "black"))?;
-        let stroke_paint = self.paint(get(style, "stroke", "none"))?;
+        let miter_limit = number(get(style, "stroke-miterlimit", "4"))
+            .unwrap_or(4.)
+            .max(1.);
+        let black = Some(Paint::Solid(Color([0., 0., 0., 1.])));
+        let fill = self.paint(get(style, "fill", "black"), style, black)?;
+        let stroke_paint = self.paint(get(style, "stroke", "none"), style, None)?;
         Ok(Path {
             source: location(n),
             paint: bbt_ui_model::draw::VectorPath {
@@ -475,29 +420,46 @@ impl<'a, 'input> Context<'a, 'input> {
             return Ok(vec![]);
         }
         let tag = n.tag_name().name();
-        if matches!(
-            tag,
-            "defs" | "style" | "linearGradient" | "stop" | "clipPath"
-        ) {
+        if n.tag_name().namespace() != Some(SVG)
+            || !matches!(
+                tag,
+                "svg"
+                    | "g"
+                    | "a"
+                    | "switch"
+                    | "use"
+                    | "path"
+                    | "rect"
+                    | "line"
+                    | "circle"
+                    | "ellipse"
+                    | "polygon"
+                    | "polyline"
+                    | "text"
+                    | "image"
+            )
+        {
+            // defs, gradients, clip paths, symbols, filters, masks, animation and
+            // anything unknown paint nothing directly, as in a browser.
             return Ok(vec![]);
         }
         let style = self.style(n, parent)?;
         let transform = inherited.concat(transform(n.attribute("transform"))?);
         transform.validate().map_err(|e| refused("nonfinite", e))?;
         let mut elements = match tag {
-            "svg" | "g" => {
+            "svg" | "g" | "a" | "switch" => {
                 let mut t = transform;
                 let mut clip = None;
                 if tag == "svg" && n.parent_element().is_some() {
                     let box_ = view_box(n)?.map(|v| v as f32);
                     let w = n
                         .attribute("width")
-                        .map(length)
-                        .unwrap_or(Ok(box_[2] as f32))?;
+                        .and_then(|v| length(v).ok())
+                        .unwrap_or(box_[2]);
                     let h = n
                         .attribute("height")
-                        .map(length)
-                        .unwrap_or(Ok(box_[3] as f32))?;
+                        .and_then(|v| length(v).ok())
+                        .unwrap_or(box_[3]);
                     let x = attr_number(n, "x", 0.)?;
                     let y = attr_number(n, "y", 0.)?;
                     let rectangle = parse_path(&format!("M{x} {y}h{w}v{h}h{}Z", -w))?;
@@ -537,7 +499,22 @@ impl<'a, 'input> Context<'a, 'input> {
                     attr_number(n, "x", 0.)?,
                     attr_number(n, "y", 0.)?,
                 ]);
-                let result = self.lower(target, &style, transform.concat(translate), depth + 1);
+                let result = if target.tag_name().name() == "symbol" {
+                    let mut children = Vec::new();
+                    let mut failed = None;
+                    for child in target.children().filter(Node::is_element) {
+                        match self.lower(child, &style, transform.concat(translate), depth + 1) {
+                            Ok(c) => children.extend(c),
+                            Err(e) => {
+                                failed = Some(e);
+                                break;
+                            }
+                        }
+                    }
+                    failed.map_or(Ok(children), Err)
+                } else {
+                    self.lower(target, &style, transform.concat(translate), depth + 1)
+                };
                 self.stack.pop();
                 let mut elements = result?;
                 fn identify(elements: &mut [Element], source: &str) {
@@ -554,8 +531,11 @@ impl<'a, 'input> Context<'a, 'input> {
                 identify(&mut elements, &location(n));
                 elements
             }
-            "path" | "rect" | "line" => {
+            "path" | "rect" | "line" | "circle" | "ellipse" | "polygon" | "polyline" => {
                 let points = shape(n)?;
+                if points.is_empty() {
+                    return Ok(vec![]);
+                }
                 vec![Element::Path(self.path(n, points, &style, transform)?)]
             }
             "text" => self.text(n, &style, transform, depth)?,
@@ -564,14 +544,15 @@ impl<'a, 'input> Context<'a, 'input> {
                 let y = attr_number(n, "y", 0.)?;
                 let w = attr_number(n, "width", 0.)?;
                 let h = attr_number(n, "height", 0.)?;
-                if w <= 0. || h <= 0. {
-                    return Err(refused("image_viewport", "nonpositive image dimensions"));
-                }
-                let image = self
-                    .images
-                    .get(&n.id())
-                    .cloned()
-                    .ok_or_else(|| refused("image", "missing admitted pixels"))?;
+                let Some(image) = self.images.get(&n.id()).cloned() else {
+                    // Non-PNG data images are skipped rather than refused.
+                    return Ok(vec![]);
+                };
+                let (w, h) = if w > 0. && h > 0. {
+                    (w, h)
+                } else {
+                    (image.width as f32, image.height as f32)
+                };
                 let placement = viewport_transform(
                     [0., 0., image.width as f32, image.height as f32],
                     [x, y, w, h],
@@ -585,40 +566,14 @@ impl<'a, 'input> Context<'a, 'input> {
             _ => return Err(Diagnostic::unsupported(format!("paint element {tag}"))),
         };
         let opacity = unit(get(&style, "opacity", "1"))?;
-        let clip = match style.get("clip-path").filter(|v| v.as_str() != "none") {
+        let clip = match style
+            .get("clip-path")
+            .and_then(|v| v.trim().strip_prefix("url(#"))
+            .and_then(|v| v.split_once(')'))
+            .map(|(id, _)| id.trim().to_owned())
+        {
             None => None,
-            Some(reference) => {
-                let reference = reference
-                    .strip_prefix("url(")
-                    .and_then(|v| v.strip_suffix(')'))
-                    .ok_or_else(|| refused("clip", reference))?;
-                let target = self.target(reference)?;
-                if target.tag_name().name() != "clipPath" || self.stack.contains(&target.id()) {
-                    return Err(refused("clip", "invalid/cyclic clip target"));
-                }
-                if target
-                    .attribute("clipPathUnits")
-                    .is_some_and(|v| v != "userSpaceOnUse")
-                {
-                    return Err(refused("clip", "only user-space clipping is admitted"));
-                }
-                self.stack.push(target.id());
-                let t = transform.concat(transform_fn(target.attribute("transform"))?);
-                let mut paths = Vec::new();
-                for child in target.children().filter(Node::is_element) {
-                    let s = self.style(child, &Style::new())?;
-                    let mut p = self.path(
-                        child,
-                        shape(child)?,
-                        &s,
-                        t.concat(transform_fn(child.attribute("transform"))?),
-                    )?;
-                    p.paint.fill_rule = rule(get(&s, "clip-rule", "nonzero"))?;
-                    paths.push(p);
-                }
-                self.stack.pop();
-                Some(paths.into())
-            }
+            Some(id) => self.clip(&format!("#{id}"), transform)?,
         };
         // Validate hidden geometry and references too, then omit its paint.
         if get(&style, "display", "inline") == "none" {
@@ -632,6 +587,41 @@ impl<'a, 'input> Context<'a, 'input> {
             }];
         }
         Ok(elements)
+    }
+    /// A clip whose target is missing, cyclic or not a user-space clipPath is
+    /// ignored, as a browser does with an unresolvable clip-path.
+    fn clip(&mut self, reference: &str, transform: Affine) -> Result<Option<Arc<[Path]>>> {
+        let Ok(target) = self.target(reference) else {
+            return Ok(None);
+        };
+        if target.tag_name().name() != "clipPath"
+            || self.stack.contains(&target.id())
+            || target
+                .attribute("clipPathUnits")
+                .is_some_and(|v| v != "userSpaceOnUse")
+        {
+            return Ok(None);
+        }
+        self.stack.push(target.id());
+        let t = transform.concat(transform_fn(target.attribute("transform"))?);
+        let mut paths = Vec::new();
+        for child in target.children().filter(Node::is_element) {
+            let points = shape(child)?;
+            if points.is_empty() {
+                continue;
+            }
+            let s = self.style(child, &Style::new())?;
+            let mut p = self.path(
+                child,
+                points,
+                &s,
+                t.concat(transform_fn(child.attribute("transform"))?),
+            )?;
+            p.paint.fill_rule = rule(get(&s, "clip-rule", "nonzero"))?;
+            paths.push(p);
+        }
+        self.stack.pop();
+        Ok(Some(paths.into()))
     }
     fn text(
         &mut self,
@@ -661,14 +651,22 @@ impl<'a, 'input> Context<'a, 'input> {
                 if self.glyphs > MAX_GLYPHS {
                     return Err(refused("glyphs", "scene exceeds glyph bound"));
                 }
-                let weight = number(get(style, "font-weight", "400"))?;
-                if weight.fract() != 0. {
-                    return Err(refused("font_unavailable", "fractional weight"));
-                }
-                let face = fonts.admit(get(style, "font-family", ""), weight as u16, &value)?;
-                let size = length(get(style, "font-size", "16"))?;
+                // Any family/weight renders with the nearest bundled face.
+                let weight = match get(style, "font-weight", "400") {
+                    "bold" | "bolder" => 700,
+                    "normal" | "lighter" => 400,
+                    w => {
+                        if number(w).unwrap_or(400.) >= 600. {
+                            700
+                        } else {
+                            400
+                        }
+                    }
+                };
+                let face = fonts.face(weight)?;
+                let size = length(get(style, "font-size", "16")).unwrap_or(16.);
                 if size <= 0. {
-                    return Err(refused("font_size", "nonpositive size"));
+                    continue;
                 }
                 let text_style = TextStyle {
                     scale: TypeScale::Custom(size),
@@ -682,16 +680,23 @@ impl<'a, 'input> Context<'a, 'input> {
                 )
                 .map_err(|e| refused("font_unavailable", e.to_string()))?;
                 let anchor = match get(style, "text-anchor", "start") {
-                    "start" => 0.,
                     "middle" => 0.5,
                     "end" => 1.,
-                    _ => return Err(refused("text_anchor", "unknown anchor")),
+                    _ => 0.,
                 };
-                let fill = self.paint(get(style, "fill", "black"))?;
+                let black = Color([0., 0., 0., 1.]);
+                let fill = self.paint(
+                    get(style, "fill", "black"),
+                    style,
+                    Some(Paint::Solid(black)),
+                )?;
                 let color = match fill {
                     Some(Paint::Solid(c)) => c.alpha(unit(get(style, "fill-opacity", "1"))?),
                     None => Color::TRANSPARENT,
-                    _ => return Err(Diagnostic::unsupported("gradient text")),
+                    Some(Paint::LinearGradient { stops, .. }) => stops
+                        .first()
+                        .map_or(black, |s| s.color)
+                        .alpha(unit(get(style, "fill-opacity", "1"))?),
                 };
                 out.push(Element::Text(Text {
                     source: location(n),
@@ -707,8 +712,8 @@ impl<'a, 'input> Context<'a, 'input> {
                 }));
                 cursor[0] += metrics.advance;
             } else if child.is_element() {
-                if child.tag_name().name() != "tspan" {
-                    return Err(Diagnostic::unsupported("text child outside tspan"));
+                if !matches!(child.tag_name().name(), "tspan" | "a") {
+                    continue;
                 }
                 if depth + 1 > MAX_DEPTH {
                     return Err(refused("depth", "text nesting bound"));
@@ -816,26 +821,120 @@ fn transform_fn(value: Option<&str>) -> Result<Affine> {
     transform(value)
 }
 
+/// Basic shapes lower to path data the way SVG 2 defines them; an empty
+/// result means the shape is not rendered (zero size or non-shape element).
 fn shape(n: Node<'_, '_>) -> Result<Arc<[PathCommand]>> {
     let tag = n.tag_name().name();
-    let a = |name, default| attr_number(n, name, default);
+    let a = |name: &str, default: f32| -> f32 {
+        n.attribute(name)
+            .and_then(|v| length(v).ok())
+            .unwrap_or(default)
+    };
+    // Four cubic quarter-arcs per ellipse (kappa approximation).
+    let ellipse = |cx: f32, cy: f32, rx: f32, ry: f32| -> String {
+        let (kx, ky) = (rx * 0.552_284_8, ry * 0.552_284_8);
+        format!(
+            "M{} {cy}C{} {} {} {} {cx} {}C{} {} {} {} {} {cy}C{} {} {} {} {cx} {}C{} {} {} {} {} {cy}Z",
+            cx + rx,
+            cx + rx,
+            cy + ky,
+            cx + kx,
+            cy + ry,
+            cy + ry,
+            cx - kx,
+            cy + ry,
+            cx - rx,
+            cy + ky,
+            cx - rx,
+            cx - rx,
+            cy - ky,
+            cx - kx,
+            cy - ry,
+            cy - ry,
+            cx + kx,
+            cy - ry,
+            cx + rx,
+            cy - ky,
+            cx + rx,
+        )
+    };
     let data = match tag {
         "path" => return parse_path(n.attribute("d").unwrap_or("")),
         "rect" => {
-            let (x, y, w, h) = (a("x", 0.)?, a("y", 0.)?, a("width", 0.)?, a("height", 0.)?);
-            if w < 0. || h < 0. {
-                return Err(refused("shape", "negative rectangle"));
+            let (x, y, w, h) = (a("x", 0.), a("y", 0.), a("width", 0.), a("height", 0.));
+            if w <= 0. || h <= 0. {
+                return Ok(Arc::from([]));
             }
-            format!("M{x} {y}h{w}v{h}h{}Z", -w)
+            let (rx, ry) = match (n.attribute("rx"), n.attribute("ry")) {
+                (None, None) => (0., 0.),
+                (Some(_), None) => (a("rx", 0.), a("rx", 0.)),
+                (None, Some(_)) => (a("ry", 0.), a("ry", 0.)),
+                _ => (a("rx", 0.), a("ry", 0.)),
+            };
+            let (rx, ry) = (rx.clamp(0., w / 2.), ry.clamp(0., h / 2.));
+            if rx == 0. || ry == 0. {
+                format!("M{x} {y}h{w}v{h}h{}Z", -w)
+            } else {
+                format!(
+                    "M{} {y}H{}A{rx} {ry} 0 0 1 {} {}V{}A{rx} {ry} 0 0 1 {} {}H{}A{rx} {ry} 0 0 1 {x} {}V{}A{rx} {ry} 0 0 1 {} {y}Z",
+                    x + rx,
+                    x + w - rx,
+                    x + w,
+                    y + ry,
+                    y + h - ry,
+                    x + w - rx,
+                    y + h,
+                    x + rx,
+                    y + h - ry,
+                    y + ry,
+                    x + rx,
+                )
+            }
+        }
+        "circle" => {
+            let r = a("r", 0.);
+            if r <= 0. {
+                return Ok(Arc::from([]));
+            }
+            ellipse(a("cx", 0.), a("cy", 0.), r, r)
+        }
+        "ellipse" => {
+            let (rx, ry) = (a("rx", 0.), a("ry", 0.));
+            if rx <= 0. || ry <= 0. {
+                return Ok(Arc::from([]));
+            }
+            ellipse(a("cx", 0.), a("cy", 0.), rx, ry)
         }
         "line" => format!(
             "M{} {}L{} {}",
-            a("x1", 0.)?,
-            a("y1", 0.)?,
-            a("x2", 0.)?,
-            a("y2", 0.)?
+            a("x1", 0.),
+            a("y1", 0.),
+            a("x2", 0.),
+            a("y2", 0.)
         ),
-        _ => return Err(Diagnostic::unsupported(format!("clip shape {tag}"))),
+        "polygon" | "polyline" => {
+            let points: Vec<f64> =
+                svgtypes::NumberListParser::from(n.attribute("points").unwrap_or(""))
+                    .map_while(std::result::Result::ok)
+                    .collect();
+            if points.len() < 4 {
+                return Ok(Arc::from([]));
+            }
+            let mut d = String::new();
+            for (i, p) in points.as_chunks::<2>().0.iter().enumerate() {
+                d.push_str(&format!(
+                    "{}{} {}",
+                    if i == 0 { "M" } else { "L" },
+                    p[0],
+                    p[1]
+                ));
+            }
+            if tag == "polygon" {
+                d.push('Z');
+            }
+            d
+        }
+        _ => return Ok(Arc::from([])),
     };
     parse_path(&data)
 }
@@ -852,8 +951,16 @@ fn view_box(n: Node<'_, '_>) -> Result<[f64; 4]> {
         [
             0.,
             0.,
-            f64::from(n.attribute("width").map(length).unwrap_or(Ok(300.))?),
-            f64::from(n.attribute("height").map(length).unwrap_or(Ok(150.))?),
+            f64::from(
+                n.attribute("width")
+                    .and_then(|v| length(v).ok())
+                    .unwrap_or(300.),
+            ),
+            f64::from(
+                n.attribute("height")
+                    .and_then(|v| length(v).ok())
+                    .unwrap_or(150.),
+            ),
         ]
     };
     if b.iter().any(|v| !v.is_finite()) || b[2] <= 0. || b[3] <= 0. {
@@ -938,6 +1045,122 @@ fn gradient(n: Node<'_, '_>) -> Result<Paint> {
     Ok(paint)
 }
 
+/// A gradient the retained painter cannot draw exactly (radial, user-space,
+/// transformed, translucent stops) still paints: its first stop as a solid.
+fn gradient_or_solid(n: Node<'_, '_>) -> Result<Paint> {
+    if n.children()
+        .filter(|c| c.has_tag_name((SVG, "stop")))
+        .count()
+        > 256
+    {
+        return Err(refused("gradient_stops", "more than 256 stops"));
+    }
+    if n.has_tag_name((SVG, "linearGradient"))
+        && let Ok(paint) = gradient(n)
+    {
+        return Ok(paint);
+    }
+    let first = n
+        .children()
+        .find(|c| c.has_tag_name((SVG, "stop")))
+        .map(|stop| {
+            let style = declarations(stop.attribute("style").unwrap_or("")).unwrap_or_default();
+            let value = style
+                .get("stop-color")
+                .map(String::as_str)
+                .or(stop.attribute("stop-color"))
+                .unwrap_or("black");
+            let opacity = style
+                .get("stop-opacity")
+                .map(String::as_str)
+                .or(stop.attribute("stop-opacity"))
+                .and_then(|v| unit(v).ok())
+                .unwrap_or(1.);
+            color(value)
+                .unwrap_or(Color([0., 0., 0., 1.]))
+                .alpha(opacity)
+        })
+        .unwrap_or(Color([0., 0., 0., 1.]));
+    Ok(Paint::Solid(first))
+}
+
+/// A simple selector: `*`, `tag`, `.class`, `#id` or `tag.class`.
+pub(crate) struct Selector {
+    tag: Option<String>,
+    class: Option<String>,
+    id: Option<String>,
+}
+impl Selector {
+    fn parse(text: &str) -> Option<Self> {
+        let text = text.trim();
+        if text.is_empty() || text.contains([' ', '>', '+', '~', '[', ':']) {
+            return None;
+        }
+        if text == "*" {
+            return Some(Self {
+                tag: None,
+                class: None,
+                id: None,
+            });
+        }
+        if let Some(id) = text.strip_prefix('#') {
+            return Some(Self {
+                tag: None,
+                class: None,
+                id: Some(id.into()),
+            });
+        }
+        let (tag, class) = match text.split_once('.') {
+            Some((tag, class)) => (tag, Some(class.to_owned())),
+            None => (text, None),
+        };
+        Some(Self {
+            tag: (!tag.is_empty()).then(|| tag.to_owned()),
+            class,
+            id: None,
+        })
+    }
+    fn matches(&self, n: Node<'_, '_>) -> bool {
+        self.tag.as_deref().is_none_or(|t| n.tag_name().name() == t)
+            && self
+                .id
+                .as_deref()
+                .is_none_or(|id| n.attribute("id") == Some(id))
+            && self.class.as_deref().is_none_or(|c| {
+                n.attribute("class")
+                    .is_some_and(|v| v.split_whitespace().any(|k| k == c))
+            })
+    }
+}
+
+/// Rules with simple selectors apply; rules we cannot match are ignored.
+fn stylesheet(text: &str) -> Result<Vec<(Vec<Selector>, Style)>> {
+    let mut rules = Vec::new();
+    let text = strip_comments(text);
+    let mut rest = text.as_str();
+    while let Some((selectors, after)) = rest.split_once('{') {
+        let (body, after) = after
+            .split_once('}')
+            .ok_or_else(|| refused("style", "malformed rule"))?;
+        let selectors: Vec<_> = selectors.split(',').filter_map(Selector::parse).collect();
+        if !selectors.is_empty() {
+            rules.push((selectors, declarations(body)?));
+        }
+        rest = after;
+    }
+    Ok(rules)
+}
+fn strip_comments(text: &str) -> String {
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some((before, after)) = rest.split_once("/*") {
+        out.push_str(before);
+        rest = after.split_once("*/").map_or("", |(_, a)| a);
+    }
+    out.push_str(rest);
+    out
+}
+
 pub fn prepare(svg: &[u8], fonts: Option<&FontSet>) -> std::result::Result<Scene, Vec<Diagnostic>> {
     prepare_bounded(svg, fonts, MAX_PNG_PIXELS, false)
 }
@@ -1014,10 +1237,11 @@ fn prepare_inner(
     let root = doc.root_element();
     let has_text = doc.descendants().any(|n| n.has_tag_name((SVG, "text")));
     if let Some(fonts) = fonts {
-        let identity = root
-            .attribute("data-bboxy-font-set")
-            .ok_or_else(|| refused("font_identity_missing", "SVG lacks font-set identity"))?;
-        if identity != fonts.identity() {
+        // Hand-written SVG carries no identity and renders with the active set;
+        // a declared identity that names a different set is still refused.
+        if let Some(identity) = root.attribute("data-bboxy-font-set")
+            && identity != fonts.identity()
+        {
             return Err(refused(
                 "font_identity_mismatch",
                 "SVG and active FontSet differ",
@@ -1027,13 +1251,14 @@ fn prepare_inner(
         return Err(refused("font_unavailable", "no active FontSet"));
     }
     let box_ = view_box(root)?;
+    // A percentage or unknown unit falls back to the viewBox size.
     let viewport = [
         root.attribute("width")
-            .map(length)
-            .unwrap_or(Ok(box_[2] as f32))?,
+            .and_then(|v| length(v).ok())
+            .unwrap_or(box_[2] as f32),
         root.attribute("height")
-            .map(length)
-            .unwrap_or(Ok(box_[3] as f32))?,
+            .and_then(|v| length(v).ok())
+            .unwrap_or(box_[3] as f32),
     ];
     if viewport.iter().any(|v| *v <= 0.) {
         return Err(refused("viewport", "nonpositive root viewport"));
@@ -1045,7 +1270,7 @@ fn prepare_inner(
         ));
     }
     let mut ids = HashMap::new();
-    let mut global = Style::new();
+    let mut rules = Vec::new();
     let mut gradients = HashMap::new();
     let mut images = HashMap::new();
     let mut decoded = HashMap::<String, Arc<bbt_render::image::Image>>::new();
@@ -1055,37 +1280,25 @@ fn prepare_inner(
         .filter(Node::is_element)
         .filter(|n| !inert(*n))
     {
-        if let Some(id) = n.attribute("id")
-            && (id.is_empty() || ids.insert(id.into(), n.id()).is_some())
-        {
-            return Err(refused("id", "empty/duplicate id"));
+        if let Some(id) = n.attribute("id").filter(|id| !id.is_empty()) {
+            ids.entry(id.into()).or_insert(n.id());
         }
         if n.has_tag_name((SVG, "style")) {
-            let value = n.text().unwrap_or("").trim();
+            let value = n.text().unwrap_or("");
             if value.contains('@') || value.contains("url(") {
                 return Err(refused("css_import", "font/import/resource CSS is refused"));
             }
-            let (selector, body) = value
-                .split_once('{')
-                .ok_or_else(|| refused("style", "missing rule"))?;
-            if selector.trim() != "*" {
-                return Err(Diagnostic::unsupported("CSS selector outside *"));
-            }
-            global.extend(declarations(
-                body.strip_suffix('}')
-                    .ok_or_else(|| refused("style", "malformed rule"))?,
-            )?);
+            rules.extend(stylesheet(value)?);
         }
-        if n.has_tag_name((SVG, "linearGradient")) {
-            let id = n
-                .attribute("id")
-                .ok_or_else(|| refused("gradient", "missing id"))?;
-            gradients.insert(id.into(), gradient(n)?);
+        if (n.has_tag_name((SVG, "linearGradient")) || n.has_tag_name((SVG, "radialGradient")))
+            && let Some(id) = n.attribute("id")
+        {
+            gradients.insert(id.into(), gradient_or_solid(n)?);
         }
         if n.has_tag_name((SVG, "image")) {
-            let encoded = href(n)?
-                .strip_prefix("data:image/png;base64,")
-                .ok_or_else(|| refused("image_reference", "only inline PNG admitted"))?;
+            let Some(encoded) = href(n)?.strip_prefix("data:image/png;base64,") else {
+                continue;
+            };
             let encoded: Vec<_> = encoded
                 .bytes()
                 .filter(|b| !matches!(*b, b' ' | b'\t' | b'\r' | b'\n'))
@@ -1114,7 +1327,7 @@ fn prepare_inner(
         doc,
         fonts,
         ids,
-        global,
+        rules,
         gradients,
         images,
         stack: vec![],

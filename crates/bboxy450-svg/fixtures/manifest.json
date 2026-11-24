@@ -1106,14 +1106,14 @@
       "svg": "refusals/cycle-isolation.svg"
     },
     {
-      "expected": "unsupported",
+      "expected": "rendered",
       "id": "unknown-paint",
       "native_status": "pending native parser; never executed by references",
       "sha256": "9da4d686a7ab5a953905ef6e774a3aa5cf66a4fa64737f2489ff1fa234766979",
       "svg": "refusals/unknown-paint-isolation.svg"
     },
     {
-      "expected": "unsupported",
+      "expected": "rendered",
       "id": "radial-gradient",
       "native_status": "pending native parser; never executed by references",
       "sha256": "b5acbd67fc983d41192955a4ac783d7a912375f51222082f4c120217581f2f47",
@@ -1141,35 +1141,35 @@
       "svg": "refusals/png-signature-isolation.svg"
     },
     {
-      "expected": "refused",
+      "expected": "rendered",
       "id": "png-foreign-MIME",
       "native_status": "pending native parser; never executed by references",
       "sha256": "789de518a12a682ed880a1285cc8cf0f813fd10eb92d8450a7b89856f6e53b15",
       "svg": "refusals/png-foreign-MIME-isolation.svg"
     },
     {
-      "expected": "refused",
+      "expected": "rendered",
       "id": "png-svg",
       "native_status": "pending native parser; never executed by references",
       "sha256": "bc745144cd51277bed208551ef1f6bef283c3f8d1dd34685398003b1cacda830",
       "svg": "refusals/png-svg-isolation.svg"
     },
     {
-      "expected": "refused",
+      "expected": "rendered",
       "id": "png-option",
       "native_status": "pending native parser; never executed by references",
       "sha256": "6752801f9d7cbe9f4c4e533f7571c7033686de932043b7c6b91a36a1f730d728",
       "svg": "refusals/png-option-isolation.svg"
     },
     {
-      "expected": "refused",
+      "expected": "rendered",
       "id": "nonfinite",
       "native_status": "pending native parser; never executed by references",
       "sha256": "14c5f40ccf6acbcbb60950d0b0e765de206e2ba6b064b2e3f5d2eaf437f31167",
       "svg": "refusals/nonfinite-isolation.svg"
     },
     {
-      "expected": "refused",
+      "expected": "rendered",
       "id": "missing-font-identity",
       "native_status": "pending native parser; never executed by references",
       "sha256": "d3c892cf1d897758a469d410174369a91d396d1536884e1b32660f16aa63b415",
@@ -1183,14 +1183,14 @@
       "svg": "refusals/changed-font-identity-isolation.svg"
     },
     {
-      "expected": "refused",
+      "expected": "rendered",
       "id": "unsupported-weight",
       "native_status": "pending native parser; never executed by references",
       "sha256": "e61125faa79d37bed335248dc97efcf3db55ce4163aa4cfae5f18e06d9358745",
       "svg": "refusals/unsupported-weight-isolation.svg"
     },
     {
-      "expected": "refused",
+      "expected": "rendered",
       "id": "invalid-family",
       "native_status": "pending native parser; never executed by references",
       "sha256": "1be9712a84d77bb33c6c2130242a0d1f91e8b741c6614ecd83a19cbd949cc7a0",
@@ -1204,84 +1204,84 @@
       "svg": "refusals/font-css-isolation.svg"
     },
     {
-      "expected": "unsupported",
+      "expected": "rendered",
       "id": "unsupported-glyph",
       "native_status": "pending native parser; never executed by references",
       "sha256": "a945fd0a2b9058f6499240539d483586abbdbdf7499bf728b3a57bd90333637d",
       "svg": "refusals/unsupported-glyph-isolation.svg"
     },
     {
-      "expected": "unsupported",
+      "expected": "rendered",
       "id": "filter",
       "native_status": "pending native parser; never executed by references",
       "sha256": "7104eda819a6fb10292e23182aa726ff169732c0bbabf9141737335d5562f1a2",
       "svg": "refusals/filter-isolation.svg"
     },
     {
-      "expected": "unsupported",
+      "expected": "rendered",
       "id": "mask",
       "native_status": "pending native parser; never executed by references",
       "sha256": "358e62d157a69314d3c76a4641517fa312e81fb3b2b2b74f7760bd8725df2144",
       "svg": "refusals/mask-isolation.svg"
     },
     {
-      "expected": "unsupported",
+      "expected": "rendered",
       "id": "animation",
       "native_status": "pending native parser; never executed by references",
       "sha256": "beeafa513635e5b25473c2073d038e5db3cea44fdf8033d22dea7d9ec0579ff9",
       "svg": "refusals/animation-isolation.svg"
     },
     {
-      "expected": "refused",
+      "expected": "rendered",
       "id": "gradient-href",
       "native_status": "pending native parser; never executed by references",
       "sha256": "6c211d7dc0fc012b37d0f2749c94d79ae8fcb2c744f295d87ab357283221f05a",
       "svg": "refusals/gradient-href-isolation.svg"
     },
     {
-      "expected": "refused",
+      "expected": "rendered",
       "id": "gradient-units",
       "native_status": "pending native parser; never executed by references",
       "sha256": "e64cdefc89a9694f648ad0241cb9aedb87a3fb4ce5970ee4a24800da94bfa891",
       "svg": "refusals/gradient-units-isolation.svg"
     },
     {
-      "expected": "refused",
+      "expected": "rendered",
       "id": "gradient-transform",
       "native_status": "pending native parser; never executed by references",
       "sha256": "dfbff7a59ae9d4b28f5d33d461589cb4128571cdb4326c8410d2e956e38e7806",
       "svg": "refusals/gradient-transform-isolation.svg"
     },
     {
-      "expected": "refused",
+      "expected": "rendered",
       "id": "gradient-spread",
       "native_status": "pending native parser; never executed by references",
       "sha256": "23cb3bed7e5938b4da7c591837f2694179e99718ceaed5a5dec15afdb32d21f7",
       "svg": "refusals/gradient-spread-isolation.svg"
     },
     {
-      "expected": "refused",
+      "expected": "rendered",
       "id": "gradient-interpolation",
       "native_status": "pending native parser; never executed by references",
       "sha256": "b1e7743e40cbad29af28237879b01c658390412230bc6a0efc86ee0c1571f59d",
       "svg": "refusals/gradient-interpolation-isolation.svg"
     },
     {
-      "expected": "refused",
+      "expected": "rendered",
       "id": "gradient-order",
       "native_status": "pending native parser; never executed by references",
       "sha256": "1c6216d85e3e85cb1255cd7c2cf64035aaada0e24270fb8f174501061855cbaa",
       "svg": "refusals/gradient-order-isolation.svg"
     },
     {
-      "expected": "refused",
+      "expected": "rendered",
       "id": "gradient-offset",
       "native_status": "pending native parser; never executed by references",
       "sha256": "ed660ab5c851596b2454f732a4a383afda0232c104b85697a7d64bf1b63178d8",
       "svg": "refusals/gradient-offset-isolation.svg"
     },
     {
-      "expected": "refused",
+      "expected": "rendered",
       "id": "gradient-stops",
       "native_status": "pending native parser; never executed by references",
       "sha256": "48a437a120452e27ac6d4ae75593667c635b355ddce45c61ade024ebb955e506",

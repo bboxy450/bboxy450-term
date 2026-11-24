@@ -310,12 +310,24 @@ fn artifact_mcp_bounds_and_missing_observed_source_refuse_before_revision() {
         )),
         "artifact_image_refused"
     );
-    let missing_font = r#"<svg xmlns="http://www.w3.org/2000/svg" width="96" height="64"/>"#;
+    // Hand-written SVG without a font-set identity is admitted (permissive renderer).
+    let hand_written = r##"<svg xmlns="http://www.w3.org/2000/svg" width="96" height="64"><circle cx="20" cy="20" r="10" fill="#1e90ff"/><rect x="40" y="10" width="40" height="20" rx="6"/></svg>"##;
+    assert!(
+        data(write(
+            &f,
+            "artifact_store",
+            json!({"media_type":"image/svg+xml","content":hand_written})
+        ))["reference"]
+            .as_str()
+            .unwrap()
+            .starts_with("![[artifact:")
+    );
+    let active = r#"<svg xmlns="http://www.w3.org/2000/svg" width="96" height="64"><script>1</script></svg>"#;
     assert_eq!(
         code(&write(
             &f,
             "artifact_store",
-            json!({"media_type":"image/svg+xml","content":missing_font})
+            json!({"media_type":"image/svg+xml","content":active})
         )),
         "artifact_image_refused"
     );
@@ -337,9 +349,8 @@ fn artifact_mcp_bounds_and_missing_observed_source_refuse_before_revision() {
     let request = json!({"name":"artifact_store","arguments":{
         "op_id":Ulid::new(),"media_type":"text/plain","content":"Host did not observe this script."
     },"_meta":{"bboxy450/python_context":context["context"]}});
-    let denied = after_nonadmission(|| {
-        rpc(&mut bridge, 2, "tools/call", request.clone())["result"].clone()
-    });
+    let denied =
+        after_nonadmission(|| rpc(&mut bridge, 2, "tools/call", request.clone())["result"].clone());
     assert_eq!(code(&denied), "execution_source_unavailable");
 }
 

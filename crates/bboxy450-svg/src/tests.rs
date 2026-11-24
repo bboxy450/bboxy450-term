@@ -48,6 +48,11 @@ fn frozen_refusals_are_classified_natively_without_a_reference_renderer() {
         serde_json::from_slice(&fs::read(base().join("fixtures/manifest.json")).unwrap()).unwrap();
     for case in manifest["negatives"].as_array().unwrap() {
         let path = base().join("fixtures").join(case["svg"].as_str().unwrap());
+        if case["expected"] == "rendered" {
+            let result = prepare(&fs::read(&path).unwrap(), Some(&fonts));
+            assert!(result.is_ok(), "{}: {:?}", path.display(), result.err());
+            continue;
+        }
         let diagnostics = prepare(&fs::read(&path).unwrap(), Some(&fonts))
             .err()
             .unwrap_or_else(|| panic!("accepted {}", path.display()));
@@ -70,10 +75,8 @@ fn frozen_refusals_are_classified_natively_without_a_reference_renderer() {
         format!("{:x}", sha2::Sha256::digest(&original)),
         "1043e461bee4f58c04a78760b44db0e9421c4f904cc5619a3826bdedbf2041f1"
     );
-    let diagnostics = prepare(&original, Some(&fonts))
-        .err()
-        .expect("original invalid family must refuse");
-    assert_eq!(diagnostics[0].code, "font_family");
+    // An unknown family renders with the bundled face instead of refusing.
+    assert!(prepare(&original, Some(&fonts)).is_ok());
     let mismatched = String::from_utf8(original)
         .unwrap()
         .replace(fonts.identity(), &format!("sha256:{}", "0".repeat(64)));
@@ -115,39 +118,82 @@ fn preparation_bounds_have_accepted_and_rejected_sides() {
     let cycle = svg("<defs><g id=\"a\"><use href=\"#a\"/></g></defs><use href=\"#a\"/>");
     assert_eq!(error_code(&cycle), "reference_cycle");
 }
-// keeps: spec svg-renderer — all unsupported paint is reported in one census.
+// keeps: spec svg-renderer — permissive admission: what a browser draws, we draw;
+// unknown elements/attributes/properties are ignored, never refused.
 #[test]
-fn complete_diagnostics_and_inert_metadata_do_not_hide_paint() {
-    let errors = prepare(
-        &svg("<filter/><mask/><rect width=\"1\" height=\"1\" unknown-paint=\"red\"/>"),
-        None,
-    )
-    .err()
-    .unwrap();
-    assert_eq!(errors.len(), 3);
+fn unknown_markup_is_ignored_and_active_content_still_refused() {
     assert!(
-        errors
-            .iter()
-            .all(|e| e.disposition == Disposition::Unsupported)
+        prepare(
+            &svg(
+                "<filter/><mask/><animate/><rect width=\"1\" height=\"1\" unknown-paint=\"red\"/>"
+            ),
+            None
+        )
+        .is_ok()
     );
+    assert!(prepare(&svg("<rect xmlns:f=\"urn:foreign\" f:fill=\"red\" width=\"1\" height=\"1\" style=\"cursor:pointer;fill:red !important\"/>"), None).is_ok());
     assert!(prepare(&svg("<metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\"><dc:title>credit</dc:title></metadata><rect width=\"1\" height=\"1\"/>"),None).is_ok());
+    assert_eq!(error_code(&svg("<script>1</script>")), "active_content");
+    assert_eq!(
+        error_code(&svg("<rect onclick=\"x()\" width=\"1\" height=\"1\"/>")),
+        "active_content"
+    );
+    assert_eq!(
+        error_code(&svg(
+            "<image href=\"https://x.test/a.png\" width=\"1\" height=\"1\"/>"
+        )),
+        "external_reference"
+    );
+    assert_eq!(
+        error_code(&svg(
+            "<rect fill=\"url(https://x.test/p)\" width=\"1\" height=\"1\"/>"
+        )),
+        "external_reference"
+    );
 }
 
-// keeps: spec svg-renderer — foreign local names never become SVG paint.
+// keeps: spec svg-renderer — hand-written basic shapes, CSS classes, currentColor,
+// radial gradients and percentage sizes paint at the expected pixels.
+#[cfg(target_os = "macos")]
 #[test]
-fn foreign_paint_attributes_are_explicitly_unsupported() {
-    let input = svg(
-        "<rect xmlns:f=\"urn:foreign\" f:fill=\"red\" f:transform=\"translate(3,4)\" width=\"1\" height=\"1\"/>",
+fn hand_written_shapes_and_styles_paint() {
+    let input = br##"<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 40 20">
+      <style>.hot { fill: #ff0000 } #cold { fill: #0000ff }</style>
+      <defs><radialGradient id="r"><stop offset="0" stop-color="#00ff00"/></radialGradient></defs>
+      <circle class="hot" cx="5" cy="5" r="4"/>
+      <ellipse id="cold" cx="15" cy="5" rx="4" ry="3"/>
+      <rect x="22" y="1" width="8" height="8" rx="2" fill="url(#r)"/>
+      <polygon points="32,1 39,1 39,9" style="color:#ff00ff" fill="currentColor"/>
+      <polyline points="1,15 39,15" stroke="black" stroke-width="2" fill="none"/>
+    </svg>"##;
+    let scene = prepare(input, None).unwrap();
+    assert_eq!(scene.viewport(), [40., 20.]);
+    let mut renderer = bbt_render::chrome::ChromeRenderer::new(Vec::new()).unwrap();
+    let capture = scene
+        .render(
+            &mut renderer,
+            RenderRequest {
+                camera: [0., 0., 40., 20.],
+                scale: 1.,
+            },
+            Layer::Render,
+        )
+        .unwrap();
+    let pixel = |x: usize, y: usize| {
+        let i = 4 * (y * capture.width as usize + x);
+        [capture.rgba[i], capture.rgba[i + 1], capture.rgba[i + 2]]
+    };
+    assert_eq!(pixel(5, 5), [255, 0, 0], "circle via class rule");
+    assert_eq!(pixel(1, 1), [255, 255, 255], "circle corner stays empty");
+    assert_eq!(pixel(15, 5), [0, 0, 255], "ellipse via id rule");
+    assert_eq!(
+        pixel(26, 5),
+        [0, 255, 0],
+        "radial gradient falls back to its stop"
     );
-    let errors = prepare(&input, None)
-        .err()
-        .expect("foreign paint must fail admission");
-    assert_eq!(errors.len(), 2);
-    assert!(
-        errors
-            .iter()
-            .all(|e| e.disposition == Disposition::Unsupported && e.detail.contains("urn:foreign"))
-    );
+    assert_ne!(pixel(22, 1), [0, 255, 0], "rounded corner is cut");
+    assert_eq!(pixel(38, 2), [255, 0, 255], "polygon in currentColor");
+    assert_eq!(pixel(20, 15), [0, 0, 0], "polyline stroke");
 }
 
 // keeps: spec svg-renderer — a declared identity requires an active verified FontSet even for outlined content.
@@ -162,15 +208,17 @@ fn marked_shapes_refuse_without_an_active_font_set() {
     assert_eq!(error_code(marked.as_bytes()), "font_unavailable");
 }
 
-// keeps: spec svg-renderer — an active FontSet requires a recorded matching identity even for shapes.
+// keeps: spec svg-renderer — unmarked hand-written SVG, text included, renders with the
+// active FontSet; only a declared identity naming another set is refused.
 #[cfg(target_os = "macos")]
 #[test]
-fn unmarked_shapes_refuse_with_an_active_font_set() {
+fn unmarked_svg_renders_with_the_active_font_set() {
     let fonts = FontSet::load(&base().join("fonts")).unwrap();
-    let error = prepare(&svg("<path d=\"M0 0h1v1Z\"/>"), Some(&fonts))
-        .err()
-        .expect("identity must be declared");
-    assert_eq!(error[0].code, "font_identity_missing");
+    assert!(prepare(&svg("<path d=\"M0 0h1v1Z\"/>"), Some(&fonts)).is_ok());
+    let text = svg(
+        "<text x=\"2\" y=\"20\" font-family=\"Helvetica, sans-serif\" font-weight=\"bold\" font-size=\"1em\">Hello</text>",
+    );
+    assert!(prepare(&text, Some(&fonts)).is_ok());
 }
 
 // keeps: spec svg-renderer — exact fractional cameras show paint to the integer

@@ -104,6 +104,9 @@ def generate(out):
     for name, offsets in {"gradient-order": (1, 0), "gradient-offset": (-0.1, 1.1), "gradient-stops": (0,)}.items():
         bad_stops = ''.join(f'<stop offset="{offset}" stop-color="#224466"/>' for offset in offsets)
         negatives[name] = '<defs><linearGradient id="p">'+bad_stops+'</linearGradient></defs><rect width="64" height="64" fill="url(#p)"/>'
+    RENDERED = {"unknown-paint", "radial-gradient", "png-foreign-MIME", "png-svg", "png-option", "nonfinite",
+                "missing-font-identity", "unsupported-weight", "invalid-family", "unsupported-glyph", "filter",
+                "mask", "animation", *bad_gradients, "gradient-order", "gradient-offset", "gradient-stops"}
     negative_rows = []
     refusal_dir = out / "refusals"
     refusal_dir.mkdir(exist_ok=True)
@@ -115,7 +118,8 @@ def generate(out):
         file = refusal_dir / (name+"-isolation.svg")
         file.write_text(svg)
         negative_rows.append({"id": name, "svg": "refusals/"+file.name, "sha256": digest(file.read_bytes()),
-                              "expected": "unsupported" if name in {"unknown-paint", "radial-gradient", "filter", "mask", "animation", "unsupported-glyph"} else "refused",
+                              # Permissive renderer: anything a browser would draw is drawn best-effort.
+                              "expected": "rendered" if name in RENDERED else "refused",
                               "native_status": "pending native parser; never executed by references"})
     for name, raw in {"invalid-utf8": b'<svg xmlns="http://www.w3.org/2000/svg">\xff</svg>',
                       "malformed-xml": b'<svg xmlns="http://www.w3.org/2000/svg"><g></svg>'}.items():

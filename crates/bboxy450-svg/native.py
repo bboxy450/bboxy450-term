@@ -96,6 +96,8 @@ def admission(out,program):
         if digest(file.read_bytes())!=case["sha256"]:raise ValueError("negative source pin differs")
         result=invoke(["prepare",str(file),str(fonts)])
         diagnostics=json.loads(result["stdout"]).get("diagnostics",[]) if result["stdout"] else []
+        if case["expected"]=="rendered":
+            rows.append({"case":case["id"],"kind":"rendered","passed":result["exit_code"]==0,**result});continue
         expected="unsupported" if case["expected"]=="unsupported" else "refused"
         rows.append({"case":case["id"],"kind":"negative","passed":result["exit_code"]!=0 and any(d["disposition"]==expected for d in diagnostics),**result})
     for boundary in manifest["boundaries"]:
