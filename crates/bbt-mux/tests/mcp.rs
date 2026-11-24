@@ -4035,13 +4035,15 @@ fn mcp_task_list_is_most_recently_changed_first_and_a_transition_moves_it_to_the
 // keeps: spec mcp-control-plane
 #[test]
 fn mcp_task_reassignment_reauthorizes_history_and_refuses_foreign_or_ambiguous_scope() {
+    // Use the task seeded before the index starts. A rewrite here can leave
+    // task_list with an indexed digest that no longer matches the file.
     let f = Fixture::new();
-    f.task_file(f.task_metadata());
     let old_read = Ulid::new();
     let old_list = Ulid::new();
     let old_orient = Ulid::new();
     let old_graph = Ulid::new();
-    data(f.call(f.own.id, old_list, "task_list", json!({})));
+    let list = data(f.call(f.own.id, old_list, "task_list", json!({})));
+    assert_eq!(list["items"][0]["id"], json!(f.task));
     data(f.call(f.own.id, old_orient, "orient", json!({})));
     data(f.call(f.own.id, old_graph, "graph_read", json!({"graph":"task"})));
     data(f.call(f.own.id, old_read, "task_status", json!({"task_id":f.task})));
