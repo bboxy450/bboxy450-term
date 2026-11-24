@@ -21,21 +21,59 @@ task RichAppApprovalClick {
     Find whether the click misses (stale rect/choice geometry, scroll or focus change between the read and the click),
     is dropped (approval routing), or is slow (raise the witness wait only if the evidence shows load). Cite file:line.
     Fix the cause, not the wait. Run `make test-rich-app-input` three times green, once with a parallel build running.
-  """
+
+    ## Report from seat:01M85BYP3G36XCA24KMY5W5363
+
+    Fixed the rich App input witness by using settled frames for wheel and approval input. Removed first-visible readiness and reuse of pre-focus geometry. The original receipt puts the click at local y 727 while the moving choice ended at y 707.3. Three final make test-rich-app-input runs exited 0 on the first attempt with bbt_mux compiling, each printing tool=approved and the original harness identity. License, commit signature and current-source formal receipt checks exited 0. The signed worktree is clean.
+
+    ```json
+    {
+      "op_id": "01M85GNSGND4AR6BJXR8QPTDJF",
+      "commit": "833e8a6c46e98fcbf0576a2dcb9ae87afb4b3831",
+      "report": "[[reports/2026-11-23-rich-app-approval-click.den]]",
+      "verify_result": {
+        "command": "make test-rich-app-input",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Identify the approval miss and its cause",
+            "reference": "/tmp/rich-approval-evidence.YrqDtR/retained-receipts.log and crates/bboxy450-harness/src/frontends/gui/view.rs:986,1763"
+          },
+          {
+            "criterion": "Fix stale geometry and preserve real native approval",
+            "reference": "crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs:298,330,336,347"
+          },
+          {
+            "criterion": "Three passes, including compilation overlap",
+            "reference": "/tmp/rich-approval-evidence.YrqDtR/final-witness-{1,2,3}.log and /tmp/rich-approval-evidence.YrqDtR/final-overlap.log"
+          },
+          {
+            "criterion": "Validate formal evidence for the signed source",
+            "reference": "/tmp/rich-approval-evidence.YrqDtR/formal-receipt-check.log"
+          }
+        ]
+      }
+    }
+    ```
+    """
 
   managed {
     assignee = json"\"seat:01M85BYP3G36XCA24KMY5W5363\""
     authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"bGMqsRvbQXvEDVnOwRt47b6crPtdbIu8ioBX1dU/YNs=\",\"signer\":\"seat:01M85BW3PMN3QBFPPMWBS866RA\"}"
+    closed = json"{\"by\":\"seat:01M85BW3PMN3QBFPPMWBS866RA\",\"op_id\":\"01M85H6WX7ZAYKFQVD8YVFSM7B\"}"
     created = json"\"2026-11-23T19:16:55.078Z\""
     created_by = json"\"seat:01M84K5EHF7BQJ40CKYQ4DVZ6T\""
     delegated_by = json"\"seat:01M85BW3PMN3QBFPPMWBS866RA\""
     id = json"\"01M84XDZRR7T7A0C8103M4WJGH\""
     number = json"1794292861627818"
+    report = json"{\"commit\":\"833e8a6c46e98fcbf0576a2dcb9ae87afb4b3831\",\"op_id\":\"01M85GNSGND4AR6BJXR8QPTDJF\",\"report\":\"[[reports/2026-11-23-rich-app-approval-click.den]]\",\"reported_by\":\"seat:01M85BYP3G36XCA24KMY5W5363\",\"summary\":\"Fixed the rich App input witness by using settled frames for wheel and approval input. Removed first-visible readiness and reuse of pre-focus geometry. The original receipt puts the click at local y 727 while the moving choice ended at y 707.3. Three final make test-rich-app-input runs exited 0 on the first attempt with bbt_mux compiling, each printing tool=approved and the original harness identity. License, commit signature and current-source formal receipt checks exited 0. The signed worktree is clean.\",\"verify_revision\":0}"
     role = json"\"executor\""
-    status = Claimed
+    status = Done
     swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
-    updated = json"\"2026-11-23T23:30:43.436Z\""
+    updated = json"\"2026-11-24T01:02:36.340Z\""
     updated_by = json"\"seat:01M85BW3PMN3QBFPPMWBS866RA\""
-    provenance = json"{\"digest\":\"sha256:bfeceecbbeb5388bd561bb5b4b9c226187442ff88323cb755e65a5bcab750742\",\"frontmatter_digest\":\"sha256:1507e260837eabe481833187b63749abd15fc55e5afd2bdcdc2b5ad5fa0ac1a4\",\"signer\":\"seat:01M85BW3PMN3QBFPPMWBS866RA\",\"sig\":\"DsZRr7RV5ZEXCpcDV/2LT0x1VeZyHtDQ62LXMGvx+fmCnfoBpcZOrpBuHaxschmmSTmLs3EIbs5HUV0DGd77CA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1306\",\"event\":{\"id\":\"01M85BYQS3BTX6F8DXKE08SHCN\",\"sequence\":1306,\"hash\":\"0454ec5f8ccfd23f3e729bbb161902012bcf2d5258302f325730145c6f468251\"}}"
+    verify_result = json"{\"command\":\"make test-rich-app-input\",\"evidence\":[{\"criterion\":\"Identify the approval miss and its cause\",\"reference\":\"/tmp/rich-approval-evidence.YrqDtR/retained-receipts.log and crates/bboxy450-harness/src/frontends/gui/view.rs:986,1763\"},{\"criterion\":\"Fix stale geometry and preserve real native approval\",\"reference\":\"crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs:298,330,336,347\"},{\"criterion\":\"Three passes, including compilation overlap\",\"reference\":\"/tmp/rich-approval-evidence.YrqDtR/final-witness-{1,2,3}.log and /tmp/rich-approval-evidence.YrqDtR/final-overlap.log\"},{\"criterion\":\"Validate formal evidence for the signed source\",\"reference\":\"/tmp/rich-approval-evidence.YrqDtR/formal-receipt-check.log\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:25e51e28763f726cdbc8d7c273f10cfbedf74c3d7d30ab13c0981e541994e1c9\",\"frontmatter_digest\":\"sha256:5c805252eccf1a723098001973c32a4d97f7bddda0348b8d55b4e24d4fb1578d\",\"signer\":\"seat:01M85BW3PMN3QBFPPMWBS866RA\",\"sig\":\"7yARKA7oafSKq3FJqdm804pmS3HN4iGQzF1HjY/y5bxF8I5ApR0qXWjLMHWl2azMdYzAa3RQjS+1Q6bB32/CBA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/1492\",\"event\":{\"id\":\"01M85H6ZHX9ETWQMZT45DA9WEW\",\"sequence\":1492,\"hash\":\"c865b8f8f184c73eb03d13155c058e991a0a552436caf68596382fe324f9e69d\"}}"
+    body_tail = json"\"\\n\""
   }
 }
