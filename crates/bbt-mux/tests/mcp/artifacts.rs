@@ -46,6 +46,24 @@ fn read(f: &Fixture, id: &Value, revision: u64) -> Value {
     ))
 }
 
+fn lock_artifact_projection(f: &Fixture) -> std::fs::File {
+    let lock = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(f.config.repository.join(".bboxy/log/.writer-lock"))
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        match lock.try_lock() {
+            Ok(()) => return lock,
+            Err(std::fs::TryLockError::WouldBlock) if Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            Err(error) => panic!("private root custody: {error}"),
+        }
+    }
+}
+
 #[test]
 fn artifact_mcp_exact_bytes_recovery_revisions_and_lineage_survive_restart() {
     let mut f = Fixture::real();
@@ -134,7 +152,26 @@ fn artifact_mcp_exact_bytes_recovery_revisions_and_lineage_survive_restart() {
     );
 
     std::fs::write(&source_path, b"changed source is irrelevant").unwrap();
+    let projection = lock_artifact_projection(&f);
     f.restart();
+    let pending = write(
+        &f,
+        "artifact_claim",
+        json!({"kind":"image","ref":"unresolved.svg"}),
+    );
+    assert_eq!(code(&pending), "held");
+    assert_eq!(
+        pending["structuredContent"]["error"]["message"],
+        "artifact catalog recovery pending"
+    );
+    let claimed = write(
+        &f,
+        "artifact_claim",
+        json!({"kind":"image","ref":format!("artifact:{id}",id=id.as_str().unwrap())}),
+    );
+    assert_eq!(code(&claimed), "artifact_custody_conflict", "{claimed}");
+    drop(projection);
+
     let retained = data(write_operation(&f, op, "artifact_store", args));
     assert_eq!(retained["id"], snapshot["id"]);
     assert_eq!(retained["digest"], snapshot["digest"]);
@@ -219,13 +256,6 @@ fn artifact_mcp_exact_bytes_recovery_revisions_and_lineage_survive_restart() {
         next = part["_meta"]["bboxy450/next"].as_str().map(str::to_owned);
     }
     assert_eq!(bytes, original);
-
-    let claimed = write(
-        &f,
-        "artifact_claim",
-        json!({"kind":"image","ref":format!("artifact:{id}",id=id.as_str().unwrap())}),
-    );
-    assert_eq!(code(&claimed), "artifact_custody_conflict", "{claimed}");
 }
 
 #[test]
@@ -394,21 +424,7 @@ fn artifact_mcp_refuses_foreign_process_custody_before_reading_stage() {
     let root = first._temp.path();
     // Same directory claim used by the app publication owner. Hold it while
     // a second application owner with its own real supervisor attempts CAS.
-    let lock = std::fs::OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(root.join("repository/.bboxy/log/.writer-lock"))
-        .unwrap();
-    let deadline = Instant::now() + Duration::from_secs(5);
-    loop {
-        match lock.try_lock() {
-            Ok(()) => break,
-            Err(std::fs::TryLockError::WouldBlock) if Instant::now() < deadline => {
-                std::thread::sleep(Duration::from_millis(10));
-            }
-            Err(error) => panic!("private root custody: {error}"),
-        }
-    }
+    let lock = lock_artifact_projection(&first);
     let home = tempfile::tempdir().unwrap();
     let mut command = std::process::Command::new(std::env::current_exe().unwrap());
     command

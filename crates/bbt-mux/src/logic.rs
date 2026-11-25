@@ -4846,29 +4846,27 @@ impl Worker {
             }
         }
         if call.tool == "artifact_claim" {
-            if self
-                .workspaces
-                .cache
-                .get_mut(&port.binding)
-                .expect("admitted workspace")
-                .provenance
-                .recovering()
-            {
-                return crate::mcp::error(call.op_id, "held", "artifact catalog recovery pending");
-            }
+            use crate::provenance::stored::Address;
+
             let Some(seat_actor) = actor.seat() else {
                 return crate::mcp::error(call.op_id, "rejected", "artifact claim requires a seat");
             };
             let original = call.args["ref"].as_str().unwrap_or_default();
-            let normalized = self
+            let provenance = &self
                 .workspaces
                 .cache
-                .get_mut(&port.binding)
+                .get(&port.binding)
                 .expect("admitted workspace")
-                .provenance
-                .normalize(seat_actor.seat_id, seat_actor.process_generation, original);
+                .provenance;
+            let recovering = provenance.recovering();
+            let normalized = if recovering {
+                None
+            } else {
+                provenance.normalize(seat_actor.seat_id, seat_actor.process_generation, original)
+            };
             let reference = normalized.as_deref().unwrap_or(original);
-            if let Ok((id, _)) = crate::provenance::stored::Address::target(reference) {
+            // Signed content events establish stored custody during catalog recovery.
+            if let Ok((id, _)) = Address::target(original).or_else(|_| Address::target(reference)) {
                 match port.index.activity().artifact_content(id, None) {
                     Ok(Some(_)) => {
                         return crate::mcp::error(
@@ -4881,13 +4879,10 @@ impl Worker {
                     Err(error) => return crate::mcp::error(call.op_id, "held", &error.to_string()),
                 }
             }
-            let Ok(Some(reference)) = self
-                .workspaces
-                .cache
-                .get_mut(&port.binding)
-                .expect("admitted workspace")
-                .provenance
-                .claim_ready(&port.index, original, reference)
+            if recovering {
+                return crate::mcp::error(call.op_id, "held", "artifact catalog recovery pending");
+            }
+            let Ok(Some(reference)) = provenance.claim_ready(&port.index, original, reference)
             else {
                 return crate::mcp::error(
                     call.op_id,
