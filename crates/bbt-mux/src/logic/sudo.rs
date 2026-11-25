@@ -13,6 +13,7 @@ use serde_json::{Value, json};
 
 pub(super) enum Sudo {
     Done(Value),
+    Ctl(Ulid, Vec<String>),
     /// Continue the ordinary dispatch as this seat and generation.
     As(Ulid, u64, crate::mcp::Call),
     /// Reply `value` once these operator swarm actions commit.
@@ -27,6 +28,44 @@ fn origin() -> crate::mcp::Origin {
 }
 
 impl Worker {
+    pub(super) fn start_sudo_ctl(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        op: Ulid,
+        args: Vec<String>,
+        reply: oneshot::Sender<Result<Value>>,
+    ) {
+        let Some(run) = self.ctl_runner else {
+            let _ = reply.send(Ok(crate::mcp::error(
+                op,
+                "unavailable",
+                "ctl dispatcher is not installed in this host",
+            )));
+            return;
+        };
+        let endpoint = self.gui_info.clone();
+        let root = self.config.run_dir.clone();
+        self.handle.spawn_blocking(move || {
+            let result = match run(
+                args,
+                endpoint,
+                root,
+                op,
+                format!("sudo:{seat}:{generation}"),
+            ) {
+                Ok(value) if value.is_object() => {
+                    let failed = value["ok"] == false;
+                    let mut result = crate::mcp::success(op, value);
+                    result["isError"] = json!(failed);
+                    result
+                }
+                Ok(_) => crate::mcp::error(op, "unknown", "ctl dispatcher returned a non-object reply"),
+                Err(reason) => crate::mcp::error(op, "unknown", &reason),
+            };
+            let _ = reply.send(Ok(result));
+        });
+    }
     pub(super) fn sudo_call(&mut self, id: Ulid, generation: u64, call: crate::mcp::Call) -> Sudo {
         let op = call.op_id;
         let result = (|| -> std::result::Result<Sudo, String> {
@@ -34,6 +73,7 @@ impl Worker {
                 .control_actor(id, generation)
                 .map_err(|e| e.to_string())?;
             Ok(match request(&actor, &call)? {
+                Request::Ctl(args) => Sudo::Ctl(op, args),
                 Request::Swarms => Sudo::Done(crate::mcp::success(op, self.sudo_swarms()?)),
                 Request::As {
                     seat,

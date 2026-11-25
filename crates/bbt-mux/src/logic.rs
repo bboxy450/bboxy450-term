@@ -242,6 +242,7 @@ enum Command {
         crate::mcp::Origin,
         oneshot::Sender<Result<bbt_proto::GuiReply>>,
     ),
+    SetCtlRunner(CtlRunner),
     ControlCatalogue(Ulid, u64, oneshot::Sender<Result<serde_json::Value>>),
     ControlCall(
         Ulid,
@@ -810,6 +811,9 @@ fn identity_response(
     operator_response(result)
 }
 
+/// The app installs its existing ctl dispatcher; sudo MCP admission stays in logic.
+pub type CtlRunner = fn(Vec<String>, EndpointInfo, PathBuf, Ulid, String) -> std::result::Result<serde_json::Value, String>;
+
 /// Private discovery result; never include the admission capability in logs.
 #[derive(Clone)]
 pub struct EndpointInfo {
@@ -1142,6 +1146,9 @@ impl LogicClient {
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
+    }
+    pub async fn set_ctl_runner(&self, runner: CtlRunner) -> Result<()> {
+        self.tx.send(Command::SetCtlRunner(runner)).await.map_err(|_| self.unavailable("logic stopped"))
     }
     pub async fn control_catalogue(
         &self,
@@ -3216,6 +3223,7 @@ struct Worker {
     pending_endpoints: VecDeque<(Ulid, u64)>,
     endpoint_root: PathBuf,
     gui_info: EndpointInfo,
+    ctl_runner: Option<CtlRunner>,
     gui_endpoint: Option<crate::seat_socket::SeatEndpoint>,
     messaging: crate::messaging::Messaging,
     /// The host key (the bus broker's) that signs plugin messages on a
@@ -3549,6 +3557,7 @@ impl Worker {
             pending_endpoints: VecDeque::new(),
             endpoint_root,
             gui_info,
+            ctl_runner: None,
             gui_endpoint: Some(gui_endpoint),
             messaging,
             plugin_signing: None,
@@ -11914,6 +11923,7 @@ impl Worker {
                                 self.dream_runtime.request(&self.handle,authority,move ||Ok(request),Some(*source),false,|_|{});
                         }
                     }
+                    Command::SetCtlRunner(runner) => self.ctl_runner = Some(runner),
                     Command::ControlCatalogue(id, generation, reply) => {
                         let result = self.control_actor(id, generation).map(|(actor, _)| {
                             let mut catalogue =
@@ -11989,6 +11999,10 @@ impl Worker {
                                         drop(python_scope);
                                     }
                                     (seat, generation, call)
+                                }
+                                sudo::Sudo::Ctl(op, args) => {
+                                    self.start_sudo_ctl(id, generation, op, args, reply);
+                                    continue;
                                 }
                                 sudo::Sudo::Done(value) => {
                                     let _ = reply.send(Ok(value));

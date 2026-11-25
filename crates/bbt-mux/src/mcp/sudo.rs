@@ -40,6 +40,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     let path = json!({"type":"string","minLength":1,"maxLength":4096});
     let text = json!({"type":"string","minLength":1,"maxLength":16384});
     [
+        ("sudo_ctl", "Run any ctl noun/verb with operator authority, in process through ctl’s own parser and dispatch. Pass command words as args, for example [\"seat\",\"ls\"] or [\"debug\",\"errors\"]. Returns ctl’s JSON reply. No shell is launched.", json!({"args":{"type":"array","items":{"type":"string","maxLength":16384},"minItems":1,"maxItems":128}}), json!(["args"]), true),
         ("sudo_swarms", "Every swarm on this machine: id, name, working folder and its open seats (id, name, role, harness, process generation). Use the ids with the other sudo_* tools.", json!({}), json!([]), false),
         ("sudo_spawn", "Spawn a seat in any swarm as the operator, in a new tab. Omit swarm_id to create a new swarm (optionally named swarm_name); the result names it. role may be any configured role, oracle and sudo included. cwd defaults to the swarm's working folder. resume continues a native Claude session, Codex thread or bboxy450-harness session.", json!({"swarm_id":id,"swarm_name":short,"approved_profile":{"enum":PROFILES},"cwd":path,"role":short,"name":short,"resume":short}), json!(["approved_profile"]), true),
         ("sudo_swarm", "Rename a swarm or set its working folder, as the operator.", json!({"swarm_id":id,"name":short,"workdir":path}), json!(["swarm_id"]), true),
@@ -59,6 +60,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
 
 #[derive(Debug)]
 pub(crate) enum Request {
+    Ctl(Vec<String>),
     Swarms,
     Spawn {
         swarm: Option<Ulid>,
@@ -113,6 +115,16 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Request, String> {
         return Err("tool requires the sudo role".into());
     }
     Ok(match call.tool.as_str() {
+        "sudo_ctl" => {
+            #[derive(Deserialize)]
+            #[serde(deny_unknown_fields)]
+            struct Args { args: Vec<String> }
+            let a: Args = tools::parse(&call.args)?;
+            if a.args.is_empty() || a.args.len() > 128 || a.args.iter().any(|s| s.contains('\0')) {
+                return Err("args must contain 1..128 command words without NUL bytes".into());
+            }
+            Request::Ctl(a.args)
+        }
         "sudo_swarms" => {
             tools::parse::<tools::Empty>(&call.args)?;
             Request::Swarms
@@ -297,6 +309,7 @@ mod tests {
         assert_eq!(
             names,
             [
+                "sudo_ctl",
                 "sudo_swarms",
                 "sudo_spawn",
                 "sudo_swarm",

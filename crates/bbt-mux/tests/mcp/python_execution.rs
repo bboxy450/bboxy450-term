@@ -787,3 +787,41 @@ emit(saved)"#, saved.clone()));
             .any(|edge| edge["basis"] == "observed" && edge["digest"] == observed[0]["digest"])
     );
 }
+
+#[test]
+fn sudo_ctl_round_trip_requires_sudo_and_uses_host_dispatch() {
+    fn run(
+        args: Vec<String>,
+        _endpoint: bbt_mux::logic::EndpointInfo,
+        _root: PathBuf,
+        op: Ulid,
+        issuer: String,
+    ) -> Result<Value, String> {
+        Ok(json!({"ok":true,"op":op,"args":args,"issuer":issuer}))
+    }
+    let (f, sudo, _, _) = sudo_close_fixture();
+    f.runtime.block_on(f.client().set_ctl_runner(run)).unwrap();
+    let arguments =
+        json!({"args":["message","send","operator/inbox","literal $(text) with spaces"]});
+    let denied = f.call(f.oracle.id, Ulid::new(), "sudo_ctl", arguments.clone());
+    assert_eq!(denied["isError"], true, "{denied}");
+    let mut bridge = f.bridge(sudo.id);
+    initialize(&mut bridge);
+    let response = rpc(
+        &mut bridge,
+        2,
+        "tools/call",
+        json!({"name":"sudo_ctl","arguments":arguments}),
+    );
+    let result = &response["result"];
+    assert_ne!(result["isError"], true, "{response}");
+    assert_eq!(result["structuredContent"]["args"], arguments["args"]);
+    assert_eq!(
+        result["structuredContent"]["op"],
+        result["structuredContent"]["op_id"]
+    );
+    assert_eq!(
+        result["structuredContent"]["issuer"],
+        format!("sudo:{}:1", sudo.id)
+    );
+}

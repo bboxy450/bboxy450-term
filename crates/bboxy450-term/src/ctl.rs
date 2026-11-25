@@ -1579,14 +1579,16 @@ fn operation_failure(op: Option<Ulid>, reason: &str) -> (Option<Ulid>, Fail) {
 /// Preserve stdout's error kind before noun runners turn I/O errors into strings.
 /// A closed reader ends output; errors from backend sockets remain failures.
 struct CliOutput {
-    inner: std::io::StdoutLock<'static>,
+    inner: Option<std::io::StdoutLock<'static>>,
+    captured: Vec<u8>,
     closed: bool,
 }
 
 impl CliOutput {
     fn new() -> Self {
         Self {
-            inner: std::io::stdout().lock(),
+            inner: Some(std::io::stdout().lock()),
+            captured: Vec::new(),
             closed: false,
         }
     }
@@ -1608,12 +1610,19 @@ impl CliOutput {
 
 impl Write for CliOutput {
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
-        let result = self.inner.write(bytes);
+        let Some(inner) = &mut self.inner else {
+            if self.captured.len().saturating_add(bytes.len()) > bbt_mux::mcp::bridge::MAX_FRAME / 4 {
+                return Err(std::io::Error::other("ctl reply exceeds MCP byte bound"));
+            }
+            return self.captured.write(bytes);
+        };
+        let result = inner.write(bytes);
         self.observe(result)
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        let result = self.inner.flush();
+        let Some(inner) = &mut self.inner else { return Ok(()) };
+        let result = inner.flush();
         self.observe(result)
     }
 }
@@ -1673,8 +1682,12 @@ fn journal_line(reason: &str) -> &str {
     }
 }
 
+fn help_requested(args: &[String]) -> bool {
+    args.iter().any(|arg| arg == "--help" || arg == "-h") || args == ["help"]
+}
+
 pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
-    if args.iter().any(|arg| arg == "--help" || arg == "-h") || args == ["help"] {
+    if help_requested(args) {
         return print_line(format_args!("{USAGE}")).map(|_| ());
     }
     let parsed = parse_full(args);
@@ -1765,40 +1778,45 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
                 bbt_rt::error_journal::Failure::new("ctl", &failure_operation, journal_line(&reason)),
             );
         }
-        let (op, fail) = operation_failure(op, &reason);
-        let mut line = json!({ "ok": false, "op": op.unwrap_or_else(fresh), "error": {
-            "kind": fail.kind, "message": fail.message, "hint": fail.hint } });
-        if fail.kind == "not_on_screen"
-            && let Some(seat) = capture_seat
-        {
-            line["error"]["seat"] = json!(seat);
-        }
-        // not_on_screen names the frame it checked: before a relayed verb's reply that frame
-        // means early, after it hidden (ctl-cli §1a).
-        if let Some(frame) = fail
-            .message
-            .split_once(" in frame ")
-            .and_then(|(_, n)| n.split_whitespace().next()?.parse::<u64>().ok())
-            .filter(|_| fail.kind == "not_on_screen")
-        {
-            line["error"]["frame_seq"] = json!(frame);
-        }
-        if let Some(tail) = tail {
-            tail.error(&mut line);
-        }
-        let exit = if message_refusal.is_some() {
-            1
-        } else {
-            fail.exit
-        };
-        if let Some(error) = message_refusal {
-            line["error"] = json!(error);
-        }
+        let (line, exit) = failure_reply(op, &reason, tail, capture_seat, message_refusal);
         if print_line(format_args!("{line}"))? {
             std::process::exit(exit);
         }
     }
     Ok(())
+}
+
+fn failure_reply(op: Option<Ulid>, reason: &str, tail: Option<events::Progress>, capture_seat: Option<Ulid>, message_refusal: Option<bbt_proto::messaging::MessageRefusal>) -> (Value, i32) {
+    let (op, fail) = operation_failure(op, reason);
+    let mut line = json!({ "ok": false, "op": op.unwrap_or_else(fresh), "error": {
+        "kind": fail.kind, "message": fail.message, "hint": fail.hint } });
+    if fail.kind == "not_on_screen"
+        && let Some(seat) = capture_seat
+    {
+        line["error"]["seat"] = json!(seat);
+    }
+    // not_on_screen names the frame it checked: before a relayed verb's reply that frame
+    // means early, after it hidden (ctl-cli §1a).
+    if let Some(frame) = fail
+        .message
+        .split_once(" in frame ")
+        .and_then(|(_, n)| n.split_whitespace().next()?.parse::<u64>().ok())
+        .filter(|_| fail.kind == "not_on_screen")
+    {
+        line["error"]["frame_seq"] = json!(frame);
+    }
+    if let Some(tail) = tail {
+        tail.error(&mut line);
+    }
+    let exit = if message_refusal.is_some() {
+        1
+    } else {
+        fail.exit
+    };
+    if let Some(error) = message_refusal {
+        line["error"] = json!(error);
+    }
+    (line, exit)
 }
 
 /// One noun-verb verb: connect (unless it only reads the run directory), issue its action,
@@ -1885,137 +1903,233 @@ fn run_verb(
     message_refusal: &mut Option<bbt_proto::messaging::MessageRefusal>,
 ) -> Result<(), String> {
     with_stdout(|out| {
-        let (noun, verb) = parsed.verb.expect("a noun-verb form");
-        if matches!(&parsed.command, Command::DebugReport) {
-            return print_reply(
-                out,
-                noun,
-                verb,
-                parsed.op.unwrap_or_else(fresh),
-                debug::report(),
-                parsed.human,
-            );
-        }
-        let endpoint_file = parsed
-            .endpoint
-            .clone()
-            .unwrap_or_else(|| default_endpoint.to_path_buf());
-        // File-only diagnostics remain readable after a backend exit.
-        if matches!(parsed.command, Command::DebugNativeNotifications) {
-            // Explicit local settings read: no GUI admission, permission request,
-            // notification submission or dependency on a running frontend.
-            return print_reply(
-                out,
-                noun,
-                verb,
-                op.unwrap_or_else(fresh),
-                debug::native_settings()?,
-                parsed.human,
-            );
-        }
-        if let Command::Debug {
-            request: bbt_proto::gui::DebugRequest::Errors { since, seat },
-            ..
-        } = &parsed.command
-        {
-            // This read bypasses the door, so refuse a seat here as the door would: an
-            // unfiltered read acknowledges the operator's journal. Seats use MCP
-            // diagnostic_errors, which reads only their own rows.
-            if std::env::var_os("BBOXY_SEAT_ID").is_some() {
-                return Err(bbt_mux::ctl_door::REFUSAL.into());
-            }
-            let root = endpoint_file
-                .parent()
-                .ok_or("diagnostics run directory unavailable")?;
-            let data = bbt_rt::error_journal::read(
-                root,
-                *since,
-                seat.as_ref().map(ToString::to_string).as_deref(),
-                true,
-            )
-            .map_err(|e| e.to_string())?;
-            return print_reply(
-                out,
-                noun,
-                verb,
-                op.unwrap_or_else(fresh),
-                data,
-                parsed.human,
-            );
-        }
-        if let Command::AppStart {
-            headless,
-            ctl,
-            unattended,
-            test_account,
-            record_notifications,
-        } = &parsed.command
-        {
-            let data = app::start(
-                &endpoint_file,
-                *headless,
-                *ctl,
-                *unattended,
-                test_account.as_deref(),
-                *record_notifications,
-            )?;
-            return print_reply(
-                out,
-                noun,
-                verb,
-                op.unwrap_or_else(fresh),
-                data,
-                parsed.human,
-            );
-        }
-        if let Command::AppEndpoint = parsed.command {
-            // The run directory and the generation, never the capability (#275).
-            let text = std::fs::read_to_string(&endpoint_file)
-                .map_err(|e| format!("endpoint {}: {e}", endpoint_file.display()))?;
-            let value: Value = serde_json::from_str(&text).map_err(|e| format!("endpoint: {e}"))?;
-            let id = op.unwrap_or_else(fresh);
-            return print_reply(
-                out,
-                noun,
-                verb,
-                id,
-                json!({ "run_dir": endpoint_file.parent(), "path": value["path"],
-                "generation": value["generation"] }),
-                parsed.human,
-            );
-        }
-        let mut client = connect(args, &endpoint_file).map_err(|reason| {
-            if matches!(&parsed.command, Command::AppStop) {
-                format!("app endpoint unavailable: {reason}")
-            } else {
-                reason
-            }
-        })?;
-        client.op = parsed.op;
-        let id = parsed.op.unwrap_or_else(fresh);
-        *op = Some(id);
-        client.op = Some(id);
-        let human = parsed.human;
-        let cx = VerbCx {
-            client,
-            id,
-            human,
-            endpoint_file,
+        run_verb_output(
+            args,
+            parsed,
+            default_endpoint,
+            op,
             tail,
             capture_seat,
             message_refusal,
             out,
-            noun,
-            verb,
-        };
-        let noun_of = parsed.command.noun();
-        match NOUN_VERB_RUNNERS.iter().find(|(noun, _)| *noun == noun_of) {
-            Some((_, run)) => run(cx, parsed.command),
-            None => unreachable!("every noun with table verbs has a runner"),
-        }
+            None,
+        )
     })
 }
 
+#[allow(
+    clippy::too_many_arguments,
+    reason = "one ctl dispatcher for stdout and admitted MCP capture"
+)]
+fn run_verb_output(
+    args: &[String],
+    parsed: Parsed,
+    default_endpoint: &Path,
+    op: &mut Option<Ulid>,
+    tail: &mut Option<events::Progress>,
+    capture_seat: &mut Option<Ulid>,
+    message_refusal: &mut Option<bbt_proto::messaging::MessageRefusal>,
+    out: &mut CliOutput,
+    admitted: Option<(&Endpoint, &str)>,
+) -> Result<(), String> {
+    let (noun, verb) = parsed.verb.expect("a noun-verb form");
+    if matches!(&parsed.command, Command::DebugReport) {
+        return print_reply(
+            out,
+            noun,
+            verb,
+            parsed.op.unwrap_or_else(fresh),
+            debug::report(),
+            parsed.human,
+        );
+    }
+    let endpoint_file = parsed
+        .endpoint
+        .clone()
+        .unwrap_or_else(|| default_endpoint.to_path_buf());
+    // File-only diagnostics remain readable after a backend exit.
+    if matches!(parsed.command, Command::DebugNativeNotifications) {
+        // Explicit local settings read: no GUI admission, permission request,
+        // notification submission or dependency on a running frontend.
+        return print_reply(
+            out,
+            noun,
+            verb,
+            op.unwrap_or_else(fresh),
+            debug::native_settings()?,
+            parsed.human,
+        );
+    }
+    if let Command::Debug {
+        request: bbt_proto::gui::DebugRequest::Errors { since, seat },
+        ..
+    } = &parsed.command
+    {
+        // This read bypasses the door, so refuse a seat here as the door would: an
+        // unfiltered read acknowledges the operator's journal. Seats use MCP
+        // diagnostic_errors, which reads only their own rows.
+        if admitted.is_none() && std::env::var_os("BBOXY_SEAT_ID").is_some() {
+            return Err(bbt_mux::ctl_door::REFUSAL.into());
+        }
+        let root = endpoint_file
+            .parent()
+            .ok_or("diagnostics run directory unavailable")?;
+        let data = bbt_rt::error_journal::read(
+            root,
+            *since,
+            seat.as_ref().map(ToString::to_string).as_deref(),
+            true,
+        )
+        .map_err(|e| e.to_string())?;
+        return print_reply(
+            out,
+            noun,
+            verb,
+            op.unwrap_or_else(fresh),
+            data,
+            parsed.human,
+        );
+    }
+    if let Command::AppStart {
+        headless,
+        ctl,
+        unattended,
+        test_account,
+        record_notifications,
+    } = &parsed.command
+    {
+        let data = app::start(
+            &endpoint_file,
+            *headless,
+            *ctl,
+            *unattended,
+            test_account.as_deref(),
+            *record_notifications,
+        )?;
+        return print_reply(
+            out,
+            noun,
+            verb,
+            op.unwrap_or_else(fresh),
+            data,
+            parsed.human,
+        );
+    }
+    if let Command::AppEndpoint = parsed.command {
+        // The run directory and the generation, never the capability (#275).
+        let text = std::fs::read_to_string(&endpoint_file)
+            .map_err(|e| format!("endpoint {}: {e}", endpoint_file.display()))?;
+        let value: Value = serde_json::from_str(&text).map_err(|e| format!("endpoint: {e}"))?;
+        let id = op.unwrap_or_else(fresh);
+        return print_reply(
+            out,
+            noun,
+            verb,
+            id,
+            json!({ "run_dir": endpoint_file.parent(), "path": value["path"],
+            "generation": value["generation"] }),
+            parsed.human,
+        );
+    }
+    let mut client = match admitted {
+        Some((endpoint, issuer)) => Client::connect(endpoint).and_then(|mut client| {
+            client.issue(issuer.to_owned())?;
+            Ok(client)
+        }),
+        None => connect(args, &endpoint_file),
+    }
+    .map_err(|reason| {
+        if matches!(&parsed.command, Command::AppStop) {
+            format!("app endpoint unavailable: {reason}")
+        } else {
+            reason
+        }
+    })?;
+    client.op = parsed.op;
+    let id = parsed.op.unwrap_or_else(fresh);
+    *op = Some(id);
+    client.op = Some(id);
+    let human = parsed.human;
+    let cx = VerbCx {
+        client,
+        id,
+        human,
+        endpoint_file,
+        tail,
+        capture_seat,
+        message_refusal,
+        out,
+        noun,
+        verb,
+    };
+    let noun_of = parsed.command.noun();
+    match NOUN_VERB_RUNNERS.iter().find(|(noun, _)| *noun == noun_of) {
+        Some((_, run)) => run(cx, parsed.command),
+        None => unreachable!("every noun with table verbs has a runner"),
+    }
+}
+
+/// The sudo host calls the same noun/verb dispatcher with its own admitted endpoint.
+/// No CLI process, endpoint file, command table or stdout capture is involved.
+pub fn execute_sudo_ctl(
+    args: Vec<String>,
+    endpoint: bbt_mux::logic::EndpointInfo,
+    root: PathBuf,
+    id: Ulid,
+    issuer: String,
+) -> Result<Value, String> {
+    if help_requested(&args) {
+        return Ok(json!({"ok":true,"op":id,"usage":USAGE,"verbs":VERBS}));
+    }
+    let mut out = CliOutput {
+        inner: None,
+        captured: Vec::new(),
+        closed: false,
+    };
+    let mut op = Some(id);
+    let mut tail = None;
+    let mut capture = None;
+    let mut refusal = None;
+    let result = parse_full(&args).and_then(|mut parsed| {
+        if parsed.verb.is_none() || parsed.endpoint.is_some() {
+            return Err(
+                "sudo_ctl requires a noun/verb in this running app; omit endpoint overrides".into(),
+            );
+        }
+        parsed.op = Some(id);
+        parsed.human = false;
+        let endpoint = Endpoint {
+            path: endpoint.path,
+            capability: endpoint.capability,
+        };
+        run_verb_output(
+            &args,
+            parsed,
+            &root.join(bbt_mux::ctl_door::ENDPOINT),
+            &mut op,
+            &mut tail,
+            &mut capture,
+            &mut refusal,
+            &mut out,
+            Some((&endpoint, &issuer)),
+        )
+    });
+    if let Err(reason) = result {
+        return Ok(failure_reply(op, &reason, tail, capture, refusal).0);
+    }
+    let text = String::from_utf8(out.captured).map_err(|e| e.to_string())?;
+    let mut rows = text
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .map(serde_json::from_str)
+        .collect::<Result<Vec<Value>, _>>()
+        .map_err(|e| e.to_string())?;
+    Ok(if rows.len() == 1 {
+        rows.remove(0)
+    } else {
+        json!({"ok":true,"op":id,"replies":rows})
+    })
+}
 /// Connects and names the issuer (`--as` or `BBOXY_CTL_ISSUER`, #269).
 fn connect(args: &[String], endpoint_file: &Path) -> Result<Client, String> {
     let issuer = args

@@ -2588,3 +2588,110 @@ async fn ctl_unknown_thread_keeps_the_typed_hint_and_exits_one() {
     assert!(!hint.contains(&unknown), "{reply}");
     session.shutdown().await.unwrap();
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn sudo_ctl_round_trip_drives_the_private_app() {
+    let temp = tempfile::tempdir().unwrap();
+    let root = temp.path().canonicalize().unwrap();
+    let run = root.join("run");
+    let repository = root.join("repository");
+    std::fs::create_dir_all(repository.join(".bboxy/tasks")).unwrap();
+    std::fs::create_dir_all(root.join("zsh-config")).unwrap();
+    let app = root.join("test-app");
+    executable(
+        &app,
+        &format!(
+            "#!/bin/sh\nBBOXY_TEST_CUSTODY=memory exec {} \"$@\"\n",
+            quote(Path::new(env!("CARGO_BIN_EXE_bboxy450-term")))
+        ),
+    );
+    let mut session = Session::start(Config {
+        executable: app,
+        socket: run.join("mux.sock"),
+        run_dir: run.clone(),
+        repository,
+        shell_config: Some(root.join("zsh-config")),
+        ctl: true,
+        test_account: None,
+    })
+    .await
+    .unwrap();
+    until("private ctl endpoint", &root.join("none"), || {
+        run.join("gui.endpoint").exists().then_some(())
+    });
+    // The internal dispatcher must not depend on operator-door discovery files.
+    std::fs::remove_file(run.join("gui.endpoint")).unwrap();
+    let input = root.join("sudo-mcp.ndjson");
+    let output = root.join("sudo-mcp-replies.ndjson");
+    let requests = [
+        json!({"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"sudo-fixture","version":"0"}}}),
+        json!({"jsonrpc":"2.0","method":"notifications/initialized"}),
+        json!({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"sudo_ctl","arguments":{"args":["task","list"]}}}),
+        json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"sudo_ctl","arguments":{"args":["debug","errors"]}}}),
+        json!({"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"sudo_ctl","arguments":{"args":["no-such-noun","no-such-verb"]}}}),
+        json!({"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"sudo_ctl","arguments":{"args":["--help"]}}}),
+    ];
+    std::fs::write(
+        &input,
+        requests
+            .iter()
+            .map(|r| format!("{r}\n"))
+            .collect::<String>(),
+    )
+    .unwrap();
+    let id = bbt_mux::Ulid::new();
+    session
+        .send(GuiAction::Spawn {
+            id,
+            spec: bbt_proto::SpawnSpec {
+                swarm: bbt_proto::SwarmId::from_u128(bbt_mux::Ulid::new().0),
+                harness_kind: "zsh".into(),
+                name: Some("Sudo fixture".into()),
+                role: Some("sudo".into()),
+                cwd: root.to_string_lossy().into_owned(),
+                location: bbt_proto::Where::Local,
+                resume: None,
+                placement: None,
+                via: None,
+                command: Some("/bin/sh".into()),
+                args: vec![
+                    "-c".into(),
+                    format!(
+                        "exec {} mcp < {} > {}",
+                        quote(Path::new(env!("CARGO_BIN_EXE_bboxy450-term"))),
+                        quote(&input),
+                        quote(&output)
+                    ),
+                ],
+                env: vec![],
+            },
+        })
+        .await
+        .unwrap();
+    let replies = until("sudo_ctl replies", &output, || {
+        let text = std::fs::read_to_string(&output).ok()?;
+        let replies = text
+            .lines()
+            .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+            .collect::<Vec<_>>();
+        (1..=4).all(|id| replies.iter().any(|r| r["id"] == id)).then_some(replies)
+    });
+    for (id, noun) in [(1, "task"), (2, "debug")] {
+        let reply = replies.iter().find(|r| r["id"] == id).unwrap();
+        assert_ne!(reply["result"]["isError"], true, "{reply}");
+        assert_eq!(reply["result"]["structuredContent"]["ok"], true, "{reply}");
+        assert_eq!(
+            reply["result"]["structuredContent"]["noun"], noun,
+            "{reply}"
+        );
+    }
+    let invalid = replies.iter().find(|r| r["id"] == 3).unwrap();
+    assert_eq!(invalid["result"]["isError"], true, "{invalid}");
+    assert_eq!(
+        invalid["result"]["structuredContent"]["ok"], false,
+        "{invalid}"
+    );
+    let help = replies.iter().find(|r| r["id"] == 4).unwrap();
+    assert!(help["result"]["structuredContent"]["usage"].as_str().unwrap().contains("seat close"), "{help}");
+    session.shutdown().await.unwrap();
+}

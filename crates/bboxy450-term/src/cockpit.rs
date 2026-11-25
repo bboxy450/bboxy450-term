@@ -845,6 +845,7 @@ async fn logic_main() -> Result<()> {
         &mut |stream, verified, total| emit(stream, verified, total, false),
         &mut |operation, completed, total| emit(operation, completed, total, true),
     )?;
+    logic.client.set_ctl_runner(crate::ctl::execute_sudo_ctl).await?;
     if bootstrap.recover_seats {
         logic.client.recover_seats_with_progress(|completed, total| {
             emit("Resuming saved sessions", completed, total, true);

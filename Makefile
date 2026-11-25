@@ -261,6 +261,7 @@ help:
 	  'make test-plugin-skills          Canonical MCP instructions, descriptors and selected-provider fences' \
 	  'make test-knowledge-types        Focused MCP document dictionary, concern writes and discovery tests' \
 	  'make test-mcp-hints              Focused MCP hint graph, corrective calls and prefix refusal tests' \
+	  'make test-sudo                   Sudo role, socket round trips and private-app ctl dispatch' \
 	  'make test-mcp-recovery           Strict report locators, reserved task custody and orphan-close regressions' \
 	  'make check-plugin-skills         Strict plugin, mux and app all-target Clippy' \
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
@@ -1092,7 +1093,14 @@ test-plugin-transports:
 	cargo run --locked -p bboxy450-term-plugin-fixture --example transport --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/transport-plugins/bboxy450-term-transport-example'
 	@BBOXY_TRANSPORT_PLUGIN='$(abspath $(TARGET_DIR))/transport-plugins/bboxy450-term-transport-example' $(MAKE) test-settings-plugins
 
-.PHONY: test-mcp-hints test-mcp-recovery
+.PHONY: test-sudo test-mcp-hints test-mcp-recovery
+test-sudo: tools
+	@set -eu; . ./scripts/cache-env.sh; \
+	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
+	cargo nextest run --locked -p bboxy450-term-mux --lib --test it -E 'test(sudo)'; \
+	cargo build --locked -p $(APP) --bin $(APP); \
+	cargo nextest run --locked -p $(APP) --lib --test it -E 'test(ctl::tests::) | test(sudo_ctl_round_trip_drives_the_private_app)'
+
 test-mcp-recovery:
 	@set -eu; . ./scripts/cache-env.sh; \
 	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
