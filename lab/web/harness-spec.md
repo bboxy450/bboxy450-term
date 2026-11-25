@@ -195,9 +195,14 @@ The radius scale is 4 (tags), 5–7 (tiles), 8 (buttons, inner blocks), 11 (card
 - When a loop was folded, the row adds `↻ N repeated replies folded` in `ask`.
 
 ### Runaway loop card (`acp-opencode-loop`)
-- **Rule:** in one turn, a reply whose first line matches an earlier reply's first line opens the loop card where that
-  reply was. Lines are compared lowercased, letters only, first 48 characters.
-- Every later reply, thought, tool call and notice of that turn goes into the card. The first answer stays in the transcript.
+- **Rule:** in one turn, a reply repeats when its first line matches the first line of one of the three replies before
+  it. Lines are compared lowercased, letters only, first 48 characters. The first repeat of a run opens the loop card
+  where that reply was.
+- The card folds only through the run's latest repeat: each new repeat takes the replies, thoughts, tool calls and
+  notices since the previous one into the card. What the agent does after its latest repeat stays in the transcript,
+  so live work and a new answer are never hidden. The first answer stays in the transcript too.
+- Three replies in a row without a repeat end the run; a later repeat opens a new card.
+- Native implements this rule (`src/frontends/gui/face_rows.rs`). `harness.js` still folds the whole rest of the turn.
 - Card: radius 11, border `ask-30`, fill `ask-5`. The header is like a tool header: an ask-coloured `↻` kind tile,
   "The agent kept repeating itself" (650), then `N replies · N thoughts · N tool calls` in 12 `fg-dim`, a `folded` chip,
   and a chevron that rotates 90° when open.
