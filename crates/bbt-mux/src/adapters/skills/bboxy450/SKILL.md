@@ -128,6 +128,13 @@ supported kinds: `flowchart` (or `graph`), `sequenceDiagram`, or
 real commits, tasks and seats, mark what is done or blocked. Other Mermaid kinds
 do not render; draw them as a flowchart.
 
+Return Markdown, not plain text: headings, lists, tables, fenced code, bold
+labels. The GUI renders it well. Every link is a full clickable URL, so the user
+can open it with one click: `https://github.com/bboxy450/bboxy450-term/commit/<sha>`,
+`https://github.com/bboxy450/bboxy450-term/pull/<n>`, `file:///abs/path`,
+`http://127.0.0.1:<port>/`. Never give a bare ID or relative path where a URL
+exists; write `[label](url)` when the URL is long.
+
 Charts and images are becoming artifacts: `display(plot)` in `python_execute`
 stores the chart, and `![[artifact:ID]]` embeds it (`[[artifact:ID]]` links it,
 `:N` pins a revision) in a reply, document or canvas
