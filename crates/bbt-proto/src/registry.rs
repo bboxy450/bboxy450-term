@@ -17,6 +17,8 @@ use crate::messaging::{MessageClass, WakeMode};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SwarmRecord {
     pub id: Ulid,
+    #[serde(default)]
+    pub archived: bool,
     pub name: Option<String>,
     pub workdir: Option<String>,
     pub revision: u64,
@@ -25,6 +27,7 @@ impl SwarmRecord {
     pub fn new(id: Ulid) -> Self {
         Self {
             id,
+            archived: false,
             name: None,
             workdir: None,
             revision: 0,

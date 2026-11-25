@@ -1462,6 +1462,9 @@ async fn gui_session(
                             action @ (GuiAction::CloseSeat {..}|GuiAction::UndoCloseSeat {..})=> {
                                 let (id,seat,undo)=match action { GuiAction::CloseSeat {id,seat}=>(id,seat,false),GuiAction::UndoCloseSeat {id,seat}=>(id,seat,true),_=>unreachable!() };
                                 client.record(seat).await?;
+                                if !undo && client.operator_close_orphan(id,seat,crate::mcp::Origin {door,issued_by:issued_by.clone()}).await? {
+                                    return Ok(GuiReply::SeatControlled {op:id});
+                                }
                                 if !client.captures.attached() {return Err(invalid("no window is attached to close or undo"));}
                                 client.ctl_record(id,if undo {"seat_undo_close"} else {"seat_close"},serde_json::json!({"seat":seat}),crate::mcp::Origin {door,issued_by:issued_by.clone()}).await?;
                                 let layout=client.captures.close(id,bbt_proto::SeatId::from_u128(seat.0),undo).await.map_err(invalid)?;
@@ -1959,11 +1962,11 @@ async fn session_inner(
                     Action::Call{call,attribution}=>{
                         // Project after journaling, off the logic owner. Old bridge
                         // processes must receive structured guidance after refresh too.
-                        let value = client.control_call_attributed_within(seat,generation,call.clone(),attribution,crate::logic::SEAT_PENDING_WAIT).await?;
+                        let value = client.control_call_attributed_within(seat,generation,call.clone(),attribution,crate::logic::SEAT_PENDING_WAIT).await.unwrap_or_else(|error| crate::mcp::error(call.op_id,"unknown",&format!("seat control dispatch failed: {error}; inspect the original operation before retrying")));
                         Ok(crate::mcp::hints::attach(&call,client.surface_hints(seat,generation,call.clone(),value).await))
                     },
                     Action::GuardedCall{call,attribution,expected}=> {
-                        let value = client.control_call_guarded_within(seat,generation,call.clone(),attribution,Some(expected),crate::logic::SEAT_PENDING_WAIT).await?;
+                        let value = client.control_call_guarded_within(seat,generation,call.clone(),attribution,Some(expected),crate::logic::SEAT_PENDING_WAIT).await.unwrap_or_else(|error| crate::mcp::error(call.op_id,"unknown",&format!("seat control dispatch failed: {error}; inspect the original operation before retrying")));
                         Ok(crate::mcp::hints::attach(&call,client.surface_hints(seat,generation,call.clone(),value).await))
                     },
                     Action::PythonContext=>client.control_call(seat,generation,crate::mcp::Call{op_id:Ulid::new(),tool:"python_execution_context".into(),args:serde_json::json!({})}).await,

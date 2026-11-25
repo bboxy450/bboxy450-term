@@ -2621,6 +2621,21 @@ async fn sudo_ctl_round_trip_drives_the_private_app() {
     });
     // The internal dispatcher must not depend on operator-door discovery files.
     std::fs::remove_file(run.join("gui.endpoint")).unwrap();
+    let registry = bbt_mux::registry::Registry::new(
+        bbt_mux::store::sqlite::SqliteStore::open(&run.join("account")).unwrap(),
+    );
+    let ghost_swarm = bbt_mux::Ulid::new();
+    let ghost = bbt_mux::registry::SeatRecord::new(
+        bbt_mux::Ulid::new(),
+        ghost_swarm,
+        "Gone fixture",
+        "zsh",
+    );
+    registry.insert(&ghost).unwrap();
+    registry
+        .rename_swarm(ghost_swarm, "Empty after close")
+        .unwrap();
+    let close_op = bbt_mux::Ulid::new();
     let input = root.join("sudo-mcp.ndjson");
     let output = root.join("sudo-mcp-replies.ndjson");
     let requests = [
@@ -2630,6 +2645,11 @@ async fn sudo_ctl_round_trip_drives_the_private_app() {
         json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"sudo_ctl","arguments":{"args":["debug","errors"]}}}),
         json!({"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"sudo_ctl","arguments":{"args":["no-such-noun","no-such-verb"]}}}),
         json!({"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"sudo_ctl","arguments":{"args":["--help"]}}}),
+        json!({"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"sudo_as","arguments":{"seat_id":ghost.id,"expected_process_generation":"1","tool":"self_status","arguments":{}}}}),
+        json!({"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"sudo_swarms","arguments":{}}}),
+        json!({"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"sudo_ctl","arguments":{"op_id":close_op,"args":["seat","close",ghost.id.to_string()]}}}),
+        json!({"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"sudo_swarm","arguments":{"swarm_id":ghost_swarm,"archive":true}}}),
+        json!({"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"sudo_ctl","arguments":{"op_id":close_op,"args":["seat","close",ghost.id.to_string()]}}}),
     ];
     std::fs::write(
         &input,
@@ -2639,6 +2659,31 @@ async fn sudo_ctl_round_trip_drives_the_private_app() {
             .collect::<String>(),
     )
     .unwrap();
+    let driver = root.join("sudo-driver.py");
+    std::fs::write(&driver, r#"import json, subprocess, sys
+with open(sys.argv[3], 'w') as output, open(sys.argv[4], 'w') as errors:
+    p = subprocess.Popen([sys.argv[1], 'mcp'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=errors, text=True)
+    for line in open(sys.argv[2]):
+        request = json.loads(line)
+        p.stdin.write(line)
+        p.stdin.flush()
+        if 'id' not in request:
+            continue
+        while True:
+            response = p.stdout.readline()
+            if not response:
+                raise RuntimeError('MCP bridge closed before reply')
+            output.write(response)
+            output.flush()
+            try:
+                value = json.loads(response)
+            except ValueError:
+                continue
+            if value.get('id') == request['id']:
+                break
+    p.stdin.close()
+    assert p.wait(timeout=10) == 0
+"#).unwrap();
     let id = bbt_mux::Ulid::new();
     session
         .send(GuiAction::Spawn {
@@ -2653,15 +2698,15 @@ async fn sudo_ctl_round_trip_drives_the_private_app() {
                 resume: None,
                 placement: None,
                 via: None,
-                command: Some("/bin/sh".into()),
+                command: Some("/usr/bin/python3".into()),
                 args: vec![
-                    "-c".into(),
-                    format!(
-                        "exec {} mcp < {} > {}",
-                        quote(Path::new(env!("CARGO_BIN_EXE_bboxy450-term"))),
-                        quote(&input),
-                        quote(&output)
-                    ),
+                    driver.to_string_lossy().into_owned(),
+                    env!("CARGO_BIN_EXE_bboxy450-term").into(),
+                    input.to_string_lossy().into_owned(),
+                    output.to_string_lossy().into_owned(),
+                    root.join("sudo-mcp-errors.log")
+                        .to_string_lossy()
+                        .into_owned(),
                 ],
                 env: vec![],
             },
@@ -2674,7 +2719,9 @@ async fn sudo_ctl_round_trip_drives_the_private_app() {
             .lines()
             .filter_map(|line| serde_json::from_str::<Value>(line).ok())
             .collect::<Vec<_>>();
-        (1..=4).all(|id| replies.iter().any(|r| r["id"] == id)).then_some(replies)
+        (1..=9)
+            .all(|id| replies.iter().any(|r| r["id"] == id))
+            .then_some(replies)
     });
     for (id, noun) in [(1, "task"), (2, "debug")] {
         let reply = replies.iter().find(|r| r["id"] == id).unwrap();
@@ -2692,6 +2739,57 @@ async fn sudo_ctl_round_trip_drives_the_private_app() {
         "{invalid}"
     );
     let help = replies.iter().find(|r| r["id"] == 4).unwrap();
-    assert!(help["result"]["structuredContent"]["usage"].as_str().unwrap().contains("seat close"), "{help}");
+    assert!(
+        help["result"]["structuredContent"]["usage"]
+            .as_str()
+            .unwrap()
+            .contains("seat close"),
+        "{help}"
+    );
+    let result = |id| &replies.iter().find(|r| r["id"] == id).unwrap()["result"];
+    assert_eq!(
+        result(5)["structuredContent"]["error"]["code"],
+        "process_gone",
+        "{replies:?}"
+    );
+    let seats: Vec<_> = result(6)["structuredContent"]["swarms"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|s| s["seats"].as_array().unwrap())
+        .collect();
+    assert_eq!(
+        seats
+            .iter()
+            .find(|s| s["seat_id"] == json!(ghost.id))
+            .unwrap()["process_state"],
+        "gone",
+        "{replies:?}"
+    );
+    for id in [7, 9] {
+        assert_ne!(result(id)["isError"], true, "{replies:?}");
+        assert_eq!(
+            result(id)["structuredContent"]["data"]["closure"],
+            "orphan_retained",
+            "{replies:?}"
+        );
+    }
+    assert_eq!(
+        registry.get(ghost.id).unwrap().lifecycle,
+        bbt_mux::registry::Lifecycle::ClosedRetained
+    );
+    assert_eq!(registry.get(ghost.id).unwrap().lifecycle_revision, 1);
+    assert_eq!(
+        result(8)["structuredContent"]["swarm"]["archived"],
+        true,
+        "{replies:?}"
+    );
+    assert!(
+        registry
+            .swarms()
+            .unwrap()
+            .iter()
+            .all(|r| r.id != ghost_swarm)
+    );
     session.shutdown().await.unwrap();
 }

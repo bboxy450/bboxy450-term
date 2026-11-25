@@ -6,6 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Exact native admission, independently of a Python-side preflight poll.
 use super::*;
+use bbt_mux::registry::Lifecycle;
 
 fn context(f: &Fixture, seat: Ulid) -> Value {
     let value = f.call(seat, Ulid::new(), "python_execution_context", json!({}));
@@ -824,4 +825,195 @@ fn sudo_ctl_round_trip_requires_sudo_and_uses_host_dispatch() {
         result["structuredContent"]["issuer"],
         format!("sudo:{}:1", sudo.id)
     );
+}
+
+#[test]
+fn sudo_as_round_trip_returns_target_reads_and_errors() {
+    let (f, sudo, target, _) = sudo_close_fixture();
+    let mut bridge = f.bridge(sudo.id);
+    initialize(&mut bridge);
+    for tool in ["self_status", "seat_list", "task_list"] {
+        let response = rpc(
+            &mut bridge,
+            2,
+            "tools/call",
+            json!({
+                "name":"sudo_as", "arguments":{
+                    "seat_id":target.id,
+                    "expected_process_generation":target.generation.to_string(),
+                    "tool":tool, "arguments":{}
+                }
+            }),
+        );
+        assert!(response.get("error").is_none(), "{response}");
+        assert_ne!(response["result"]["isError"], true, "{response}");
+    }
+    let ghost = SeatRecord::new(Ulid::new(), target.swarm, "No live viewport", "zsh");
+    f.registry().insert(&ghost).unwrap();
+    let response = rpc(
+        &mut bridge,
+        3,
+        "tools/call",
+        json!({
+            "name":"sudo_as", "arguments":{
+                "seat_id":ghost.id,
+                "expected_process_generation":ghost.generation.to_string(),
+                "tool":"self_status", "arguments":{}
+            }
+        }),
+    );
+    assert!(response.get("error").is_none(), "{response}");
+    assert_eq!(response["result"]["isError"], true, "{response}");
+    let listing = data(f.call(sudo.id, Ulid::new(), "sudo_swarms", json!({})));
+    let seats: Vec<_> = listing["swarms"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .flat_map(|s| s["seats"].as_array().unwrap())
+        .collect();
+    let live = seats
+        .iter()
+        .find(|s| s["seat_id"] == json!(target.id))
+        .unwrap();
+    assert_eq!(live["process_state"], "running", "{listing}");
+    assert!(live["adapter"].is_object(), "{listing}");
+    let gone = seats
+        .iter()
+        .find(|s| s["seat_id"] == json!(ghost.id))
+        .unwrap();
+    assert_eq!(gone["process_state"], "gone", "{listing}");
+    let assigned = seats.iter().find(|s| s["seat_id"] == json!(f.own.id)).unwrap();
+    assert!(assigned["task_paths"].as_array().unwrap().iter().any(|p| p.as_str().unwrap().ends_with(&format!("{}.md", f.task))), "{listing}");
+    assert_eq!(
+        response["result"]["structuredContent"]["error"]["code"], "process_gone",
+        "{response}"
+    );
+}
+
+#[test]
+fn sudo_dispatch_errors_are_tool_replies_for_plain_and_python_guarded_calls() {
+    let f = Fixture::real();
+    let seat = f.oracle.id;
+    let expected = context(&f, seat);
+    assert_ne!(
+        f.call(seat, Ulid::new(), "self_status", json!({}))["isError"],
+        true
+    );
+    let db =
+        rusqlite::Connection::open(f.config.run_dir.join(format!("seat-{seat}/object.sqlite")))
+            .unwrap();
+    db.execute_batch("CREATE TRIGGER refuse_sudo_fixture BEFORE INSERT ON kv WHEN NEW.key LIKE 'control/op/%' BEGIN SELECT RAISE(ABORT,'fixture control journal failure'); END;").unwrap();
+    let mut bridge = f.bridge(seat);
+    initialize(&mut bridge);
+    for guarded in [false, true] {
+        let mut params = json!({"name":"self_status","arguments":{}});
+        if guarded {
+            params["_meta"] = json!({"bboxy450/python_context":expected});
+        }
+        let response = rpc(&mut bridge, 2, "tools/call", params);
+        assert!(response.get("error").is_none(), "{response}");
+        assert_eq!(response["result"]["isError"], true, "{response}");
+        assert_eq!(
+            response["result"]["structuredContent"]["error"]["code"], "unknown",
+            "{response}"
+        );
+        assert!(
+            response["result"]["structuredContent"]["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("fixture control journal failure"),
+            "{response}"
+        );
+    }
+}
+
+#[test]
+fn sudo_swarm_archive_preserves_history_and_rejects_open_or_undoable_members() {
+    let (mut f, sudo, _, _) = sudo_close_fixture();
+    f.prepare_operator();
+    let swarm = Ulid::new();
+    let mut ghost = SeatRecord::new(Ulid::new(), swarm, "Retained member", "zsh");
+    ghost.tasks.push(f.task);
+    f.registry().insert(&ghost).unwrap();
+    f.registry().rename_swarm(swarm, "Archive fixture").unwrap();
+    f.registry()
+        .update_swarm_workdir(swarm, Some(f.config.repository.to_str().unwrap()))
+        .unwrap();
+    let before = std::fs::read(
+        f.config
+            .repository
+            .join(format!(".bboxy/tasks/{}.md", f.task)),
+    )
+    .unwrap();
+    let archive = || json!({"swarm_id":swarm,"archive":true});
+    refused(
+        f.call(sudo.id, Ulid::new(), "sudo_swarm", archive()),
+        "open or undoable",
+    );
+    f.registry()
+        .update(ghost.id, |r| {
+            r.lifecycle = Lifecycle::ClosedGrace;
+            Ok(())
+        })
+        .unwrap();
+    refused(
+        f.call(sudo.id, Ulid::new(), "sudo_swarm", archive()),
+        "open or undoable",
+    );
+    f.registry()
+        .update(ghost.id, |r| {
+            r.lifecycle = Lifecycle::ClosedRetained;
+            Ok(())
+        })
+        .unwrap();
+    let archived = data(f.call(sudo.id, Ulid::new(), "sudo_swarm", archive()));
+    assert_eq!(archived["swarm"]["archived"], true, "{archived}");
+    assert!(f.registry().swarms().unwrap().iter().all(|r| r.id != swarm));
+    assert_eq!(f.registry().get(ghost.id).unwrap().tasks, ghost.tasks);
+    assert_eq!(
+        std::fs::read(
+            f.config
+                .repository
+                .join(format!(".bboxy/tasks/{}.md", f.task))
+        )
+        .unwrap(),
+        before
+    );
+    f.restart();
+    let record = f.registry().swarm(swarm).unwrap().unwrap();
+    assert!(record.archived);
+    assert_eq!(record.name.as_deref(), Some("Archive fixture"));
+    assert_eq!(
+        record.workdir.as_deref(),
+        f.config.repository.canonicalize().unwrap().to_str()
+    );
+    let listing = data(f.call(sudo.id, Ulid::new(), "sudo_swarms", json!({})));
+    assert!(
+        listing["swarms"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|r| r["swarm_id"] != json!(swarm)),
+        "{listing}"
+    );
+    let active = SeatRecord::new(Ulid::new(), swarm, "Reactivated member", "zsh");
+    f.registry().insert(&active).unwrap();
+    assert!(!f.registry().swarm(swarm).unwrap().unwrap().archived);
+    f.registry()
+        .update(active.id, |r| {
+            r.lifecycle = Lifecycle::ClosedRetained;
+            Ok(())
+        })
+        .unwrap();
+    assert_ne!(
+        f.call(sudo.id, Ulid::new(), "sudo_swarm", archive())["isError"],
+        true
+    );
+    f.registry()
+        .update(active.id, |r| {
+            r.lifecycle = Lifecycle::Open;
+            Ok(())
+        })
+        .unwrap();
+    assert!(!f.registry().swarm(swarm).unwrap().unwrap().archived);
 }

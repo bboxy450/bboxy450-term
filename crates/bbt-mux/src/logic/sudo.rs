@@ -60,7 +60,9 @@ impl Worker {
                     result["isError"] = json!(failed);
                     result
                 }
-                Ok(_) => crate::mcp::error(op, "unknown", "ctl dispatcher returned a non-object reply"),
+                Ok(_) => {
+                    crate::mcp::error(op, "unknown", "ctl dispatcher returned a non-object reply")
+                }
                 Err(reason) => crate::mcp::error(op, "unknown", &reason),
             };
             let _ = reply.send(Ok(result));
@@ -89,6 +91,24 @@ impl Worker {
                             "target seat is closed or its process generation changed".into()
                         );
                     }
+                    let Reply::Seats { seats } = self
+                        .request_for_seat(seat, Action::ListOwnedSeats)
+                        .map_err(|e| e.to_string())?
+                    else {
+                        return Err("target supervisor ownership unavailable".into());
+                    };
+                    let Some(owned) = seats.iter().find(|info| info.seat == seat) else {
+                        return Ok(Sudo::Done(crate::mcp::error(
+                            op,
+                            "process_gone",
+                            "target process is gone; its open registry record is stale",
+                        )));
+                    };
+                    if owned.generation != generation {
+                        return Err("target process generation changed at its supervisor".into());
+                    }
+                    self.control_actor(seat, generation)
+                        .map_err(|e| format!("target control unavailable: {e}"))?;
                     Sudo::As(seat, generation, call)
                 }
                 Request::Spawn {
@@ -163,6 +183,32 @@ impl Worker {
                         });
                     }
                     Sudo::Swarm(value, actions)
+                }
+                Request::Archive { swarm } => {
+                    let principal = crate::mcp::Principal::Operator {
+                        device_id: self
+                            .operator_device_for_effect()
+                            .map_err(|e| e.to_string())?,
+                        door: crate::mcp::Door::Ctl,
+                        issued_by: Some(format!(
+                            "sudo:{}:{}",
+                            actor.seat_id, actor.process_generation
+                        )),
+                    };
+                    let registry = self.registry.clone();
+                    let value = self
+                        .operator_journal
+                        .effect(principal, &call, || {
+                            match registry.archive_empty_swarm(swarm) {
+                                Ok(record) => crate::mcp::success(
+                                    op,
+                                    json!({"status":"applied","swarm":record}),
+                                ),
+                                Err(error) => crate::mcp::error(op, "rejected", &error.to_string()),
+                            }
+                        })
+                        .map_err(|e| e.to_string())?;
+                    Sudo::Done(value)
                 }
                 Request::Swarm {
                     swarm,
@@ -278,9 +324,15 @@ impl Worker {
         Ok(ids.into_iter().collect())
     }
 
-    fn sudo_swarms(&self) -> std::result::Result<Value, String> {
+    fn sudo_swarms(&mut self) -> std::result::Result<Value, String> {
         let records = self.registry.swarms().map_err(|e| e.to_string())?;
         let seats = self.registry.list().map_err(|e| e.to_string())?;
+        let owned = self.connections.owned_seats().map(|rows| {
+            rows.into_iter()
+                .map(|(_, info)| (info.seat, info.generation))
+                .collect::<std::collections::BTreeSet<_>>()
+        });
+        let process_error = owned.as_ref().err().map(ToString::to_string);
         let swarms: Vec<_> =
             self.sudo_swarm_ids()?
                 .into_iter()
@@ -289,10 +341,19 @@ impl Worker {
                     let members: Vec<_> = seats
                     .iter()
                     .filter(|r| r.swarm == swarm && r.lifecycle == Lifecycle::Open)
-                    .map(|r| json!({
-                        "seat_id":r.id,"name":r.name,"role":r.role.name,"class":r.role.class,
-                        "harness":r.harness_kind,"process_generation":r.generation.to_string(),
-                    }))
+                    .map(|r| {
+                        let projection = self.control_seat(r);
+                        let task_paths: Vec<_> = self.workspaces.cache.current(r.swarm).ok()
+                            .and_then(|binding| self.workspaces.cache.get(binding).ok())
+                            .map(|root| root.index.documents.values().filter(|doc| doc.id.parse::<Ulid>().is_ok_and(|id| r.tasks.contains(&id))).map(|doc| doc.path.clone()).collect())
+                            .unwrap_or_default();
+                        json!({
+                            "seat_id":r.id,"name":r.name,"role":r.role.name,"class":r.role.class,
+                            "harness":r.harness_kind,"process_generation":r.generation.to_string(),
+                            "process_state": match &owned { Ok(seats) if seats.contains(&(r.id,r.generation)) => "running", Ok(_) => "gone", Err(_) => "unknown" },
+                            "adapter":projection["adapter"],"tasks":r.tasks,"task_paths":task_paths,
+                        })
+                    })
                     .collect();
                     json!({
                         "swarm_id":swarm,
@@ -302,7 +363,7 @@ impl Worker {
                     })
                 })
                 .collect();
-        Ok(json!({"swarms":swarms}))
+        Ok(json!({"swarms":swarms,"process_error":process_error}))
     }
 
     /// Commits the swarm actions in order on the metadata journal, then replies.

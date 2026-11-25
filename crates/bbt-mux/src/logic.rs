@@ -243,6 +243,7 @@ enum Command {
         oneshot::Sender<Result<bbt_proto::GuiReply>>,
     ),
     SetCtlRunner(CtlRunner),
+    OperatorCloseOrphan(Ulid, Ulid, crate::mcp::Origin, oneshot::Sender<Result<bool>>),
     ControlCatalogue(Ulid, u64, oneshot::Sender<Result<serde_json::Value>>),
     ControlCall(
         Ulid,
@@ -1146,6 +1147,20 @@ impl LogicClient {
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
+    }
+    pub async fn operator_close_orphan(
+        &self,
+        op: Ulid,
+        seat: Ulid,
+        origin: crate::mcp::Origin,
+    ) -> Result<bool> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::OperatorCloseOrphan(op, seat, origin, tx))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await
+            .map_err(|_| self.unavailable("orphan close outcome unavailable"))?
     }
     pub async fn set_ctl_runner(&self, runner: CtlRunner) -> Result<()> {
         self.tx.send(Command::SetCtlRunner(runner)).await.map_err(|_| self.unavailable("logic stopped"))
@@ -5727,9 +5742,52 @@ impl Worker {
     /// A missing view is not proof that a process ended. Only retain an orphan
     /// after its owning supervisor confirms absence, with no intervening yield
     /// before the generation/authority-checked registry change. Never signal a PID.
+    fn operator_close_orphan(
+        &mut self,
+        op: Ulid,
+        seat: Ulid,
+        origin: crate::mcp::Origin,
+    ) -> Result<bool> {
+        if self.views.contains_key(&seat) {
+            return Ok(false);
+        }
+        let record = self.registry.get(seat)?;
+        let origin = self.identity.bind_origin(origin);
+        let principal = crate::mcp::Principal::Operator {
+            device_id: self.operator_device_for_effect()?,
+            door: origin.door,
+            issued_by: origin.issued_by,
+        };
+        let call = crate::mcp::Call {
+            op_id: op,
+            tool: "seat_close".into(),
+            args: serde_json::json!({"seat":seat}),
+        };
+        let journal = self.operator_journal.clone();
+        let value = journal.effect(principal, &call, || {
+            self.close_process_orphan(
+                None,
+                crate::mcp::seats::Target {
+                    seat,
+                    generation: record.generation,
+                },
+                op,
+            )
+        })?;
+        let _: serde_json::Value = operator_response(value)?;
+        Ok(true)
+    }
     fn close_control_orphan(
         &mut self,
         actor: &crate::mcp::SeatActor,
+        target: crate::mcp::seats::Target,
+        op: Ulid,
+    ) -> serde_json::Value {
+        self.close_process_orphan(Some(actor), target, op)
+    }
+    fn close_process_orphan(
+        &mut self,
+        actor: Option<&crate::mcp::SeatActor>,
         target: crate::mcp::seats::Target,
         op: Ulid,
     ) -> serde_json::Value {
@@ -5753,10 +5811,11 @@ impl Worker {
                     "target process is supervisor-owned; no orphan close applied",
                 ));
             }
-            if self
-                .control_actor(actor.seat_id, actor.process_generation)?
-                .0
-                != *actor
+            if let Some(actor) = actor
+                && self
+                    .control_actor(actor.seat_id, actor.process_generation)?
+                    .0
+                    != *actor
             {
                 return Err(invalid("caller authority changed before orphan close"));
             }
@@ -5765,7 +5824,7 @@ impl Worker {
                 // leaves it ClosedGrace with no exit receipt still to come;
                 // supervisor-confirmed absence finalizes it here too.
                 if record.generation != target.generation
-                    || record.swarm != actor.swarm_id
+                    || actor.is_some_and(|actor| record.swarm != actor.swarm_id)
                     || !matches!(record.lifecycle, Lifecycle::Open | Lifecycle::ClosedGrace)
                 {
                     return Err(invalid("target binding changed before orphan close"));
@@ -11922,6 +11981,10 @@ impl Worker {
                                     sources:vec![bbt_proto::dream::Selection {session:source.session.clone(),source_generation:bbt_proto::dream::Number(source.generation)}]});
                                 self.dream_runtime.request(&self.handle,authority,move ||Ok(request),Some(*source),false,|_|{});
                         }
+                    }
+                    Command::OperatorCloseOrphan(op, seat, origin, reply) => {
+                        let result = self.operator_close_orphan(op, seat, origin);
+                        let _ = reply.send(result);
                     }
                     Command::SetCtlRunner(runner) => self.ctl_runner = Some(runner),
                     Command::ControlCatalogue(id, generation, reply) => {

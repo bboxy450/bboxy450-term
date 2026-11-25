@@ -106,11 +106,76 @@ impl Registry {
             .transpose()
     }
     pub fn swarms(&self) -> Result<Vec<SwarmRecord>> {
-        self.store
+        let records: Vec<SwarmRecord> = self
+            .store
             .list("swarm/")?
             .into_iter()
-            .map(|(_, bytes)| serde_json::from_slice(&bytes).map_err(Into::into))
-            .collect()
+            .map(|(_, bytes)| Ok(serde_json::from_slice(&bytes)?))
+            .collect::<Result<_>>()?;
+        Ok(records
+            .into_iter()
+            .filter(|record| !record.archived)
+            .collect())
+    }
+    /// Preserve metadata (and therefore legacy-import custody), hiding only an empty swarm.
+    pub(crate) fn archive_empty_swarm(&self, id: Ulid) -> Result<SwarmRecord> {
+        valid_swarm(id)?;
+        let mut db = self.store.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        {
+            let mut query = tx.prepare("SELECT value FROM kv WHERE key GLOB 'seat/*'")?;
+            for bytes in query.query_map([], |row| row.get::<_, Vec<u8>>(0))? {
+                let record: SeatRecord = serde_json::from_slice(&bytes?)?;
+                if record.swarm == id && matches!(record.lifecycle, Lifecycle::Open | Lifecycle::ClosedGrace) {
+                    return Err(invalid("swarm still has open or undoable seats"));
+                }
+            }
+        }
+        let key = format!("swarm/{id}");
+        let bytes: Option<Vec<u8>> = tx
+            .query_row("SELECT value FROM kv WHERE key=?1", [&key], |row| {
+                row.get(0)
+            })
+            .optional()?;
+        let mut record: SwarmRecord = bytes
+            .map(|bytes| serde_json::from_slice(&bytes))
+            .transpose()?
+            .unwrap_or_else(|| SwarmRecord::new(id));
+        if !record.archived {
+            record.archived = true;
+            record.revision = record
+                .revision
+                .checked_add(1)
+                .ok_or_else(|| invalid("swarm revision exhausted"))?;
+        }
+        tx.execute("INSERT INTO kv(key,value) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value", rusqlite::params![key,serde_json::to_vec(&record)?])?;
+        tx.commit()?;
+        self.routing.invalidate();
+        Ok(record)
+    }
+    /// A new live assignment reopens its swarm in the same transaction as the seat.
+    fn activate_swarm(tx: &rusqlite::Transaction<'_>, id: Ulid) -> Result<()> {
+        let key = format!("swarm/{id}");
+        let bytes: Option<Vec<u8>> = tx
+            .query_row("SELECT value FROM kv WHERE key=?1", [&key], |row| {
+                row.get(0)
+            })
+            .optional()?;
+        if let Some(bytes) = bytes {
+            let mut record: SwarmRecord = serde_json::from_slice(&bytes)?;
+            if record.archived {
+                record.archived = false;
+                record.revision = record
+                    .revision
+                    .checked_add(1)
+                    .ok_or_else(|| invalid("swarm revision exhausted"))?;
+                tx.execute(
+                    "UPDATE kv SET value=?2 WHERE key=?1",
+                    rusqlite::params![key, serde_json::to_vec(&record)?],
+                )?;
+            }
+        }
+        Ok(())
     }
     /// A no-op keeps its revision, but still records an explicit initial reset.
     fn change_swarm(
@@ -139,6 +204,7 @@ impl Registry {
             }
         };
         let previous = record.clone();
+        record.archived = false;
         change(&mut record);
         if record != previous {
             record.revision = record
@@ -190,11 +256,16 @@ impl Registry {
         if record.id == Ulid::nil() || record.swarm == Ulid::nil() || record.generation == 0 {
             return Err(invalid("invalid seat identity"));
         }
-        let db = self.store.connection()?;
-        db.execute(
+        let mut db = self.store.connection()?;
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        if matches!(record.lifecycle, Lifecycle::Open | Lifecycle::ClosedGrace) {
+            Self::activate_swarm(&tx, record.swarm)?;
+        }
+        tx.execute(
             "INSERT INTO kv VALUES(?1,?2)",
             rusqlite::params![format!("seat/{}", record.id), serde_json::to_vec(record)?],
         )?;
+        tx.commit()?;
         self.routing.invalidate();
         Ok(())
     }
@@ -231,6 +302,9 @@ impl Registry {
             tx.query_row("SELECT value FROM kv WHERE key=?1", [&key], |r| r.get(0))?;
         let mut record: SeatRecord = serde_json::from_slice(&bytes)?;
         let result = f(&mut record)?;
+        if matches!(record.lifecycle, Lifecycle::Open | Lifecycle::ClosedGrace) {
+            Self::activate_swarm(&tx, record.swarm)?;
+        }
         tx.execute(
             "UPDATE kv SET value=?2 WHERE key=?1",
             rusqlite::params![key, serde_json::to_vec(&record)?],

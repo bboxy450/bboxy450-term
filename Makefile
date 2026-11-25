@@ -1097,9 +1097,9 @@ test-plugin-transports:
 test-sudo: tools
 	@set -eu; . ./scripts/cache-env.sh; \
 	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
-	cargo nextest run --locked -p bboxy450-term-mux --lib --test it -E 'test(sudo)'; \
-	cargo build --locked -p $(APP) --bin $(APP); \
-	cargo nextest run --locked -p $(APP) --lib --test it -E 'test(ctl::tests::) | test(sudo_ctl_round_trip_drives_the_private_app)'
+	cargo nextest run --locked -p bboxy450-term-mux --test it -E 'test(sudo) | test(mcp_orphan_close_) | test(dead_seat_close_)'; \
+	cargo nextest run --locked -p bboxy450-term-proto --lib -E 'test(gui::roles::)'; \
+	cargo nextest run --locked -p $(APP) --test it -E 'test(sudo_ctl_round_trip_drives_the_private_app)'
 
 test-mcp-recovery:
 	@set -eu; . ./scripts/cache-env.sh; \

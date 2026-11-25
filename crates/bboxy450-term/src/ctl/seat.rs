@@ -688,7 +688,7 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
                 Command::UndoClose { seat } => (seat, true),
                 _ => unreachable!(),
             };
-            let seat = resolve(&client.seats()?, &seat)?.record.id;
+            let seat = match seat.parse::<Ulid>() { Ok(id) => id, Err(_) => resolve(&client.seats()?, &seat)?.record.id };
             let op = client.mint();
             let reply = client.call(
                 Some(op),
@@ -697,10 +697,13 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
                 } else {
                     GuiAction::CloseSeat { id: op, seat }
                 },
-                |r| matches!(r,GuiReply::Ui {op:o,..} if *o==op),
+                |r| matches!(r,GuiReply::Ui {op:o,..}|GuiReply::SeatControlled {op:o} if *o==op),
             )?;
-            let GuiReply::Ui { layout, .. } = reply else {
-                unreachable!()
+            let layout = match reply {
+                GuiReply::SeatControlled { .. } => return print_reply(out, noun, verb, id,
+                    json!({"seat":seat,"applied":true,"closure":"orphan_retained","lifecycle":"closed_retained"}), human),
+                GuiReply::Ui { layout, .. } => layout,
+                _ => unreachable!(),
             };
             if layout.frame_seq == 0 {
                 return Err(

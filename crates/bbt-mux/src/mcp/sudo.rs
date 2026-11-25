@@ -40,10 +40,10 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     let path = json!({"type":"string","minLength":1,"maxLength":4096});
     let text = json!({"type":"string","minLength":1,"maxLength":16384});
     [
-        ("sudo_ctl", "Run any ctl noun/verb with operator authority, in process through ctl’s own parser and dispatch. Pass command words as args, for example [\"seat\",\"ls\"] or [\"debug\",\"errors\"]. Returns ctl’s JSON reply. No shell is launched.", json!({"args":{"type":"array","items":{"type":"string","maxLength":16384},"minItems":1,"maxItems":128}}), json!(["args"]), true),
-        ("sudo_swarms", "Every swarm on this machine: id, name, working folder and its open seats (id, name, role, harness, process generation). Use the ids with the other sudo_* tools.", json!({}), json!([]), false),
+        ("sudo_ctl", "Run any ctl noun/verb with operator authority, in process through ctl’s own parser and dispatch. Use args:[\"--help\"] for the ctl verb list. Pass command words as args, for example [\"seat\",\"ls\"] or [\"debug\",\"errors\"]. Returns ctl’s JSON reply. No shell is launched.", json!({"args":{"type":"array","items":{"type":"string","maxLength":16384},"minItems":1,"maxItems":128}}), json!(["args"]), true),
+        ("sudo_swarms", "Every active swarm and its open records: id, name, working folder, process_state (running/gone/unknown), adapter activity with turn_open/observed_ms, and assigned task ids/paths. Open lifecycle alone does not prove a live process.", json!({}), json!([]), false),
         ("sudo_spawn", "Spawn a seat in any swarm as the operator, in a new tab. Omit swarm_id to create a new swarm (optionally named swarm_name); the result names it. role may be any configured role, oracle and sudo included. cwd defaults to the swarm's working folder. resume continues a native Claude session, Codex thread or bboxy450-harness session.", json!({"swarm_id":id,"swarm_name":short,"approved_profile":{"enum":PROFILES},"cwd":path,"role":short,"name":short,"resume":short}), json!(["approved_profile"]), true),
-        ("sudo_swarm", "Rename a swarm or set its working folder, as the operator.", json!({"swarm_id":id,"name":short,"workdir":path}), json!(["swarm_id"]), true),
+        ("sudo_swarm", "Rename a swarm, set its working folder, or archive:true to hide an empty swarm while retaining metadata and task history. Archive refuses open or undoable seats; a new live assignment or metadata edit restores it.", json!({"swarm_id":id,"name":short,"workdir":path,"archive":{"type":"boolean"}}), json!(["swarm_id"]), true),
         ("sudo_message", "Send a message into any swarm as the operator. to is a seat id or name (its inbox) or a destination path such as channels/general; reply_to answers a message. Replies arrive in sudo_inbox.", json!({"swarm_id":id,"to":short,"text":text,"reply_to":id}), json!(["swarm_id","to","text"]), true),
         ("sudo_inbox", "Read the operator inbox: messages addressed to the operator, from every swarm or one swarm, after a ledger sequence. Poll it; it does not wake you.", json!({"swarm_id":id,"since":{"type":"integer","minimum":0},"limit":{"type":"integer","minimum":1,"maximum":128}}), json!([]), false),
         ("sudo_as", "Run any MCP tool exactly as another live seat: its identity, role, swarm and grants. Use it to act as a swarm's oracle (task_delegate, seat_spawn, message, knowledge_write) without joining that swarm. tool and arguments follow that tool's own schema as the seat sees it; sudo_* tools cannot be nested.", json!({"seat_id":id,"expected_process_generation":revision,"tool":{"type":"string","minLength":1,"maxLength":64},"arguments":{"type":"object"}}), json!(["seat_id","expected_process_generation","tool","arguments"]), true),
@@ -53,7 +53,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
         "name":name,"description":description,
         "inputSchema":{"type":"object","properties":properties,"required":required,"additionalProperties":false},
         "outputSchema":{"type":"object","additionalProperties":true},
-        "annotations":{"readOnlyHint":!mutation,"destructiveHint":mutation,"idempotentHint":true,"openWorldHint":false}
+        "annotations":{"readOnlyHint":!mutation,"destructiveHint":mutation,"idempotentHint":name != "sudo_ctl","openWorldHint":false}
     }))
     .collect()
 }
@@ -70,6 +70,9 @@ pub(crate) enum Request {
         role: Option<String>,
         name: Option<String>,
         resume: Option<String>,
+    },
+    Archive {
+        swarm: Ulid,
     },
     Swarm {
         swarm: Ulid,
@@ -118,7 +121,9 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Request, String> {
         "sudo_ctl" => {
             #[derive(Deserialize)]
             #[serde(deny_unknown_fields)]
-            struct Args { args: Vec<String> }
+            struct Args {
+                args: Vec<String>,
+            }
             let a: Args = tools::parse(&call.args)?;
             if a.args.is_empty() || a.args.len() > 128 || a.args.iter().any(|s| s.contains('\0')) {
                 return Err("args must contain 1..128 command words without NUL bytes".into());
@@ -172,8 +177,17 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Request, String> {
                 swarm_id: Ulid,
                 name: Option<String>,
                 workdir: Option<String>,
+                archive: Option<bool>,
             }
             let a: Args = tools::parse(&call.args)?;
+            if a.archive == Some(true) {
+                if a.name.is_some() || a.workdir.is_some() {
+                    return Err("archive cannot be combined with metadata edits".into());
+                }
+                return Ok(Request::Archive {
+                    swarm: swarm_id(a.swarm_id)?,
+                });
+            }
             if a.name.is_none() && a.workdir.is_none() {
                 return Err("supply name, workdir or both".into());
             }
