@@ -3792,6 +3792,45 @@ def fixture_suite(extended=False):
     return bool(failures)
 
 
+class CacheEnvironmentTests(unittest.TestCase):
+    def test_make_compile_marks_build_and_cache_directories_on_macos(self):
+        with tempfile.TemporaryDirectory(prefix="landing cache ") as directory:
+            own = Path(directory)
+            checkout = own / "checkout"
+            git_dir = own / "shared git"
+            run("git", "init", "-q", "--separate-git-dir", str(git_dir), str(checkout), cwd=own)
+            (checkout / "scripts").mkdir()
+            shutil.copyfile(SOURCE.with_name("cache-env.sh"), checkout / "scripts/cache-env.sh")
+            bin_dir = own / "bin"
+            bin_dir.mkdir()
+            for name in ("cargo", "kache"):
+                program = bin_dir / name
+                program.write_text("#!/bin/sh\nexit 0\n")
+                program.chmod(0o700)
+
+            cache = own / "kache cache"
+            environment = dict(os.environ, PATH=f"{bin_dir}:{os.environ['PATH']}",
+                               KACHE_CACHE_DIR=str(cache), BBOXY_QOS="off")
+            for name in (*CALLER_BUILD_CONTEXT, "CARGO_TARGET_DIR"):
+                environment.pop(name, None)
+            command = ("make", "-s", "-o", "tools", "-f", str(SOURCE.parents[1] / "Makefile"),
+                       "compile", "PROFILE=debug", "TARGET_DIR=build output")
+            markers = [path / ".metadata_never_index" for path in
+                       (checkout / "build output", git_dir / "bboxy-formal-evidence", cache)]
+            darwin = sys.platform == "darwin"
+
+            run(*command, "BBOXY_CACHE_MODE=off", cwd=checkout, env=environment)
+            self.assertEqual([marker.is_file() for marker in markers], [darwin, darwin, False])
+            self.assertFalse(cache.exists())
+            run(*command, "BBOXY_CACHE_MODE=auto", cwd=checkout, env=environment)
+            self.assertEqual([marker.is_file() for marker in markers], [darwin] * 3)
+            if darwin:
+                for marker in markers:
+                    os.utime(marker, (1, 1))
+                run(*command, "BBOXY_CACHE_MODE=auto", cwd=checkout, env=environment)
+                self.assertEqual([marker.stat().st_mtime_ns for marker in markers], [10**9] * 3)
+
+
 class CostTests(unittest.TestCase):
     def test_gate_profile_serialises_exactly_the_timing_inventory(self):
         import tomllib

@@ -3,7 +3,16 @@
 # bboxy450-term — https://github.com/bboxy450/bboxy450-term
 # LicenseRef-Respectful-Slop-1.0-Draft; retain accurate source credit on reuse.
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+bboxy_never_index() {
+    [ -f "$1/.metadata_never_index" ] || (
+        set -C
+        mkdir -p -- "$1" && : > "$1/.metadata_never_index"
+    ) 2>/dev/null || true
+}
+
 bboxy_cache_env() {
+    bboxy_qos_root=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
+    bboxy_cache_os=$(uname -s)
     export RUSTC_WRAPPER='' RUSTC_WORKSPACE_WRAPPER=''
     # Keep per-run paths and display settings out of the Rust cache key.
     if [ -n "${CARGO_TARGET_DIR:-}" ]; then
@@ -18,10 +27,22 @@ bboxy_cache_env() {
     fi
     unset CARGO_TARGET_DIR CARGO_LOG CARGO_TERM_COLOR CARGO_TERM_PROGRESS_WHEN CARGO_TERM_PROGRESS_WIDTH
     export CARGO_BUILD_JOBS="${BBOXY_CARGO_JOBS:-2}" CARGO_INCREMENTAL=0
+    if [ "$bboxy_cache_os" = Darwin ]; then
+        bboxy_never_index "${BBOXY_CARGO_TARGET_DIR:-${TARGET_DIR:-$bboxy_qos_root/target}}"
+        # Make's explicit --target-dir can coexist with the Cargo wrapper's target.
+        if [ -n "${TARGET_DIR:-}" ] && [ -n "${BBOXY_CARGO_TARGET_DIR:-}" ]; then
+            bboxy_never_index "$TARGET_DIR"
+        fi
+        # Match formal.py's shared evidence store, including in linked worktrees.
+        if bboxy_git_common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then
+            bboxy_never_index "$bboxy_git_common/bboxy-formal-evidence"
+        fi
+        unset bboxy_git_common
+    fi
     # The `browser` feature's Chromium distribution: downloaded once per
     # machine into a versioned subdirectory and shared by every worktree.
     if [ -z "${CEF_PATH:-}" ] && [ -n "${HOME:-}" ]; then
-        case "$(uname -s)" in
+        case "$bboxy_cache_os" in
             Darwin) CEF_PATH=$HOME/Library/Caches/bboxy450-cef ;;
             *) CEF_PATH=${XDG_CACHE_HOME:-$HOME/.cache}/bboxy450-cef ;;
         esac
@@ -31,7 +52,7 @@ bboxy_cache_env() {
     # (rust-lang/cargo#12516) and serializes every build on one lock. Keep
     # intermediates with this worktree's target; kache shares compiled outputs.
     if [ -z "${CARGO_BUILD_BUILD_DIR:-}" ]; then
-        CARGO_BUILD_BUILD_DIR=${BBOXY_CARGO_TARGET_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)/target}
+        CARGO_BUILD_BUILD_DIR=${BBOXY_CARGO_TARGET_DIR:-$bboxy_qos_root/target}
         export CARGO_BUILD_BUILD_DIR
     fi
     # A full capacity-gated CI run cannot grow the optional shared cache. Do not
@@ -57,8 +78,10 @@ bboxy_cache_env() {
     # clones, so worktrees share disk. Enabled by environment only: `kache init`
     # would rewrite the user's global Cargo config. Local store only; no remote,
     # no account.
-    case "$(uname -s)" in
-        Darwin) KACHE_CACHE_DIR=${KACHE_CACHE_DIR:-$HOME/Library/Caches/bboxy450-kache} ;;
+    case "$bboxy_cache_os" in
+        Darwin)
+            KACHE_CACHE_DIR=${KACHE_CACHE_DIR:-$HOME/Library/Caches/bboxy450-kache}
+            bboxy_never_index "$KACHE_CACHE_DIR" ;;
         *) KACHE_CACHE_DIR=${KACHE_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/bboxy450-kache} ;;
     esac
     KACHE_MAX_SIZE=${KACHE_MAX_SIZE:-20GiB}
@@ -84,7 +107,6 @@ bboxy_cache_env() {
 bboxy_cache_env || return $?
 # Keep the shell itself unclamped: an explicitly timed process needs default
 # QoS. Cargo/test trees and compiler/linker trees are classified independently.
-bboxy_qos_root=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
 # The real Cargo is never a shim that resolves `cargo` through PATH again: with
 # kache's shim first on PATH it found target/qos-bin/cargo, which called the
 # shim back until kache refused ("the chain is now 8 levels deep").
@@ -120,5 +142,5 @@ if [ "${BBOXY_QOS:-on}" != off ] && [ -f "$bboxy_qos_root/scripts/qos.sh" ]; the
     case ":$PATH:" in *":$bboxy_qos_bin:"*) ;; *) PATH=$bboxy_qos_bin:$PATH ;; esac
     export PATH
 fi
-unset -f bboxy_cache_env
-unset bboxy_qos_root bboxy_qos_bin
+unset -f bboxy_cache_env bboxy_never_index
+unset bboxy_qos_root bboxy_qos_bin bboxy_cache_os
