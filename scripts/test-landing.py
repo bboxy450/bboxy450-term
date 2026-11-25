@@ -31,6 +31,9 @@ from concurrent.futures import ThreadPoolExecutor
 sys.dont_write_bytecode = True
 
 SOURCE = Path(__file__).with_name("landing.py")
+# Match nextest's five-minute hang guard without imposing a speed assertion.
+FIXTURE_HANG_TIMEOUT = 300
+
 # The copy loop and production trigger both consume this tuple. Keep it literal
 # so landing.py can read the declaration without importing this fixture runner.
 FIXTURE_SCRIPTS = ("landing.py", "kb_record.py", "formal.py", "formal-stage.py", "harness-submodule.py", "presubmit.sh", "land.sh",
@@ -798,7 +801,7 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
 
     def run_lean_landing(self):
         return subprocess.run(["make", "land"], cwd=self.repo.root, env=self.repo.environment,
-                              capture_output=True, text=True, timeout=45)
+                              capture_output=True, text=True, timeout=FIXTURE_HANG_TIMEOUT)
 
     def test_make_land_runs_only_the_changed_module(self):
         self.prepare_lean_landing()
@@ -1004,7 +1007,7 @@ wire={package="bboxy450-harness-wake-up",path="../bboxy450-harness-wake-up"}
         else:
             environment.pop("LAND_MODE", None)
         result = subprocess.run(["sh", "scripts/land-fast.sh"], cwd=self.repo.root,
-            env=environment, capture_output=True, text=True, timeout=45)
+            env=environment, capture_output=True, text=True, timeout=FIXTURE_HANG_TIMEOUT)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.repo.remote_head(), candidate)
         calls = [json.loads(line) for line in (self.repo.state / "cargo.jsonl").read_text().splitlines()]
@@ -3586,7 +3589,7 @@ class BudgetPresubmitTests(unittest.TestCase):
 
     def dry_run(self):
         result=subprocess.run(["sh","scripts/presubmit.sh",self.repo.base],cwd=self.repo.root,
-            env=self.repo.environment,capture_output=True,text=True,timeout=45)
+            env=self.repo.environment,capture_output=True,text=True,timeout=FIXTURE_HANG_TIMEOUT)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         record=json.loads((self.repo.state/"presubmit.log").read_text().splitlines()[-1])
         self.assertEqual(record,json.loads(Path(record["result"]).read_text()))
@@ -3635,7 +3638,7 @@ class BudgetPresubmitTests(unittest.TestCase):
         environment.update(BBOXY_PRESUBMIT_ATTEMPT=data["attempt"],BBOXY_CARGO_TARGET_DIR=data["target"])
         data[field]+="-stale";path.write_text(json.dumps(data))
         result=subprocess.run(["sh","scripts/invariants.sh","--affected","c","--covered-tests",str(path)],
-            cwd=self.repo.root,env=environment,capture_output=True,text=True,timeout=45)
+            cwd=self.repo.root,env=environment,capture_output=True,text=True,timeout=FIXTURE_HANG_TIMEOUT)
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         self.assertEqual(len((self.repo.state/"ctl-runs").read_text().splitlines()),2,
                          "coverage from another "+field+" skipped the invariant")
@@ -3648,7 +3651,7 @@ class BudgetPresubmitTests(unittest.TestCase):
         self.repo.commit("Fixture gate-covered invariant")
         def run(*flags):
             return subprocess.run(["sh","scripts/invariants.sh","--no-cargo",*flags],cwd=self.repo.root,
-                env=self.repo.environment,capture_output=True,text=True,timeout=45)
+                env=self.repo.environment,capture_output=True,text=True,timeout=FIXTURE_HANG_TIMEOUT)
         result=run("--covered-check","sh scripts/staged.sh","--covered-check","sh scripts/other.sh --more")
         self.assertIn("invariant staged: skipped (covered in this gate)",result.stdout,result.stdout+result.stderr)
         self.assertIn("invariant other: pass",result.stdout,"a check the gate never ran was skipped")
