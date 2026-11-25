@@ -156,7 +156,7 @@ impl Workspace {
                 }));
             let seen_revision = host.revision()?;
             let provenance = Engine::open(&index, repository, config.runtime.clone())?;
-            let watch = FileWatch::start(index.knowledge_root())?;
+            let watch = index.start_watch()?;
             Ok(Self {
                 index,
                 host,

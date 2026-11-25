@@ -620,7 +620,14 @@ impl Host {
                 })
                 .collect();
         self.current(revision)?;
-        Ok(serde_json::json!({"status":status,"plugins":plugins}))
+        Ok(serde_json::json!({
+            "status": status,
+            "plugins": plugins,
+            "index_freshness": {
+                "last_event_ms": index.last_event_ms(),
+                "last_rescan_ms": index.last_rescan_ms(),
+            },
+        }))
     }
     pub(crate) fn status(&self, index: &Index) -> Result<KnowledgeStatus> {
         let mut offered = vec![bundled()];

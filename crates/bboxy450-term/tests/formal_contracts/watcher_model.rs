@@ -118,8 +118,9 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         (inbox(true), "safety"),
         (settle(false), "pass"),
         (settle(true), "liveness"),
-        (changes(false), "pass"),
-        (changes(true), "safety"),
+        (changes(ChangeControl::Healthy), "pass"),
+        (changes(ChangeControl::DiscardPending), "safety"),
+        (changes(ChangeControl::DisableRescan), "liveness"),
         (pool(false), "pass"),
         (pool(true), "safety"),
         (publication(false), "pass"),
@@ -203,57 +204,112 @@ fn settle(broken: bool) -> Model {
     m
 }
 
-// The second filesystem revision may arrive after capture but before completion.
-// Completion publishes its captured snapshot without clearing newer dirtiness.
-fn changes(broken: bool) -> Model {
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ChangeControl {
+    Healthy,
+    DiscardPending,
+    DisableRescan,
+}
+
+// A revision can arrive after capture and may have no hint. Two fair ticks
+// abstract the periodic deadline. Only completion of a rescan resets it.
+fn changes(control: ChangeControl) -> Model {
+    let (filesystem, hinted, dirty, running, captured, published, age, rescanning) =
+        (0, 1, 2, 3, 4, 5, 6, 7);
     let mut m = model(
-        "WatcherChanges",
-        broken,
+        if control == ChangeControl::DisableRescan {
+            "WatcherRescan"
+        } else {
+            "WatcherChanges"
+        },
+        control != ChangeControl::Healthy,
         &[
             ("filesystem", 2, 0),
+            ("hinted", 2, 0),
             ("dirty", 1, 0),
             ("running", 1, 0),
             ("captured", 2, 0),
             ("published", 2, 0),
+            ("age", 2, 0),
+            ("rescanning", 1, 0),
+        ],
+    );
+    let next_revision = Var(filesystem).plus(Int(1));
+    action(
+        &mut m,
+        "HintedChange",
+        Var(filesystem).lt(Int(2)),
+        &[
+            (filesystem, next_revision.clone()),
+            (hinted, next_revision.clone()),
+            (dirty, Int(1)),
         ],
     );
     action(
         &mut m,
-        "Change",
-        Var(0).lt(Int(2)),
-        &[(0, Var(0).plus(Int(1))), (1, Int(1))],
+        "DroppedHint",
+        Var(filesystem).lt(Int(2)),
+        &[(filesystem, next_revision)],
     );
     action(
         &mut m,
+        "Tick",
+        Var(age).lt(Int(2)),
+        &[(age, Var(age).plus(Int(1)))],
+    );
+    let due = if control == ChangeControl::DisableRescan {
+        Int(0).eq(Int(1))
+    } else {
+        eq(age, 2)
+    };
+    action(
+        &mut m,
         "Capture",
-        all([eq(1, 1), eq(2, 0)]),
-        &[(1, Int(0)), (2, Int(1)), (3, Var(0))],
+        all([eq(running, 0), eq(dirty, 1).or(due.clone())]),
+        &[
+            (dirty, Int(0)),
+            (running, Int(1)),
+            (captured, Var(filesystem)),
+            (rescanning, due.ite(Int(1), Int(0))),
+        ],
     );
     action(
         &mut m,
         "Complete",
-        eq(2, 1),
+        eq(running, 1),
         &[
-            (2, Int(0)),
-            (4, Var(3)),
-            (1, if broken { Int(0) } else { Var(1) }),
+            (running, Int(0)),
+            (published, Var(captured)),
+            (age, eq(rescanning, 1).ite(Int(0), Var(age))),
+            (rescanning, Int(0)),
+            (
+                dirty,
+                if control == ChangeControl::DiscardPending {
+                    Int(0)
+                } else {
+                    Var(dirty)
+                },
+            ),
         ],
     );
     safe(
         &mut m,
-        "NoUnscheduledChange",
-        implies(all([eq(1, 0), eq(2, 0)]), Var(4).eq(Var(0))),
+        "NoUnscheduledHint",
+        implies(
+            all([eq(dirty, 0), eq(running, 0)]),
+            Var(hinted).le(Var(published)),
+        ),
     );
-    if !broken {
+    if control != ChangeControl::DiscardPending {
         for revision in 1..=2 {
             m.responses.push(Response {
                 name: format!("Revision{revision}EventuallyVisibleOrSuperseded"),
-                request: eq(0, revision),
-                response: eq(4, revision).or(Int(revision).lt(Var(0))),
+                request: eq(filesystem, revision),
+                response: eq(published, revision).or(Int(revision).lt(Var(filesystem))),
             });
         }
     }
-    m.weak_fair.extend([vec![1], vec![2]]);
+    m.weak_fair.extend([vec![2], vec![3], vec![4]]);
     m
 }
 

@@ -1274,6 +1274,11 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "BrokenWatcherRescan"
+expected = "liveness"
+frontend = "project"
+
+[[model]]
 name = "WatcherPool"
 expected = "pass"
 frontend = "project"

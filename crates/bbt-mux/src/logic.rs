@@ -6408,9 +6408,9 @@ impl Worker {
         self.publish_root_outbox(root)?;
         self.workspaces.reconcile(root)
     }
-    fn scan_pending_root(&mut self, root: &str) -> Result<()> {
+    fn scan_pending_root(&mut self, root: &str, now: Instant) -> Result<()> {
         self.publish_root_outbox(root)?;
-        self.workspaces.reconcile_pending(root)
+        self.workspaces.reconcile_pending(root, now)
     }
     fn publish_root_outbox(&mut self, root: &str) -> Result<()> {
         if self.workspaces.scanning(root) || self.workspaces.reconciliation_failed(root) {
@@ -6624,7 +6624,8 @@ impl Worker {
         let workspace = self.workspaces.cache.get(binding)?;
         if workspace.pending() {
             if workspace.changed() {
-                self.workspaces.reconcile_pending(&binding.root_id)?;
+                self.workspaces
+                    .reconcile_pending(&binding.root_id, Instant::now())?;
             }
             // Settling delays IO, not freshness checks: a claim must not create
             // a second artifact from the snapshot preceding an observed write.
@@ -6827,7 +6828,7 @@ impl Worker {
         }
         Some(port.binding)
     }
-    fn maintain_workspaces(&mut self) {
+    fn maintain_workspaces(&mut self, now: Instant) {
         self.workspaces.poll(&self.registry);
         let seats: Vec<_> = self
             .views
@@ -6874,13 +6875,12 @@ impl Worker {
                 }
                 continue;
             }
-            if workspace.changed() {
-                if let Err(error) = self.scan_pending_root(&root) {
+            if workspace.changed() || workspace.index.rescan_due(now) {
+                if let Err(error) = self.scan_pending_root(&root, now) {
                     eprintln!("WorkspacePending [{root}]: {error}");
                 }
                 continue;
             }
-            let now = Instant::now();
             if self
                 .provenance_backoff
                 .get(&root)
@@ -6914,7 +6914,7 @@ impl Worker {
                 }
             };
             if workspace.changed()
-                && let Err(error) = self.scan_pending_root(&root)
+                && let Err(error) = self.scan_pending_root(&root, now)
             {
                 eprintln!("WorkspacePending [{root}]: {error}");
             }
@@ -13273,7 +13273,7 @@ impl Worker {
                         0,
                         0,
                     );
-                    self.maintain_workspaces();
+                    self.maintain_workspaces(Instant::now());
                     phase.finish(Outcome::Ok, self.views.len() as u64, 0);
                     scan_at = Instant::now();
                 }

@@ -289,6 +289,11 @@ spec ExternalGit {
         }
     };
     data(fetch("specs/keep"));
+    let status = data(f.call(f.oracle.id, Ulid::new(), "knowledge_status", json!({})));
+    let freshness = &status["index_freshness"];
+    assert!(freshness["last_rescan_ms"].as_u64().unwrap() > 0);
+    let event = freshness.get("last_event_ms").unwrap();
+    assert!(event.is_null() || event.as_u64().is_some_and(|ms| ms > 0));
     wait_for(false);
     git(
         &f.config.repository,

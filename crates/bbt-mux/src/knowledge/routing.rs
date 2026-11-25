@@ -277,7 +277,7 @@ impl Router {
     }
     pub fn poll(&mut self, registry: &Registry) {
         self.poll_scans();
-        self.start_scans();
+        self.start_scans(Instant::now());
         while let Some(joined) = self.jobs.try_join_next() {
             let done = match joined {
                 Ok(done) => done,
@@ -364,20 +364,20 @@ impl Router {
     /// Reconcile one root on IO. The owner excludes effects/provenance while
     /// its mirror/outbox can change, rather than discarding a raced DB commit.
     pub fn reconcile(&mut self, root: &str) -> store::Result<()> {
-        self.queue_scan(root, true)
+        self.queue_scan(root, true, Instant::now())
     }
-    pub fn reconcile_pending(&mut self, root: &str) -> store::Result<()> {
-        self.queue_scan(root, false)
+    pub fn reconcile_pending(&mut self, root: &str, now: Instant) -> store::Result<()> {
+        self.queue_scan(root, false, now)
     }
     /// Before a read: scan the paths the watcher has seen change, undebounced;
-    /// with none, release the read at once. A failed watch still scans in full.
+    /// with none and no rescan due, release the read at once.
     pub fn reconcile_read(&mut self, root: &str) -> store::Result<()> {
         if self.cache.root_mut(root).is_some() {
             self.scans.entry(root.to_owned()).or_default().read = true;
         }
-        self.queue_scan(root, false)
+        self.queue_scan(root, false, Instant::now())
     }
-    fn queue_scan(&mut self, root: &str, force: bool) -> store::Result<()> {
+    fn queue_scan(&mut self, root: &str, force: bool, now: Instant) -> store::Result<()> {
         if self.cache.root_mut(root).is_none() {
             return Err(store::invalid("unknown workspace root"));
         }
@@ -389,10 +389,10 @@ impl Router {
                 self.scan_queue.push_back(root.to_owned());
             }
         }
-        self.start_scans();
+        self.start_scans(now);
         Ok(())
     }
-    fn start_scans(&mut self) {
+    fn start_scans(&mut self, now: Instant) {
         // One job per root, at most two scans process-wide for this owner. A
         // continuously dirty root rejoins the FIFO behind other workspaces.
         let mut budget = self.scan_queue.len();
@@ -415,19 +415,21 @@ impl Router {
                 continue;
             };
             let read = std::mem::take(&mut state.read);
+            // Read-triggered scans also check the deadline so a stream of
+            // early admissions cannot starve reconciliation of lost hints.
+            let rescan = workspace.index.rescan_due(now);
             let batch = if state.force {
                 let _ = workspace.watch.take(true);
-                ScanBatch::Full
-            } else if read && !workspace.failed() {
-                let Some(batch) = workspace.watch.take(true) else {
-                    self.ready_scans.insert(root);
-                    continue;
-                };
-                batch
+                Some(ScanBatch::Full)
             } else {
-                let Some(batch) = workspace.watch.take(false) else {
+                let read = read && !workspace.failed();
+                let batch = workspace.watch.take(read || rescan);
+                if batch.is_none() && !rescan {
+                    if read {
+                        self.ready_scans.insert(root);
+                    }
                     continue;
-                };
+                }
                 batch
             };
             state.force = false;
@@ -447,12 +449,11 @@ impl Router {
                     let mut watch = None;
                     let result = io_result(&repository, || {
                         if replace_watch {
-                            let replacement = FileWatch::start(&repository).map_err(|error| {
-                                Error::Unavailable {
+                            let replacement =
+                                base.start_watch().map_err(|error| Error::Unavailable {
                                     repository: repository.clone(),
                                     reason: error.to_string(),
-                                }
-                            })?;
+                                })?;
                             if replacement.root() != repository {
                                 return Err(Error::Unavailable {
                                     repository: repository.clone(),
@@ -467,9 +468,10 @@ impl Router {
                             hook(&root);
                         }
                         let index = Arc::make_mut(&mut index);
-                        match batch {
-                            ScanBatch::Full => index.scan(),
-                            ScanBatch::Paths(paths) => index.scan_paths(&paths),
+                        match (rescan, batch) {
+                            (true, hints) => index.rescan(hints),
+                            (false, Some(ScanBatch::Paths(paths))) => index.scan_paths(&paths),
+                            _ => index.scan(),
                         }
                         .map(|_| ())
                         .map_err(|error| Error::Unavailable {

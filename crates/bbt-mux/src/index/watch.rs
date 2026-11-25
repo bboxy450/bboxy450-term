@@ -15,7 +15,7 @@ use std::{
     path::{Component, Path},
     sync::{
         Arc, Mutex, TryLockError,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
     time::{Duration, Instant},
 };
@@ -34,6 +34,8 @@ struct Pending {
     first: Instant,
     last: Instant,
     immediate: bool,
+    #[cfg(test)]
+    drop_events: bool,
 }
 impl Pending {
     fn new(now: Instant) -> Self {
@@ -42,6 +44,8 @@ impl Pending {
             first: now,
             last: now,
             immediate: true,
+            #[cfg(test)]
+            drop_events: false,
         }
     }
     fn push(&mut self, batch: ScanBatch, now: Instant) {
@@ -92,6 +96,9 @@ pub struct FileWatch {
 }
 impl FileWatch {
     pub fn start(root: &Path) -> Result<Self> {
+        Self::start_observing(root, Arc::default())
+    }
+    pub(super) fn start_observing(root: &Path, last_event_ms: Arc<AtomicU64>) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         let root = root.canonicalize()?;
         let observed = root.clone();
@@ -100,18 +107,22 @@ impl FileWatch {
         let (changes, failure) = (pending.clone(), failed.clone());
         let mut watcher =
             notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
-                let batch = match event {
-                    Ok(event) => batch(&observed, &event),
-                    Err(_) => {
-                        failure.store(true, Ordering::Release);
-                        Some(ScanBatch::Full)
-                    }
+                let (batch, watch_error) = match event {
+                    Ok(event) => (batch(&observed, &event), false),
+                    Err(_) => (Some(ScanBatch::Full), true),
                 };
                 if let Some(batch) = batch {
-                    changes
-                        .lock()
-                        .unwrap_or_else(|error| error.into_inner())
-                        .push(batch, Instant::now());
+                    let mut pending = changes.lock().unwrap_or_else(|error| error.into_inner());
+                    #[cfg(test)]
+                    if pending.drop_events {
+                        return;
+                    }
+                    if watch_error {
+                        failure.store(true, Ordering::Release);
+                    } else {
+                        last_event_ms.store(bbt_rt::error_journal::now_ms(), Ordering::Release);
+                    }
+                    pending.push(batch, Instant::now());
                 }
             })?;
         watcher.watch(&root, RecursiveMode::Recursive)?;
@@ -127,6 +138,10 @@ impl FileWatch {
     #[cfg(test)]
     pub(crate) fn on_drop(&mut self, hook: impl FnOnce() + Send + 'static) {
         self.on_drop = Some(Box::new(hook));
+    }
+    #[cfg(test)]
+    pub(crate) fn drop_events(&self) {
+        self.pending.lock().unwrap().drop_events = true;
     }
 
     // Preserve the immediate consuming API for existing callers and fixtures.

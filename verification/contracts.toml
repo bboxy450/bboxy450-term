@@ -1066,12 +1066,13 @@ checks = ["make test-formal", "make test"]
 
 [[contract]]
 name = "WatcherChanges"
-title = "Prepared scan completion preserves newer pending changes"
-models = ["WatcherChanges", "BrokenWatcherChanges"]
-sources = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/index/watch.rs", "crates/bbt-mux/src/knowledge/routing.rs", "crates/bbt-mux/src/provenance/worker.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
+title = "Prepared scans preserve pending hints and periodic rescans recover dropped hints"
+models = ["WatcherChanges", "BrokenWatcherChanges", "BrokenWatcherRescan"]
+controls = [{ name = "BrokenWatcherChanges", expected = "safety" }, { name = "BrokenWatcherRescan", expected = "liveness" }]
+sources = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/index/watch.rs", "crates/bbt-mux/src/knowledge/routing.rs", "crates/bbt-mux/src/logic.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
 implementation_tests = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/knowledge/routing_tests.rs", "crates/bbt-mux/tests/provenance.rs", "crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/tests/mcp/den_records.rs"]
-assumptions = "One path, two filesystem revisions, atomic hint/capture/completion and eventual scan IO under weakly fair capture/completion. Native witnesses retain an edit arriving after preparation, reread restored-mtime bytes on full reconciliation, replace failed watchers before scanning, and preserve root/base identity fences. A detected directory stamp change enters the existing full-hint transition. The live Git subprocess and external Markdown write witnesses check additions and removals while the same Logic host stays up. Directory metadata behavior and OS notification delivery are implementation-only. Eventual convergence is not an atomic filesystem snapshot; unbounded external failure, graph memory cost and arbitrary Rust refinement are unmodeled."
-property = "No stable filesystem change is left without a running or pending reconciliation, and each stable revision eventually becomes visible or superseded. The broken completion clears dirtiness belonging to a newer change and violates safety."
+assumptions = "One path and two metadata-distinguishable filesystem revisions, each with a hint or a dropped hint. Two age ticks abstract the five-second deadline. Tick, eligible capture and completion are weakly fair. Capture atomically samples the revision, and periodic completion resets age. File traversal, metadata, wall-clock timing, lane delay, IO errors, root/base identity fences and watcher replacement are implementation-only. Native witnesses cover a newer hint during preparation, injected hint loss, a restored-mtime edit, content-read counts and external Git additions/removals."
+property = "An observed revision is represented by pending or running work until published, and each revision eventually becomes visible or is superseded. The broken completion discards a newer hint and violates safety. Disabling deadline-based capture leaves a dropped hint unreconciled and violates liveness."
 checks = ["make test-formal", "make test"]
 
 [[contract]]

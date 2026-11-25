@@ -16,6 +16,90 @@ use serde_json::{Value, json};
 struct Link;
 
 #[test]
+fn watch_rescan_repairs_dropped_events_and_reports_freshness() {
+    let mut fixture = Fixture::open();
+    let notes = fixture.first.join(".bboxy/notes");
+    let removed = notes.join("removed.md");
+    let added = notes.join("added.md");
+    let edited = notes.join("same.md");
+    std::fs::write(&removed, "---\nnumber: 10\ntype: note\n---\nremove me\n").unwrap();
+    let before_mount = Instant::now();
+    let actor = fixture.actor(&fixture.a.clone());
+    let binding = fixture.ready(&actor).binding;
+    let workspace = fixture.worker.workspaces.cache.get_mut(&binding).unwrap();
+    workspace.watch.drop_events();
+    let before = workspace.host.seat_status(&workspace.index).unwrap();
+    let before = &before["index_freshness"];
+    let reads = workspace.index.document_reads;
+    let last_rescan = before["last_rescan_ms"].as_u64().unwrap();
+    let stamp = edited.metadata().unwrap().modified().unwrap();
+    let text = std::fs::read_to_string(&edited).unwrap();
+    assert!(text.contains("first content"));
+    std::fs::write(&edited, text.replace("first content", "third content")).unwrap();
+    std::fs::File::options()
+        .write(true)
+        .open(&edited)
+        .unwrap()
+        .set_times(std::fs::FileTimes::new().set_modified(stamp))
+        .unwrap();
+    std::fs::write(&added, "---\nnumber: 11\ntype: note\n---\nnew record\n").unwrap();
+    std::fs::remove_file(&removed).unwrap();
+    assert!(!workspace.pending());
+    Arc::make_mut(&mut workspace.index).rescan_disabled = true;
+
+    let interval = crate::index::RESCAN_INTERVAL;
+    let due = Instant::now() + interval;
+    fixture.worker.maintain_workspaces(due);
+    assert!(!fixture.worker.workspaces.scanning(&binding.root_id));
+    let workspace = fixture.worker.workspaces.cache.get_mut(&binding).unwrap();
+    assert!(workspace.index.documents.contains_key("notes/removed.md"));
+    assert!(!workspace.index.documents.contains_key("notes/added.md"));
+    assert_eq!(
+        workspace.index.documents["notes/same.md"].body,
+        "first content\n"
+    );
+    assert_eq!(
+        workspace.host.seat_status(&workspace.index).unwrap()["index_freshness"],
+        *before
+    );
+    Arc::make_mut(&mut workspace.index).rescan_disabled = false;
+
+    fixture
+        .worker
+        .maintain_workspaces(before_mount + interval - Duration::from_millis(1));
+    assert!(!fixture.worker.workspaces.scanning(&binding.root_id));
+    // Give the recorded completion timestamps distinct wall-clock milliseconds.
+    std::thread::sleep(Duration::from_millis(2));
+    fixture.worker.maintain_workspaces(due);
+    let router = &mut fixture.worker.workspaces;
+    assert!(router.scanning(&binding.root_id));
+    let deadline = Instant::now() + Duration::from_secs(5);
+    while router.scanning(&binding.root_id) {
+        router.poll(&fixture.worker.registry);
+        assert!(
+            Instant::now() < deadline,
+            "periodic reconciliation did not finish"
+        );
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    let workspace = router.cache.get(&binding).unwrap();
+    assert!(!workspace.pending());
+    assert!(workspace.index.documents.contains_key("notes/added.md"));
+    assert!(!workspace.index.documents.contains_key("notes/removed.md"));
+    assert_eq!(
+        workspace.index.documents["notes/same.md"].body,
+        "third content\n"
+    );
+    assert_eq!(workspace.index.document_reads, reads + 2);
+    let after = workspace.host.seat_status(&workspace.index).unwrap();
+    assert_eq!(
+        after["index_freshness"]["last_event_ms"],
+        before["last_event_ms"]
+    );
+    assert!(after["index_freshness"]["last_rescan_ms"].as_u64().unwrap() > last_rescan);
+}
+
+#[test]
 fn deferred_publication_preserves_outbox_while_another_root_progresses() {
     use std::sync::{Condvar, Mutex};
     struct Release(Arc<(Mutex<bool>, Condvar)>);
@@ -170,7 +254,7 @@ fn deferred_scan_caps_workers_and_replays_changes_arriving_after_preparation() {
     fixture
         .worker
         .workspaces
-        .reconcile_pending(&a.binding.root_id)
+        .reconcile_pending(&a.binding.root_id, Instant::now())
         .unwrap();
     assert!(
         !fixture
@@ -202,7 +286,11 @@ fn deferred_scan_caps_workers_and_replays_changes_arriving_after_preparation() {
                     .unwrap()
                     .changed()
             {
-                fixture.worker.workspaces.reconcile_pending(root).unwrap();
+                fixture
+                    .worker
+                    .workspaces
+                    .reconcile_pending(root, Instant::now())
+                    .unwrap();
             }
         }
         if !fixture.worker.workspaces.scanning(&a.binding.root_id)

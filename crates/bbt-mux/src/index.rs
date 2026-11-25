@@ -9,7 +9,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use base64::Engine;
 use ed25519_dalek::{Signer, SigningKey};
@@ -21,6 +23,7 @@ use ulid::Ulid;
 use crate::store::{Result, Store, digest, events::Draft, invalid, sqlite::SqliteStore};
 
 const MAX_DOCUMENT: u64 = 2 * 1024 * 1024;
+pub(crate) const RESCAN_INTERVAL: Duration = Duration::from_secs(5);
 
 pub mod migration;
 
@@ -392,11 +395,14 @@ pub struct Index {
     // A reopened index cold-reconciles its root. Persisted documents alone do
     // not prove that an on-disk file still has the same contents.
     file_states: BTreeMap<String, Stamp>,
-    directories: Arc<Vec<(PathBuf, Stamp)>>,
+    last_event_ms: Arc<AtomicU64>,
+    last_rescan: Option<(Instant, u64)>,
     // Shared by clones of this root; each entry is checked against a fresh stat.
     numbers: Arc<Mutex<NumberCache>>,
     #[cfg(test)]
-    document_reads: usize,
+    pub(crate) document_reads: usize,
+    #[cfg(test)]
+    pub(crate) rescan_disabled: bool,
 }
 
 /// Temporarily lend the claim to nested artifact/document projection calls.
@@ -467,10 +473,13 @@ impl Index {
             documents: Arc::default(),
             graphs: Arc::default(),
             file_states: BTreeMap::new(),
-            directories: Arc::default(),
+            last_event_ms: Arc::default(),
+            last_rescan: None,
             numbers: Arc::default(),
             #[cfg(test)]
             document_reads: 0,
+            #[cfg(test)]
+            rescan_disabled: false,
         };
         index.store.connection()?.execute_batch("CREATE TABLE IF NOT EXISTS document_outbox(seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,payload BLOB NOT NULL)")?;
         for (_, bytes) in index.store.list("doc/")? {
@@ -481,27 +490,49 @@ impl Index {
         Ok(index)
     }
     pub fn scan(&mut self) -> Result<Vec<Draft>> {
+        self.scan_tree(&mut || {})
+    }
+    fn scan_tree(&mut self, rest: &mut impl FnMut()) -> Result<Vec<Draft>> {
         bbt_rt::assert_not_ui_thread();
         let mut paths = Vec::new();
-        let mut directories = Vec::new();
-        collect_in(
-            &self.root,
-            &self.root,
-            &mut paths,
-            &mut Some(&mut directories),
-        )?;
-        let events = self.reconcile_files(paths, None)?;
-        self.directories = Arc::new(directories);
+        collect_in(&self.root, &self.root, &mut paths, rest)?;
+        let events = self.reconcile_files(paths, None, rest)?;
+        self.last_rescan = Some((Instant::now(), bbt_rt::error_journal::now_ms()));
         Ok(events)
     }
-    /// A silent watcher can miss additions and removals. Probe the directories
-    /// visited by the last full scan, without listing or statting their files.
-    pub(crate) fn namespace_changed(&self) -> bool {
-        bbt_rt::assert_not_ui_thread();
-        self.directories.iter().any(|(directory, stamp)| {
-            !directory
-                .symlink_metadata()
-                .is_ok_and(|metadata| metadata.is_dir() && file_stamp(&metadata) == *stamp)
+    pub(crate) fn start_watch(&self) -> Result<FileWatch> {
+        FileWatch::start_observing(&self.root, self.last_event_ms.clone())
+    }
+    pub(crate) fn last_event_ms(&self) -> Option<u64> {
+        let stamp = self.last_event_ms.load(Ordering::Acquire);
+        (stamp != 0).then_some(stamp)
+    }
+    pub(crate) fn last_rescan_ms(&self) -> Option<u64> {
+        self.last_rescan.map(|(_, stamp)| stamp)
+    }
+    pub(crate) fn rescan_due(&self, now: Instant) -> bool {
+        #[cfg(test)]
+        if self.rescan_disabled {
+            return false;
+        }
+        self.last_rescan
+            .is_some_and(|(at, _)| now.duration_since(at) >= RESCAN_INTERVAL)
+    }
+    /// Periodic metadata reconciliation shares the normal index and outbox.
+    pub(crate) fn rescan(&mut self, hints: Option<ScanBatch>) -> Result<Vec<Draft>> {
+        if let Some(ScanBatch::Paths(paths)) = hints {
+            // Preserve the forced read of an explicitly observed change.
+            for path in paths {
+                self.file_states.remove(&path);
+            }
+        }
+        const SLICE: Duration = Duration::from_millis(1);
+        let mut started = Instant::now();
+        self.scan_tree(&mut || {
+            if started.elapsed() >= SLICE {
+                std::thread::sleep(SLICE);
+                started = Instant::now();
+            }
         })
     }
     /// Re-read only the final filesystem state of dirty record paths. Unknown
@@ -551,17 +582,19 @@ impl Index {
             // An observed change must be read even if size/mtime were restored.
             self.file_states.remove(relative);
         }
-        self.reconcile_files(paths, Some(dirty))
+        self.reconcile_files(paths, Some(dirty), &mut || {})
     }
     fn reconcile_files(
         &mut self,
         paths: Vec<(PathBuf, std::fs::Metadata)>,
         scope: Option<&BTreeSet<String>>,
+        rest: &mut impl FnMut(),
     ) -> Result<Vec<Draft>> {
         let mut seen = BTreeSet::new();
         let mut changed = false;
         let mut events = self.pending_events()?;
         for (path, metadata) in paths {
+            rest();
             let relative = path.strip_prefix(&self.root)?.to_string_lossy().to_string();
             if generated_log_path(Path::new(&relative)) {
                 continue;
@@ -661,6 +694,7 @@ impl Index {
                 .collect(),
         };
         for path in removed {
+            rest();
             if let Some(doc) = Arc::make_mut(&mut self.documents).remove(&path) {
                 let event_start = events.len();
                 events.push(Draft::new(
@@ -1393,23 +1427,17 @@ fn oversized(path: &Path, bytes: u64) {
 }
 
 fn collect(directory: &Path, paths: &mut Vec<(PathBuf, std::fs::Metadata)>) -> Result<()> {
-    collect_in(directory, directory, paths, &mut None)
+    collect_in(directory, directory, paths, &mut || {})
 }
 
 fn collect_in(
     root: &Path,
     directory: &Path,
     paths: &mut Vec<(PathBuf, std::fs::Metadata)>,
-    directories: &mut Option<&mut Vec<(PathBuf, Stamp)>>,
+    rest: &mut impl FnMut(),
 ) -> Result<()> {
-    if let Some(directories) = directories {
-        // Sample before enumeration so changes racing the scan remain visible.
-        directories.push((
-            directory.to_owned(),
-            file_stamp(&directory.symlink_metadata()?),
-        ));
-    }
     for entry in std::fs::read_dir(directory)? {
+        rest();
         let entry = entry?;
         if generated_log_path(entry.path().strip_prefix(root)?) {
             continue;
@@ -1429,7 +1457,7 @@ fn collect_in(
             {
                 continue;
             }
-            collect_in(root, &entry.path(), paths, directories)?;
+            collect_in(root, &entry.path(), paths, rest)?;
         } else if record_file(&entry.path()) {
             let metadata = entry.metadata()?;
             if metadata.len() > MAX_DOCUMENT {
@@ -1596,11 +1624,8 @@ mod tests {
         index.scan().unwrap();
         assert_eq!(index.document_reads, 2);
         assert_eq!(index.documents["2.md"].body, "new body\n");
-        assert!(!index.namespace_changed());
         std::fs::remove_file(root.join("1.md")).unwrap();
-        assert!(index.namespace_changed());
         index.scan().unwrap();
-        assert!(!index.namespace_changed());
         assert_eq!(index.document_reads, 2);
         assert_eq!(index.documents.len(), 99);
         assert!(!index.documents.contains_key("1.md"));

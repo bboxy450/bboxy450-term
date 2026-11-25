@@ -59,7 +59,7 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
             "inputSchema":{"type":"object","properties":{"type":{"type":"string","enum":kinds}},"required":[],"additionalProperties":false},
             "outputSchema":{"type":"object","additionalProperties":true},
             "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}),
-        json!({"name":"knowledge_status","description":"Inspect this swarm's selected knowledge provider, root and revision, available providers, plugin activation/check state and failures. Read-only; trust, check, enable and selection use operator controls.",
+        json!({"name":"knowledge_status","description":"Inspect this swarm's selected knowledge provider, root and revision, available providers, plugin activation/check state and failures. Index freshness reports the last relevant filesystem event and successful whole-root metadata reconciliation in Unix milliseconds (null before observation). Read-only; trust, check, enable and selection use operator controls.",
             "inputSchema":{"type":"object","properties":{},"required":[],"additionalProperties":false},
             "outputSchema":{"type":"object","additionalProperties":true},
             "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}),

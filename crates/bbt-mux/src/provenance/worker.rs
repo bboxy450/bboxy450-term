@@ -47,7 +47,6 @@ struct Job {
 struct Completed {
     result: Result<bool>,
     paths: BTreeSet<String>,
-    namespace_changed: bool,
     rest: Duration,
 }
 
@@ -61,7 +60,6 @@ pub(crate) struct Worker {
     running: bool,
     next: Instant,
     refreshed: BTreeSet<String>,
-    namespace_changed: bool,
     thread: Option<std::thread::JoinHandle<()>>,
 }
 impl Worker {
@@ -84,7 +82,6 @@ impl Worker {
                         break;
                     }
                     let started = Instant::now();
-                    let namespace_changed = job.index.namespace_changed();
                     let Ok(mut engine) = state.lock() else {
                         break;
                     };
@@ -124,7 +121,6 @@ impl Worker {
                         .send(Completed {
                             result,
                             paths,
-                            namespace_changed,
                             rest,
                         })
                         .is_err()
@@ -143,7 +139,6 @@ impl Worker {
             running: false,
             next: Instant::now(),
             refreshed: BTreeSet::new(),
-            namespace_changed: false,
             thread: Some(thread),
         })
     }
@@ -201,11 +196,7 @@ impl Worker {
     }
     pub fn take_refresh(&mut self) -> Option<ScanBatch> {
         let paths = std::mem::take(&mut self.refreshed);
-        if std::mem::take(&mut self.namespace_changed) {
-            Some(ScanBatch::Full)
-        } else {
-            (!paths.is_empty()).then_some(ScanBatch::Paths(paths))
-        }
+        (!paths.is_empty()).then_some(ScanBatch::Paths(paths))
     }
     pub fn stop(&self) {
         self.stopped.store(true, Ordering::Release);
@@ -227,7 +218,6 @@ impl Worker {
                 self.running = false;
                 self.next = Instant::now() + done.rest;
                 self.refreshed.extend(done.paths);
-                self.namespace_changed |= done.namespace_changed;
                 changed = done.result?;
             }
             Err(mpsc::TryRecvError::Disconnected) => {
