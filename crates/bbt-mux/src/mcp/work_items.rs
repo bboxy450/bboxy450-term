@@ -601,7 +601,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
         ),
         (
             "artifact_claim",
-            "Claim responsibility for an existing committed artifact, optionally linking an authorized task. For a knowledge checkpoint, use the committed document path, checkpoint artifact ID, or knowledge:commit/<sha> reference. Drafts cannot be promoted by a claim. Use knowledge_fetch, knowledge_search and knowledge_write for document content.",
+            "Claim responsibility for an existing committed artifact, optionally linking an authorized task. For a knowledge checkpoint, use the committed document path, checkpoint artifact ID, or knowledge:commit/<sha> reference. Drafts cannot be promoted by a claim; this is not a document reader or editor. Use knowledge_fetch, knowledge_search and knowledge_write for document content.",
             json!({"kind":{"enum":["markdown","pr","binary","file","image","release","other"]},"ref":{"type":"string","minLength":1,"maxLength":4096},"digest":{"type":"string","maxLength":71},"task":path}),
             vec!["kind", "ref"],
         ),
