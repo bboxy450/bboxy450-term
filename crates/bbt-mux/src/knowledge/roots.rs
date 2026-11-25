@@ -374,6 +374,9 @@ impl Host {
     pub(crate) fn root_path(&self) -> &std::path::Path {
         &self.0.root
     }
+    pub(crate) fn borrowed(&self) -> bool {
+        Arc::strong_count(&self.0) > 1
+    }
     pub(crate) fn close(&self) {
         self.0.plugin_host.close();
         let external = self

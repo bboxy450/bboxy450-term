@@ -19,6 +19,7 @@ use std::{
 pub(crate) struct SeatRoute {
     pub location: Location,
     pub swarm: Ulid,
+    pub lifecycle: Lifecycle,
 }
 
 #[derive(Default)]
@@ -84,6 +85,7 @@ impl Registry {
         let route = SeatRoute {
             location: record.location,
             swarm: record.swarm,
+            lifecycle: record.lifecycle,
         };
         self.routing
             .seats

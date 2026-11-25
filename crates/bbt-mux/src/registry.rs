@@ -86,6 +86,29 @@ impl Registry {
             .map(|bytes| Ok(serde_json::from_slice(&bytes?)?))
             .collect()
     }
+    pub(crate) fn has_open_swarm_seats(&self, swarm: Ulid) -> Result<bool> {
+        valid_swarm(swarm)?;
+        let db = self.store.connection()?;
+        let mut query = db.prepare_cached(OPEN_SWARM_SEATS)?;
+        Ok(query.exists([swarm.to_string()])?)
+    }
+    pub(crate) fn open_swarm_memberships(
+        &self,
+        swarms: impl Iterator<Item = Ulid>,
+    ) -> Result<Vec<(Ulid, bool, bool)>> {
+        let db = self.store.connection()?;
+        let mut query = db.prepare_cached(&format!(
+            "SELECT EXISTS({OPEN_SWARM_SEATS}), COALESCE(
+                (SELECT json_extract(CAST(value AS TEXT),'$.archived') FROM kv WHERE key=?2), 0)"
+        ))?;
+        swarms
+            .map(|swarm| {
+                Ok(query.query_row([swarm.to_string(), format!("swarm/{swarm}")], |row| {
+                    Ok((swarm, row.get(0)?, row.get(1)?))
+                })?)
+            })
+            .collect()
+    }
     /// Operator history remains admissible even when every member is closed.
     pub(crate) fn has_swarm_seats(&self, swarm: Ulid) -> Result<bool> {
         valid_swarm(swarm)?;

@@ -303,6 +303,11 @@ impl Worker {
                         result.map(|record| *record),
                         current,
                     );
+                    if let Ok(record) = &result
+                        && record.state == managed::State::Released
+                    {
+                        self.workspaces.release_workspace(&record.cwd);
+                    }
                     let value = match result {
                         Ok(r) => mcp::success(
                             context.call.op_id,

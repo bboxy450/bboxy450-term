@@ -23,6 +23,7 @@ use std::{
     fmt,
     path::{Path, PathBuf},
     sync::Arc,
+    time::Instant,
 };
 use tokio::runtime::Handle;
 
@@ -102,6 +103,8 @@ pub struct Workspace {
     pub(crate) watch: FileWatch,
     pub(crate) provenance: Engine,
     seen_revision: u64,
+    pub(crate) last_selected: Instant,
+    pub(crate) retire_when_idle: bool,
 }
 impl Workspace {
     fn mount(config: &Config, repository: &Path, root: &Path, store: &str) -> Result<Self> {
@@ -163,6 +166,8 @@ impl Workspace {
                 watch,
                 provenance,
                 seen_revision,
+                last_selected: Instant::now(),
+                retire_when_idle: false,
             })
         };
         open().map_err(|error| Error::unavailable(repository, error))
@@ -230,6 +235,10 @@ impl Workspace {
         self.provenance.stop();
         self.host.close();
     }
+    pub(crate) fn retire(self) {
+        self.close();
+        self.provenance.retire();
+    }
 }
 
 enum Selection {
@@ -270,14 +279,12 @@ impl MountJob {
             &self.store,
         )?;
         Ok(MountedRoot {
-            prepared: self.prepared,
             workspace: Some(workspace),
             cleanup: self.config.runtime,
         })
     }
 }
 pub struct MountedRoot {
-    prepared: PreparedRoot,
     workspace: Option<Workspace>,
     cleanup: Handle,
 }
@@ -286,7 +293,7 @@ impl Drop for MountedRoot {
         if let Some(workspace) = self.workspace.take() {
             // Aborted owner jobs can discard a mount result. Provider cleanup
             // remains on IO, including this cancellation/shutdown path.
-            self.cleanup.spawn_blocking(move || workspace.close());
+            self.cleanup.spawn_blocking(move || workspace.retire());
         }
     }
 }
@@ -294,7 +301,7 @@ impl MountedRoot {
     /// Cleanup is an IO operation; never close a provider in the owner's insertion path.
     pub fn close(mut self) {
         if let Some(workspace) = self.workspace.take() {
-            workspace.close();
+            workspace.retire();
         }
     }
 }
@@ -308,7 +315,6 @@ pub struct Workspaces {
     config: Config,
     startup: String,
     roots: BTreeMap<String, Workspace>,
-    paths: BTreeMap<PathBuf, String>,
     bindings: BTreeMap<Ulid, Selection>,
 }
 impl Workspaces {
@@ -324,9 +330,8 @@ impl Workspaces {
         let startup = workspace.root_id().to_owned();
         Ok(Self {
             config,
-            startup: startup.clone(),
             roots: BTreeMap::from([(startup.clone(), workspace)]),
-            paths: BTreeMap::from([(root, startup)]),
+            startup,
             bindings: BTreeMap::new(),
         })
     }
@@ -363,9 +368,10 @@ impl Workspaces {
         prepared: &PreparedRoot,
     ) -> Result<Option<RootBinding>> {
         self.check_revision(swarm, revision)?;
-        let Some(id) = self.paths.get(&prepared.root).cloned() else {
+        let id = prepared.root_id.clone();
+        if !self.roots.contains_key(&id) {
             return Ok(None);
-        };
+        }
         Ok(Some(self.select(swarm, revision, id)))
     }
     /// Build an owned job only. The router deduplicates jobs by prepared root ID.
@@ -382,14 +388,16 @@ impl Workspaces {
         }
     }
     fn install_root(&mut self, mut mounted: MountedRoot) -> (String, Option<MountedRoot>) {
-        if let Some(id) = self.paths.get(&mounted.prepared.root) {
-            return (id.clone(), Some(mounted));
+        let id = mounted
+            .workspace
+            .as_ref()
+            .expect("owned mount")
+            .root_id()
+            .to_owned();
+        if self.roots.contains_key(&id) {
+            return (id, Some(mounted));
         }
-        let prepared = mounted.prepared.clone();
         let workspace = mounted.workspace.take().expect("owned mount");
-        let id = prepared.root_id;
-        debug_assert_eq!(workspace.root_id(), id);
-        self.paths.insert(prepared.root, id.clone());
         self.roots.insert(id.clone(), workspace);
         (id, None)
     }
@@ -410,8 +418,8 @@ impl Workspaces {
     }
     fn mount_sync(&mut self, repository: &Path) -> Result<String> {
         let prepared = Self::prepare(repository)?;
-        if let Some(id) = self.paths.get(&prepared.root) {
-            return Ok(id.clone());
+        if self.roots.contains_key(&prepared.root_id) {
+            return Ok(prepared.root_id);
         }
         let mounted = self.mount(prepared).run()?;
         let (id, retired) = self.install_root(mounted);
@@ -432,6 +440,7 @@ impl Workspaces {
         }
     }
     fn select(&mut self, swarm: Ulid, revision: u64, root_id: String) -> RootBinding {
+        self.touch(&root_id);
         let binding = RootBinding {
             swarm,
             revision,
@@ -474,6 +483,35 @@ impl Workspaces {
     pub fn bind_startup(&mut self, swarm: Ulid, revision: u64) -> Result<RootBinding> {
         self.check_revision(swarm, revision)?;
         Ok(self.select(swarm, revision, self.startup.clone()))
+    }
+    pub(crate) fn touch(&mut self, root: &str) {
+        if let Some(workspace) = self.roots.get_mut(root) {
+            workspace.last_selected = Instant::now();
+            workspace.retire_when_idle = false;
+        }
+    }
+    pub(crate) fn forget(&mut self, swarm: Ulid) -> Option<String> {
+        match self.bindings.remove(&swarm)? {
+            Selection::Ready(binding) => Some(binding.root_id),
+            Selection::Unavailable { .. } => None,
+        }
+    }
+    pub(crate) fn retire_if_unbound(&mut self, root: &str) {
+        if root != self.startup
+            && !self.bindings.values().any(
+                |selection| matches!(selection, Selection::Ready(binding) if binding.root_id == root),
+            )
+            && let Some(workspace) = self.roots.get_mut(root)
+        {
+            workspace.retire_when_idle = true;
+        }
+    }
+    pub(crate) fn remove_root(&mut self, root: &str) -> Option<Workspace> {
+        debug_assert_ne!(root, self.startup);
+        self.roots.remove(root)
+    }
+    pub(crate) fn root(&self, root: &str) -> Option<&Workspace> {
+        self.roots.get(root)
     }
     pub(crate) fn root_mut(&mut self, root: &str) -> Option<&mut Workspace> {
         self.roots.get_mut(root)

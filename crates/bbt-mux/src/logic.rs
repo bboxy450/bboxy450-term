@@ -3079,6 +3079,28 @@ enum WorkspaceRead {
         oneshot::Sender<Result<bbt_proto::messaging::TaskResponse>>,
     ),
 }
+impl WorkspaceRead {
+    fn refuse(self, code: &str, message: &str, retry_after_ms: Option<u64>) {
+        match self {
+            Self::Seat(_, _, call, reply) => {
+                let message = if retry_after_ms.is_some() {
+                    format!("{message}; retry")
+                } else {
+                    message.to_owned()
+                };
+                let _ = reply.send(Ok(crate::mcp::error(call.op_id, code, &message)));
+            }
+            Self::Knowledge(_, _, _, reply) => {
+                let mut error = crate::knowledge::data_source::CommandError::new(code, message);
+                error.retry_after_ms = retry_after_ms;
+                let _ = reply.send(Err(error));
+            }
+            Self::Task(_, _, _, _, reply) => {
+                let _ = reply.send(Err(invalid(format!("{code}: {message}"))));
+            }
+        }
+    }
+}
 struct PendingWorkspaceRead {
     binding: RootBinding,
     read: WorkspaceRead,
@@ -3195,7 +3217,7 @@ struct Worker {
     role_updates: tokio::task::JoinSet<RoleUpdate>,
     root_publications: tokio::task::JoinSet<RootPublication>,
     publication_tasks: BTreeMap<tokio::task::Id, String>,
-    publication_running: BTreeMap<String, bool>,
+    publication_running: BTreeMap<String, (bool, crate::knowledge::roots::Host)>,
     publication_backoff: BTreeMap<String, ProvenanceBackoff>,
     #[cfg(test)]
     publication_io_hook: Option<PublicationHook>,
@@ -6484,7 +6506,7 @@ impl Worker {
         if self.workspaces.scanning(root) || self.workspaces.reconciliation_failed(root) {
             return Ok(());
         }
-        if let Some(wake) = self.publication_running.get_mut(root) {
+        if let Some((wake, _)) = self.publication_running.get_mut(root) {
             *wake = true;
             return Ok(());
         }
@@ -6498,15 +6520,16 @@ impl Worker {
             self.workspaces.retry_publication(root.to_owned());
             return Ok(());
         }
-        let outbox = self
+        let workspace = self
             .workspaces
             .cache
-            .root_mut(root)
-            .ok_or_else(|| invalid("unknown workspace root"))?
-            .index
-            .outbox();
+            .root(root)
+            .ok_or_else(|| invalid("unknown workspace root"))?;
+        let outbox = workspace.index.outbox();
         let root = root.to_owned();
-        self.publication_running.insert(root.clone(), false);
+        // Keep the mount resident through the asynchronous outbox ACK.
+        self.publication_running
+            .insert(root.clone(), (false, workspace.host.clone()));
         let tracked = root.clone();
         #[cfg(test)]
         let hook = self.publication_io_hook.clone();
@@ -6531,7 +6554,10 @@ impl Worker {
         Ok(())
     }
     fn finish_root_publication(&mut self, root: String, result: Result<()>, more: bool) {
-        let wake = self.publication_running.remove(&root).unwrap_or(false);
+        let wake = self
+            .publication_running
+            .remove(&root)
+            .is_some_and(|(wake, _)| wake);
         match result {
             Ok(()) => {
                 self.publication_backoff.remove(&root);
@@ -6858,6 +6884,9 @@ impl Worker {
             return Some(binding.clone());
         }
         let record = self.registry.route(seat).ok()?;
+        if record.lifecycle != Lifecycle::Open {
+            return None;
+        }
         let port = self
             .workspaces
             .select(&self.registry, record.swarm, None)
@@ -6896,8 +6925,30 @@ impl Worker {
         }
         Some(port.binding)
     }
+    fn poll_workspaces(&mut self) {
+        let retired = self.workspaces.poll(&self.registry);
+        if !retired.is_empty() {
+            self.provenance_registered
+                .retain(|(_, _, root)| !retired.contains(root));
+            self.provenance_bindings
+                .retain(|_, (_, _, binding)| !retired.contains(&binding.root_id));
+            for root in retired {
+                self.provenance_backoff.remove(&root);
+                self.publication_backoff.remove(&root);
+                self.knowledge_reads.remove(&root);
+                self.task_import_capacity.remove(&root);
+                for pending in self.workspace_reads.remove(&root).unwrap_or_default() {
+                    pending.read.refuse(
+                        "swarm_root_changed",
+                        "workspace was retired before read",
+                        None,
+                    );
+                }
+            }
+        }
+    }
     fn maintain_workspaces(&mut self, now: Instant) {
-        self.workspaces.poll(&self.registry);
+        self.poll_workspaces();
         let seats: Vec<_> = self
             .views
             .iter()
@@ -10130,7 +10181,7 @@ impl Worker {
                 let _ = done.reply.send(Ok(value));
             }
         }
-        self.workspaces.poll(&self.registry);
+        self.poll_workspaces();
         for root in self.workspaces.take_ready_scans() {
             if let Err(error) = self.publish_root_outbox(&root) {
                 eprintln!("WorkspacePublicationPending [{root}]: {error}");
@@ -10965,28 +11016,9 @@ impl Worker {
             .get(&root)
             .is_some_and(|reads| reads.len() >= 32)
         {
-            match pending.read {
-                WorkspaceRead::Seat(_, _, call, reply) => {
-                    let _ = reply.send(Ok(crate::mcp::error(
-                        call.op_id,
-                        "provider_busy",
-                        "workspace read capacity occupied; retry",
-                    )));
-                }
-                WorkspaceRead::Knowledge(_, _, _, reply) => {
-                    let mut error = crate::knowledge::data_source::CommandError::new(
-                        "provider_busy",
-                        "workspace read capacity occupied",
-                    );
-                    error.retry_after_ms = Some(100);
-                    let _ = reply.send(Err(error));
-                }
-                WorkspaceRead::Task(_, _, _, _, reply) => {
-                    let _ = reply.send(Err(invalid(
-                        "provider_busy: workspace read capacity occupied",
-                    )));
-                }
-            }
+            pending
+                .read
+                .refuse("provider_busy", "workspace read capacity occupied", Some(100));
         } else {
             self.workspace_reads.entry(root).or_default().push(pending);
         }

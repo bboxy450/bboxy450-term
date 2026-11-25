@@ -201,6 +201,14 @@ impl Worker {
     pub fn stop(&self) {
         self.stopped.store(true, Ordering::Release);
     }
+    /// Only the off-owner workspace disposer joins a running IO page.
+    pub(crate) fn retire(mut self) {
+        let thread = self.thread.take();
+        drop(self);
+        if let Some(thread) = thread {
+            let _ = thread.join();
+        }
+    }
     pub fn step(
         &mut self,
         index: Arc<Index>,

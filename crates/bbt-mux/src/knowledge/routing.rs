@@ -13,12 +13,17 @@ use crate::{
     store,
 };
 use std::{
-    collections::{BTreeMap, VecDeque},
+    collections::{BTreeMap, BTreeSet, VecDeque},
     path::PathBuf,
     sync::Arc,
     time::{Duration, Instant},
 };
 use tokio::{runtime::Handle, task::JoinSet};
+
+// Includes the pinned startup root and each mount or retirement that owns a slot.
+const ROOT_LIMIT: usize = 64;
+// A swarm sharing a root still owns its own binding and preparation.
+const SWARM_LIMIT: usize = 1024;
 
 #[derive(Clone)]
 pub(crate) struct Port {
@@ -30,11 +35,13 @@ pub(crate) struct Port {
 struct Desired {
     revision: u64,
     path: Option<PathBuf>,
+    archived: bool,
 }
 enum Completion {
-    Prepared(Ulid, Desired, Result<PreparedRoot>),
+    Prepared(Ulid, Arc<Desired>, Result<PreparedRoot>),
     Mounted(String, PreparedRoot, Box<Result<MountedRoot>>),
     Closed,
+    Retired(String),
 }
 struct ScanCompletion {
     root: String,
@@ -57,7 +64,9 @@ struct ScanState {
     failure: Option<(Instant, Error)>,
 }
 struct Attempt {
-    desired: Desired,
+    desired: Arc<Desired>,
+    open: bool,
+    last_selected: Instant,
     failed: Option<Instant>,
 }
 /// Canonical roots are deduplicated after independent IO preparation; an
@@ -66,12 +75,16 @@ pub(crate) struct Router {
     pub cache: Workspaces,
     jobs: JoinSet<Completion>,
     attempts: BTreeMap<Ulid, Attempt>,
-    mounting: BTreeMap<String, Vec<(Ulid, Desired)>>,
+    mounting: BTreeMap<String, BTreeMap<Ulid, Arc<Desired>>>,
+    retiring: BTreeSet<String>,
+    registry_epoch: Option<u64>,
+    root_limit: usize,
+    swarm_limit: usize,
     runtime: Handle,
     scans: BTreeMap<String, ScanState>,
     scan_jobs: JoinSet<ScanCompletion>,
     scan_queue: VecDeque<String>,
-    ready_scans: std::collections::BTreeSet<String>,
+    ready_scans: BTreeSet<String>,
     ready_cursor: Option<String>,
     #[cfg(test)]
     pub scan_hook: Option<ScanHook>,
@@ -120,6 +133,10 @@ impl Router {
             jobs: JoinSet::new(),
             attempts: BTreeMap::new(),
             mounting: BTreeMap::new(),
+            retiring: BTreeSet::new(),
+            registry_epoch: None,
+            root_limit: ROOT_LIMIT,
+            swarm_limit: SWARM_LIMIT,
             runtime,
             scans: BTreeMap::new(),
             scan_jobs: JoinSet::new(),
@@ -139,10 +156,12 @@ impl Router {
             Some(record) => Desired {
                 revision: record.revision,
                 path: record.workdir.map(PathBuf::from),
+                archived: record.archived,
             },
             None => Desired {
                 revision: 0,
                 path: None,
+                archived: false,
             },
         })
     }
@@ -156,25 +175,18 @@ impl Router {
         if expected.is_some_and(|revision| revision != desired.revision) {
             return Err(Box::new(Error::Changed(swarm)));
         }
-        if desired.path.is_none() {
-            let binding = self.cache.bind_startup(swarm, desired.revision)?;
-            self.attempts.insert(
-                swarm,
-                Attempt {
-                    desired,
-                    failed: None,
-                },
-            );
-            return self.port(binding);
+        if desired.archived {
+            return Err(Box::new(Error::UnknownSwarm(swarm)));
         }
-        let current_attempt = self
-            .attempts
-            .get(&swarm)
-            .filter(|old| old.desired == desired);
-        if let Some(attempt) = current_attempt {
+        if let Some(attempt) = self.attempts.get_mut(&swarm)
+            && *attempt.desired == desired
+        {
+            attempt.last_selected = Instant::now();
             match self.cache.current(swarm) {
                 Ok(binding) if binding.revision == desired.revision => {
-                    return self.port(binding.clone());
+                    let binding = binding.clone();
+                    self.cache.touch(&binding.root_id);
+                    return self.port(binding);
                 }
                 Err(error)
                     if attempt
@@ -186,17 +198,47 @@ impl Router {
                 _ => (),
             }
         }
+        if desired.path.is_some() && self.jobs.len() >= self.swarm_limit + self.root_limit {
+            self.forget(swarm);
+            return Err(Box::new(Error::Pending(swarm)));
+        }
+        let open = match self.attempts.get(&swarm) {
+            Some(attempt) => attempt.open,
+            None => {
+                let open = registry.has_open_swarm_seats(swarm)?;
+                if self.attempts.len() == self.swarm_limit {
+                    let Some(idle) = self
+                        .attempts
+                        .iter()
+                        .filter(|(id, attempt)| !attempt.open && self.binding_idle(**id))
+                        .min_by_key(|(_, attempt)| attempt.last_selected)
+                        .map(|(id, _)| *id)
+                    else {
+                        return Err(Box::new(Error::Pending(swarm)));
+                    };
+                    self.forget(idle);
+                }
+                open
+            }
+        };
+        self.remove_waiter(swarm);
+        let desired = Arc::new(desired);
+        let attempt = Attempt {
+            desired: desired.clone(),
+            open,
+            last_selected: Instant::now(),
+            failed: None,
+        };
+        if desired.path.is_none() {
+            let binding = self.cache.bind_startup(swarm, desired.revision)?;
+            self.attempts.insert(swarm, attempt);
+            return self.port(binding);
+        }
         // Fence old snapshots immediately, before canonicalization or mount.
         self.cache
             .fail_binding(swarm, desired.revision, Error::Pending(swarm))?;
-        self.attempts.insert(
-            swarm,
-            Attempt {
-                desired: desired.clone(),
-                failed: None,
-            },
-        );
-        let prepared = desired.clone();
+        self.attempts.insert(swarm, attempt);
+        let prepared = desired;
         #[cfg(test)]
         let fail = std::mem::take(&mut self.fail_next_prepare);
         self.jobs.spawn_blocking_on(
@@ -245,7 +287,7 @@ impl Router {
                 || self
                     .attempts
                     .get(&binding.swarm)
-                    .is_none_or(|old| old.desired != desired)
+                    .is_none_or(|old| *old.desired != desired)
             {
                 return Err(Box::new(Error::Changed(binding.swarm)));
             }
@@ -253,12 +295,12 @@ impl Router {
         self.port(binding.clone())?;
         Ok(())
     }
-    fn wanted(&self, registry: &Registry, swarm: Ulid, desired: &Desired) -> bool {
-        Self::desired(registry, swarm).is_ok_and(|current| current == *desired)
+    fn wanted(&self, registry: &Registry, swarm: Ulid, desired: &Arc<Desired>) -> bool {
+        Self::desired(registry, swarm).is_ok_and(|current| current == **desired)
             && self
                 .attempts
                 .get(&swarm)
-                .is_some_and(|attempt| attempt.desired == *desired)
+                .is_some_and(|attempt| Arc::ptr_eq(&attempt.desired, desired))
     }
     fn failed(&mut self, swarm: Ulid, desired: &Desired, error: Error) {
         let _ = self.cache.fail_binding(swarm, desired.revision, error);
@@ -266,17 +308,166 @@ impl Router {
             attempt.failed = Some(Instant::now());
         }
     }
-    fn retire(&mut self, mounted: MountedRoot) {
+    fn retire(&mut self, mounted: MountedRoot, root: Option<String>) {
+        if let Some(root) = &root {
+            self.retiring.insert(root.clone());
+        }
         self.jobs.spawn_blocking_on(
             move || {
                 let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| mounted.close()));
-                Completion::Closed
+                root.map_or(Completion::Closed, Completion::Retired)
             },
             &self.runtime,
         );
     }
-    pub fn poll(&mut self, registry: &Registry) {
+    fn remove_waiter(&mut self, swarm: Ulid) {
+        for waiters in self.mounting.values_mut() {
+            waiters.remove(&swarm);
+        }
+    }
+    fn forget(&mut self, swarm: Ulid) -> Option<String> {
+        self.remove_waiter(swarm);
+        self.attempts.remove(&swarm);
+        self.cache.forget(swarm)
+    }
+    fn binding_idle(&self, swarm: Ulid) -> bool {
+        self.cache.current(swarm).map_or_else(
+            |_| self.attempts[&swarm].failed.is_some(),
+            |binding| self.root_idle(&binding.root_id),
+        )
+    }
+    fn root_idle(&self, root: &str) -> bool {
+        !self.scans.get(root).is_some_and(|scan| scan.running)
+            && self
+                .cache
+                .root(root)
+                .is_some_and(|workspace| !workspace.host.borrowed())
+    }
+    // Archived swarms and open-to-empty membership transitions both release
+    // bindings. Unarchived seatless swarms can open a root on demand.
+    fn reap_closed(&mut self, registry: &Registry) {
+        let epoch = registry.routing_epoch();
+        if self.registry_epoch == Some(epoch) || self.attempts.is_empty() {
+            return;
+        }
+        let Ok(memberships) = registry.open_swarm_memberships(self.attempts.keys().copied()) else {
+            // Retry a failed authoritative lookup on the next owner turn.
+            return;
+        };
+        for (swarm, open, archived) in memberships {
+            let attempt = self
+                .attempts
+                .get_mut(&swarm)
+                .expect("cached swarm membership");
+            if archived || (attempt.open && !open) {
+                if let Some(root) = self.forget(swarm) {
+                    self.cache.retire_if_unbound(&root);
+                }
+            } else {
+                attempt.open = open;
+            }
+        }
+        self.registry_epoch = Some(epoch);
+    }
+    pub(crate) fn release_workspace(&mut self, checkout: &std::path::Path) {
+        let released: Vec<_> = self
+            .attempts
+            .iter()
+            .filter(|(_, attempt)| {
+                attempt
+                    .desired
+                    .path
+                    .as_deref()
+                    .is_some_and(|path| path.starts_with(checkout))
+            })
+            .map(|(swarm, _)| *swarm)
+            .collect();
+        for swarm in released {
+            if let Some(root) = self.forget(swarm) {
+                self.cache.retire_if_unbound(&root);
+            }
+        }
+        let roots: Vec<_> = self
+            .cache
+            .roots()
+            .filter(|workspace| workspace.root().starts_with(checkout))
+            .map(|workspace| workspace.root_id().to_owned())
+            .collect();
+        // A sibling alias into the released checkout loses its root as well.
+        for root in roots {
+            self.forget_root_bindings(&root);
+            self.cache.retire_if_unbound(&root);
+        }
+    }
+    fn forget_root_bindings(&mut self, root: &str) {
+        let swarms: Vec<_> = self
+            .attempts
+            .keys()
+            .copied()
+            .filter(|swarm| {
+                self.cache
+                    .current(*swarm)
+                    .is_ok_and(|binding| binding.root_id == root)
+            })
+            .collect();
+        for swarm in swarms {
+            self.forget(swarm);
+        }
+    }
+    fn retire_root(&mut self, root: String) {
+        let workspace = self
+            .cache
+            .remove_root(&root)
+            .expect("retiring mounted root");
+        self.scans.remove(&root);
+        self.scan_queue.retain(|queued| queued != &root);
+        self.ready_scans.remove(&root);
+        self.retiring.insert(root.clone());
+        self.jobs.spawn_blocking_on(
+            move || {
+                let _ =
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| workspace.retire()));
+                Completion::Retired(root)
+            },
+            &self.runtime,
+        );
+    }
+    fn evict_idle_root(&mut self) -> Option<String> {
+        let protected: BTreeSet<_> = self
+            .attempts
+            .iter()
+            .filter(|(_, attempt)| attempt.open)
+            .filter_map(|(swarm, _)| self.cache.current(*swarm).ok())
+            .map(|binding| binding.root_id.as_str())
+            .collect();
+        let idle = self
+            .cache
+            .roots()
+            .filter(|workspace| {
+                let root = workspace.root_id();
+                root != self.cache.startup().root_id()
+                    && !protected.contains(root)
+                    && self.root_idle(root)
+            })
+            .min_by_key(|workspace| workspace.last_selected)
+            .map(|workspace| workspace.root_id().to_owned());
+        let root = idle?;
+        self.forget_root_bindings(&root);
+        self.retire_root(root.clone());
+        Some(root)
+    }
+    pub fn poll(&mut self, registry: &Registry) -> Vec<String> {
+        self.reap_closed(registry);
         self.poll_scans();
+        let mut retired: Vec<_> = self
+            .cache
+            .roots()
+            .filter(|workspace| workspace.retire_when_idle && self.root_idle(workspace.root_id()))
+            .map(|workspace| workspace.root_id().to_owned())
+            .collect();
+        for root in &retired {
+            self.retire_root(root.clone());
+        }
         self.start_scans(Instant::now());
         while let Some(joined) = self.jobs.try_join_next() {
             let done = match joined {
@@ -289,6 +480,9 @@ impl Router {
             };
             match done {
                 Completion::Closed => (),
+                Completion::Retired(root) => {
+                    self.retiring.remove(&root);
+                }
                 Completion::Prepared(swarm, desired, result) => {
                     if !self.wanted(registry, swarm, &desired) {
                         continue;
@@ -310,10 +504,23 @@ impl Router {
                     }
                     let id = prepared.root_id().to_owned();
                     if let Some(waiters) = self.mounting.get_mut(&id) {
-                        waiters.push((swarm, desired));
+                        waiters.insert(swarm, desired);
                         continue;
                     }
-                    self.mounting.insert(id.clone(), vec![(swarm, desired)]);
+                    if self.retiring.contains(&id) {
+                        self.failed(swarm, &desired, Error::Pending(swarm));
+                        continue;
+                    }
+                    if self.cache.roots().count() + self.mounting.len() + self.retiring.len()
+                        >= self.root_limit
+                    {
+                        // Keep retiring roots charged until their watches/providers drop.
+                        retired.extend(self.evict_idle_root());
+                        self.failed(swarm, &desired, Error::Pending(swarm));
+                        continue;
+                    }
+                    self.mounting
+                        .insert(id.clone(), BTreeMap::from([(swarm, desired)]));
                     let job = self.cache.mount(prepared.clone());
                     self.jobs.spawn_blocking_on(
                         move || {
@@ -338,12 +545,12 @@ impl Router {
                         Ok(mounted) => {
                             let mut waiters = waiters.into_iter();
                             let Some((swarm, desired)) = waiters.next() else {
-                                self.retire(mounted);
+                                self.retire(mounted, Some(id));
                                 continue;
                             };
                             let installed = self.cache.insert(swarm, desired.revision, mounted);
                             if let Some(retired) = installed.retired {
-                                self.retire(retired);
+                                self.retire(retired, None);
                             }
                             if let Err(error) = installed.binding {
                                 self.failed(swarm, &desired, error);
@@ -360,6 +567,7 @@ impl Router {
                 }
             }
         }
+        retired
     }
     /// Reconcile one root on IO. The owner excludes effects/provenance while
     /// its mirror/outbox can change, rather than discarding a raced DB commit.
@@ -521,7 +729,9 @@ impl Router {
         Ok(())
     }
     pub fn retry_publication(&mut self, root: String) {
-        self.ready_scans.insert(root);
+        if self.cache.root(&root).is_some() {
+            self.ready_scans.insert(root);
+        }
     }
     pub fn take_ready_scans(&mut self) -> Vec<String> {
         use std::ops::Bound::{Excluded, Unbounded};
@@ -619,6 +829,9 @@ impl Router {
         root: &str,
     ) -> store::Result<Option<bool>> {
         let desired = Self::desired(registry, swarm)?;
+        if desired.archived {
+            return Ok(Some(false));
+        }
         // Legacy/default metadata is itself a trusted startup selection. Event
         // routing does not require an unrelated document read to have run first.
         if desired.path.is_none() {
@@ -627,7 +840,7 @@ impl Router {
         if !self
             .attempts
             .get(&swarm)
-            .is_some_and(|attempt| attempt.desired == desired)
+            .is_some_and(|attempt| *attempt.desired == desired)
         {
             return Ok(None);
         }
@@ -673,3 +886,6 @@ impl Router {
         Ok(selected)
     }
 }
+
+#[cfg(test)]
+mod workspaces_retention_tests;

@@ -20,8 +20,9 @@ mod hook_budget;
 mod managed_workspace;
 mod transport_launch;
 mod workspace_ready;
+mod workspace_retention;
 
-pub fn families() -> [fn(bool) -> Model; 21] {
+pub fn families() -> [fn(bool) -> Model; 22] {
     [
         plugin_activation,
         plugin_connection,
@@ -32,6 +33,7 @@ pub fn families() -> [fn(bool) -> Model; 21] {
         transport_launch::plugin_transport_launch,
         transport_launch::plugin_transport_progress,
         workspace_ready::workspace_ready,
+        workspace_retention::workspace_retention,
         crate::mcp::canvas::store_migration_model,
         crate::mcp::live_models::live_catalogue,
         crate::mcp::live_models::delegation_pointer,

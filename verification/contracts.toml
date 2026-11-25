@@ -215,6 +215,16 @@ property = "PendingWriteEventuallyAdmitted under continuing internal output, aft
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "WorkspaceRetention"
+title = "Knowledge workspace mount reservations and retirement"
+models = ["WorkspaceRetention", "BrokenWorkspaceRetention"]
+sources = ["crates/bbt-mux/src/knowledge/workspaces.rs", "crates/bbt-mux/src/knowledge/routing.rs", "crates/bbt-mux/src/logic/implementation_workspaces.rs", "crates/bbt-mux/src/models/workspace_retention.rs"]
+implementation_tests = ["crates/bbt-mux/src/knowledge/routing/workspaces_retention_tests.rs", "crates/bbt-mux/src/models/workspace_retention.rs"]
+assumptions = "One pinned startup root and one discretionary slot contested by two identities. Owner admissions, binding removal after closure or archive and retirement decisions are atomic. IO completions interleave and each reservation gets one completion. No fairness claim. Shared roots, binding counts, LRU ordering, watcher/provider disposal and swarms with seats are implementation witnesses."
+property = "Mounted, mounting and retiring roots share the same capacity. An abandoned mount remains charged until its discarded result finishes disposal. Removing the reservation guard allows two competing roots to occupy the one slot."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "WorkspaceFence"
 title = "Workspace reads and authority"
 models = ["WorkspaceFence", "BrokenWorkspaceFence"]
