@@ -34,6 +34,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_SHA256 = "5e3d8a602eeaa1da5cb97d0f6af0b4f331b216a02255d3dff990be84c30d6a30"
 LOCK_SHA256 = "31113dd0968ace9daf43b1e610b53a3fc9b586e7ff9a707136ec25ab5e9f2c31"
 # The staged producer pin and this exact tuple are reviewed together.
+# The current tuple was approved in task 01M8AS14QV5G47YBBF8FQ0W9SG on 2026-11-26.
 NATIVE_BUILD_PIN = "crates/bbt-mux/src/logic/dream-c1-worker-build.txt"
 APPROVED_NATIVE_BUILD = tuple((ROOT / NATIVE_BUILD_PIN).read_text().split())
 BOOTSTRAP_VECTORS_SHA256 = "de919016ac6e5a464de60c86b2bf3bf6b54edc08e29c05f89688a5c80da37307"
