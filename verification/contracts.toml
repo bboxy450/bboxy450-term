@@ -2012,11 +2012,11 @@ name = "DreamReadPreparePurpose"
 title = "One gated spawner binds the purpose to the wire"
 models = ["DreamReadPreparePurpose", "BrokenDreamReadPreparePurpose"]
 sources = ["crates/bbt-mux/src/models.rs", "crates/bbt-mux/src/logic/dream_c1.rs", "crates/bboxy450-harness-wake-up/src/dream_bootstrap.rs", "crates/bboxy450-harness-wake-up/src/dream_c1.rs"]
-implementation_tests = ["crates/bbt-mux/src/models.rs", "crates/bboxy450-harness-wake-up/tests/dream_c1.rs"]
+implementation_tests = ["crates/bbt-mux/src/models.rs", "crates/bboxy450-harness-wake-up/tests/dream_read.rs"]
 assumptions = "One selected immutable producer pin, one Child, two purposes and probe or real job. Initially no authority, effect or Start. Provisioning, paid permit, Hello qualification, Start and retirement are atomic abstractions. C1BootstrapAdmission supplies the detailed debt, revocation, retained unknown effect and actual reap contracts. No OS or dependency fairness is assumed. Exact source/compiler/worker matching, argv, wire bytes and process observations need implementation witnesses."
 property = "OnlyPurposeMatchedHello and ProbeCannotStart hold for both wire purposes. The broken control accepts either protocol's Hello after permit and must fail safety. The private process fixture observes the read-purpose argv and permit, producer Start bytes, cross-purpose/no-probe-Start refusals and owned reap."
 checks = ["make test-formal", "make test"]
-focused_checks = ["make test-dream-c1", "make test-dream-mcp"]
+focused_checks = ["make test-dream-mcp"]
 
 [[contract]]
 name = "DreamReadFeedback"

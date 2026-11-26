@@ -12,13 +12,19 @@
     clippy::disallowed_methods,
     reason = "private producer-corpus codec fixtures"
 )]
-use bboxy450_harness_wake_up::dream_read::{self as read, wire as w};
+use bboxy450_harness_wake_up::{
+    dream_bootstrap as bootstrap,
+    dream_c1::{PreparedStart, Worker, wire::Code as C1Code},
+    dream_read::{self as read, wire as w},
+};
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use std::{
     io::Write,
+    os::unix::fs::PermissionsExt,
     path::PathBuf,
     process::{Command, Stdio},
+    time::{Duration, Instant},
 };
 
 fn fixtures() -> PathBuf {
@@ -33,6 +39,151 @@ fn fixtures() -> PathBuf {
 fn bytes(name: &str) -> Vec<u8> {
     std::fs::read(fixtures().join(name))
         .unwrap_or_else(|error| panic!("missing producer read fixture {name}: {error}"))
+}
+
+#[test]
+fn dream_read_prepare_uses_the_owned_spawner_and_rejects_cross_purpose_start() {
+    let read_hello = String::from_utf8(bytes("valid/hello.json")).unwrap();
+    let inspect_hello = std::fs::read_to_string(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../bboxy450-harness/tests/fixtures/dream-c1/valid/hello.json"),
+    )
+    .unwrap();
+    let start_bytes = bytes("valid/start.json");
+    let w::WorkerIn::Start(start) = read::decode(&start_bytes).unwrap() else {
+        panic!("producer fixture must be Start");
+    };
+    let read_start = PreparedStart::read(&start).unwrap();
+    assert_eq!(
+        read_start.as_bytes().strip_suffix(b"\n").unwrap(),
+        start_bytes
+    );
+    let inspect_start = PreparedStart::from_parts(
+        &start.run_id.0,
+        &start.nonce.0,
+        &"0".repeat(64),
+        start.timeout_ms,
+        start.activity_revision.0,
+        start.foreground,
+    )
+    .unwrap();
+
+    for (hello, frame, probe, may_start) in [
+        (&read_hello, &read_start, false, true),
+        (&read_hello, &inspect_start, false, false),
+        (&read_hello, &read_start, true, false),
+        (&inspect_hello, &read_start, false, false),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let job = root.path().canonicalize().unwrap().join(&start.run_id.0);
+        std::fs::create_dir(&job).unwrap();
+        std::fs::set_permissions(&job, std::fs::Permissions::from_mode(0o700)).unwrap();
+        std::fs::create_dir(job.join("tmp")).unwrap();
+        let binary = root.path().canonicalize().unwrap().join("worker.py");
+        // Adapted from this crate's tests/dream_c1.rs private transport fixture.
+        std::fs::write(
+            &binary,
+            format!(
+                r#"#!/usr/bin/python3
+import os, pathlib, sys
+gate = int(os.environ['BBOXY_DREAM_BOOTSTRAP'].split(':')[1])
+permit = os.read(gate, 128)
+os.close(gate)
+assert len(permit) == 128 and permit[8] == 2
+assert sys.argv[1:4] == ['dream', 'prepare-read', '--job-dir']
+assert os.environ['LANG'] == 'C.UTF-8'
+assert os.environ['TMPDIR'] == str(pathlib.Path(sys.argv[4]) / 'tmp')
+assert not any(k in ('HOME', 'PATH') or (k != 'BBOXY_DREAM_BOOTSTRAP' and k.startswith(('BBOXY_', 'OPENAI_', 'ANTHROPIC_', 'CODEX_', 'CLAUDE_'))) for k in os.environ)
+print({hello:?}, flush=True)
+pathlib.Path('captured-input').write_bytes(sys.stdin.buffer.read())
+"#
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let frozen = bootstrap::Frozen {
+            purpose: bootstrap::Purpose::ReadPrepare,
+            ..bootstrap::Frozen::inspect(
+                probe,
+                ulid::Ulid::new().to_bytes(),
+                bootstrap::ulid(start.run_id.0.as_bytes()).unwrap(),
+                bootstrap::ulid(start.nonce.0.as_bytes()).unwrap(),
+                [0; 32],
+                1,
+            )
+        };
+        let mut command = Worker::prepare_command(
+            &binary,
+            &job,
+            Worker::prepare_buffers().unwrap(),
+            Worker::prepare_pipe().unwrap(),
+            Worker::prepare_pipe().unwrap(),
+            Worker::prepare_pipe().unwrap(),
+            bootstrap::Gate::prepare(frozen).unwrap(),
+        )
+        .unwrap();
+        command.configure_input().unwrap();
+        command.configure_output().unwrap();
+        command.configure_stderr().unwrap();
+        let child = command.take_command().unwrap().spawn().unwrap();
+        let returned = Instant::now();
+        let (mut worker, unused) = command.attach_child(child);
+        drop(unused);
+        worker
+            .bootstrap_spawn_returned(returned, returned + Duration::from_secs(30))
+            .unwrap();
+        worker.bootstrap_grant().unwrap();
+        let until = worker.bootstrap_deadline().unwrap();
+        let qualified = loop {
+            assert!(Instant::now() < until);
+            match worker.read_hello_step() {
+                Ok(false) => worker.wait_io(Duration::from_millis(1)),
+                Ok(true) => break true,
+                Err(C1Code::ProtocolError | C1Code::VersionMismatch) => break false,
+                Err(code) => panic!("private read worker Hello: {code:?}"),
+            }
+        };
+        assert_eq!(qualified, hello == &read_hello);
+        assert_eq!(worker.bootstrap_observation().qualified_hello, qualified);
+        if may_start {
+            worker.send_prepared_start(frame).unwrap();
+        } else {
+            assert_eq!(
+                worker.send_prepared_start(frame),
+                Err(C1Code::ProtocolError)
+            );
+        }
+        assert_eq!(worker.start_write_observation().attempted, may_start);
+        worker.close_input();
+        let pid = worker.pid();
+        let reap_by = Instant::now() + Duration::from_secs(2);
+        let status = loop {
+            if let Some(status) = worker.try_wait().unwrap() {
+                break status;
+            }
+            assert!(Instant::now() < reap_by);
+            std::thread::sleep(Duration::from_millis(1));
+        };
+        assert!(status.success());
+        let mut status = 0;
+        // SAFETY: queries only this fixture's exact child PID, without signaling.
+        assert_eq!(
+            unsafe { libc::waitpid(pid as i32, &mut status, libc::WNOHANG) },
+            -1
+        );
+        assert_eq!(
+            std::io::Error::last_os_error().raw_os_error(),
+            Some(libc::ECHILD)
+        );
+        assert_eq!(
+            std::fs::read(job.join("captured-input")).unwrap(),
+            if may_start {
+                read_start.as_bytes()
+            } else {
+                &[]
+            },
+        );
+    }
 }
 
 fn typed<T: Serialize + DeserializeOwned>(bytes: &[u8]) -> Result<Vec<u8>, w::Code> {
