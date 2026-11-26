@@ -2426,9 +2426,17 @@ test-real-sessions: init-submodules
 # manifest pins crates.io releases, and on 2026-11-18 a bbt-doc change that
 # passed against bboxy450-doc 0.2.0 panicked every code card in the app.
 # Nothing is tested against a published release.
+# Both Dream suites use the producer's frozen read fixture after the term
+# gate admits that exact ordinary worker. The test build uses its own image.
 .PHONY: test-harness-source
 test-harness-source: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
+	worker='$(abspath $(TARGET_DIR))/dream-read-native-profile/worker'; \
+	env -u CARGO_PROFILE_DEV_DEBUG_ASSERTIONS -u CARGO_PROFILE_TEST_DEBUG_ASSERTIONS \
+	  $(MAKE) -C crates/bboxy450-harness prepare-dream-read-worker TARGET_DIR='$(abspath $(TARGET_DIR))'; \
+	env -u CARGO_PROFILE_DEV_DEBUG_ASSERTIONS -u CARGO_PROFILE_TEST_DEBUG_ASSERTIONS \
+	  $(MAKE) admit-dream-c1-file TARGET_DIR='$(abspath $(TARGET_DIR))' DREAM_C1_ADMIT_FILE="$$worker"; \
+	DREAM_C1_RUNNER="$$worker" DREAM_READ_RUNNER="$$worker" \
 	sh scripts/quarantine-test.sh --locked -p bboxy450-harness --features acp-agent,acp,embedded,test-fixtures --lib --tests --target-dir '$(TARGET_DIR)' -E 'not test(dream::)'
 
 .PHONY: test-harness-native format-harness-embed
