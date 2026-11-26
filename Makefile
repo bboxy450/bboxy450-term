@@ -443,7 +443,7 @@ lock-online:
 .PHONY: bump-harness
 bump-harness:
 	@set -eu; . ./scripts/cache-env.sh; python3 -I scripts/bump-harness.py '$(REV)'; \
-	BBOXY_DREAM_BUILD_ENTRY=bump-harness CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --stage-worker-build
+	BBOXY_DREAM_BUILD_ENTRY=bump-harness CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(TARGET_DIR)' --stage-worker-build
 
 # The harness builds alone: built with the app in one invocation, Cargo unifies
 # its ACP dependency's serde_json/preserve_order into the app, whose record
@@ -2429,15 +2429,17 @@ test-real-sessions: init-submodules
 # Both Dream suites use the producer's frozen read fixture after the term
 # gate admits that exact ordinary worker. Run those process measurements in
 # the producer's release test profile and CI timed group, after ordinary tests.
+# Leave their parent unclamped so the existing per-test QoS policy can apply.
 .PHONY: test-harness-source
+test-harness-source: SHELL = $(if $(filter off,$(BBOXY_QOS)),/bin/sh,/bin/sh scripts/qos.sh default)
 test-harness-source: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	sh scripts/quarantine-test.sh --locked -p bboxy450-harness --features acp-agent,acp,embedded,test-fixtures --lib --tests --target-dir '$(TARGET_DIR)' -E 'not test(dream::) & not (binary(=dream_c1) | binary(=dream_read))'; \
-	worker='$(abspath $(TARGET_DIR))/dream-read-native-profile/worker'; \
+	target=$$(cd '$(TARGET_DIR)' && pwd -P); worker="$$target/dream-read-native-profile/worker"; \
 	env -u CARGO_PROFILE_DEV_DEBUG_ASSERTIONS -u CARGO_PROFILE_TEST_DEBUG_ASSERTIONS \
-	  $(MAKE) -C crates/bboxy450-harness prepare-dream-read-worker TARGET_DIR='$(abspath $(TARGET_DIR))'; \
+	  $(MAKE) -C crates/bboxy450-harness prepare-dream-read-worker TARGET_DIR="$$target"; \
 	env -u CARGO_PROFILE_DEV_DEBUG_ASSERTIONS -u CARGO_PROFILE_TEST_DEBUG_ASSERTIONS \
-	  $(MAKE) admit-dream-c1-file TARGET_DIR='$(abspath $(TARGET_DIR))' DREAM_C1_ADMIT_FILE="$$worker"; \
+	  $(MAKE) admit-dream-c1-file TARGET_DIR="$$target" DREAM_C1_ADMIT_FILE="$$worker"; \
 	DREAM_C1_RUNNER="$$worker" DREAM_READ_RUNNER="$$worker" \
 	NEXTEST_PROFILE=gate NEXTEST_TEST_THREADS="$${NEXTEST_TEST_THREADS:-2}" \
 	sh scripts/quarantine-test.sh --locked --release -p bboxy450-harness --features test-fixtures --test dream_c1 --test dream_read --target-dir '$(TARGET_DIR)' -E 'not test(dream::)' --no-tests=fail
@@ -2995,7 +2997,7 @@ prepare-dream-c1-worker: init-submodules
 .PHONY: admit-dream-c1-file
 admit-dream-c1-file: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
-	BBOXY_DREAM_BUILD_ENTRY=admit-dream-c1-file CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --admit-file '$(DREAM_C1_ADMIT_FILE)'
+	BBOXY_DREAM_BUILD_ENTRY=admit-dream-c1-file CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(TARGET_DIR)' --admit-file '$(DREAM_C1_ADMIT_FILE)'
 
 prepare-dream-c1-seat: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
