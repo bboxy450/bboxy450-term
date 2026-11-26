@@ -1,29 +1,29 @@
 ---
-type: spec
-title: 'Code query: one MCP server for reading and searching code'
-status: draft
-id: 01M7B58R972307J7YT0GG738VY
-created: 2026-11-13T19:13:37.126Z
-number: 1794292861627504
-intent: Agents read and search code through one deterministic MCP server, reachable as ordinary tools and from python_execute, that returns bounded range reads and searches instead of ad-hoc rg, grep and sed.
-updated: 2026-11-16T19:44:25.861Z
-created_by: seat:01M79HGAW321GYNK8468FYN4K9
-updated_by: seat:01M79HGAW321GYNK8468FYN4K9
 authorship:
-  signer: seat:01M79HGAW321GYNK8468FYN4K9
   kind: seat
-  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
   process_generation: '1'
+  public_key: XLMAqZTUlsEIvVxlAso8YDW5Ud3ShPEW3Kz+hD0wm1c=
+  signer: seat:01M89Z74HN4GSHEPS6TC0H6FDX
+created: 2026-11-13T19:13:37.126Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+id: 01M7B58R972307J7YT0GG738VY
+intent: Agents read and search code through one deterministic MCP server, reachable as ordinary tools and from python_execute, that returns bounded range reads and searches instead of ad-hoc rg, grep and sed.
+number: 1794292861627504
+status: draft
+title: 'Code query: one MCP server for reading and searching code'
+type: spec
+updated: 2026-11-26T20:39:37.333Z
+updated_by: seat:01M89Z74HN4GSHEPS6TC0H6FDX
 provenance:
-  digest: sha256:5c76063c51c495422e57eb54af241e6b2eb21eb8507faf44b442839e92379ece
-  frontmatter_digest: sha256:618b3dd84ef9a1e306552476e2ca7194fbbe1113475c8a26f67988c83ceb167a
-  signer: seat:01M79HGAW321GYNK8468FYN4K9
-  sig: UrfZ8IvPwyGAajQo0oCFQPQRuJ/PqNk2WHM1Xj5yWnqo/wwG1KrjdUNlhKwlXCnMJRnr7tDG+1JXDBzOZnL1CQ==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151716
+  digest: sha256:b6a8af01c98cc2c1642c69bb758059d5a4a59425d355103bc657a8c7ef0b210c
+  frontmatter_digest: sha256:f6eb8e469aec196f9b77edd95719675258c70515ff5c5297e6463195cc564f31
+  signer: seat:01M89Z74HN4GSHEPS6TC0H6FDX
+  sig: FSO3497dSCtdDm9z168zyaTvIM3ZhSkpdq0c7ZCn0e7G4hX0JFtEP2TC5qdzJXiS43mKGWJ4/zg1OXexatiuDQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/2273
   event:
-    id: 01M7JY7BBRNZWTX4198BX44BZR
-    sequence: 151716
-    hash: 70beb234ea07c315e26ab023c937f2665b1d8c22e087ac1ef3e9768fcc403219
+    id: 01M8CSBKRTQGPZWYNNXEPB3G83
+    sequence: 2273
+    hash: 8c6ec862a871d9f600e2389fc1873bb227ee0e5621e0ad74f7e10f641fdef169
 ---
 # Code query: one MCP server for reading and searching code
 
@@ -65,14 +65,14 @@ Every tool takes a batch, bounds its own output and never fails the whole call f
 | Tool | Input | Output |
 |---|---|---|
 | `read` | `requests[]` of `{path, start?, end?, around?, rev?}` | Numbered lines, at most 200 per request, clipped at 240 columns; the file's line count; `next_start` when cut. `around: N` returns the whole enclosing item at line N. `rev` reads the file at a git revision. |
-| `search` | `patterns[]`, `paths[]`, `glob?`, `context?`, `limit?` (default 50), `mode: lines \| files \| count`, `fixed?`, `rev?` | Hits as `{path, line, text, item}` where `item` is the enclosing function, impl or type; the total count and a count per pattern; missing paths listed under `missing`, not fatal. |
+| `search` | `patterns[]`, `paths[]`, `glob?`, `context?`, `limit?` (default 50), `mode: lines \| files \| count`, `fixed?`, `ast?`, `rev?` | Hits as `{path, line, text, item}` where `item` is the enclosing function, impl or type; the total count and a count per pattern; missing paths listed under `missing`, not fatal. |
 | `symbol` | `names[]`, `kind?`, `paths?`, `refs?` | Definitions as `{path, start, end, kind, signature}`; with `refs`, a capped list of uses with their enclosing items. |
 | `files` | `paths[]` or `glob`, `depth?` | Paths with line counts, capped at 200. |
 | `outline` | `paths[]` | Each file's items with kind, name, signature and line range. |
 
 Rules:
 
-- Patterns are regular expressions in the Rust `regex` syntax; `fixed: true` takes them literally. Alternation is spelled `|`; a pattern containing `\|` is refused with a message that says so, because that grep spelling is the commonest silent mismatch.
+- Patterns are regular expressions in the Rust `regex` syntax; `fixed: true` takes them literally. `ast: true` takes them as ast-grep code patterns (`Command::new($P)`), matched on the syntax tree: ripgrep keeps the files that contain every word of the pattern, ast-grep matches in those, and a hit is the line a match starts on (12f6db073). Alternation is spelled `|`; a pattern containing `\|` is refused with a message that says so, because that grep spelling is the commonest silent mismatch.
 - Paths are relative to the workspace root. A path outside it is refused.
 - `.gitignore` is honoured. Binary files are skipped.
 - Results are ordered by path, then line. The same call on the same tree returns the same bytes.
