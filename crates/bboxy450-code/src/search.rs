@@ -10,9 +10,10 @@ use crate::{
 };
 use serde::Deserialize;
 use serde_json::{Value, json};
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::{self, BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, ExitStatus, Stdio};
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -34,6 +35,8 @@ struct Search {
     mode: Mode,
     #[serde(default)]
     fixed: bool,
+    #[serde(default)]
+    ast: bool,
 }
 
 #[derive(Deserialize, Default, PartialEq)]
@@ -82,35 +85,85 @@ struct Stats {
     matched_lines: usize,
 }
 
-fn rg_binary() -> Result<PathBuf, String> {
-    if let Some(path) = std::env::var_os("BBOXY_CODE_RG").map(PathBuf::from) {
+/// A search tool's executable: the absolute path in `variable`, else one bundled beside
+/// this executable, else the platform's package-manager path.
+fn binary(name: &str, variable: &str) -> Result<PathBuf, String> {
+    if let Some(path) = std::env::var_os(variable).map(PathBuf::from) {
         return path
             .is_absolute()
             .then_some(path)
-            .ok_or_else(|| "BBOXY_CODE_RG must be an absolute path to ripgrep".into());
+            .ok_or_else(|| format!("{variable} must be an absolute path to {name}"));
     }
     if let Ok(exe) = std::env::current_exe() {
-        let sibling = exe.with_file_name(format!("rg{}", std::env::consts::EXE_SUFFIX));
+        let sibling = exe.with_file_name(format!("{name}{}", std::env::consts::EXE_SUFFIX));
         if sibling.is_file() {
             return Ok(sibling);
         }
     }
-    let path = if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
-        "/opt/homebrew/bin/rg"
+    let folder = if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        "/opt/homebrew/bin"
     } else if cfg!(target_os = "macos") {
-        "/usr/local/bin/rg"
+        "/usr/local/bin"
     } else if cfg!(unix) {
-        "/usr/bin/rg"
+        "/usr/bin"
     } else {
-        return Err("ripgrep is unavailable; set BBOXY_CODE_RG to its absolute path".into());
+        return Err(format!(
+            "{name} is unavailable; set {variable} to its absolute path"
+        ));
     };
-    Ok(PathBuf::from(path))
+    Ok(Path::new(folder).join(name))
+}
+
+/// Runs a search tool to its end: each stdout line goes to `line`, and the exit status
+/// returns with the first 800 bytes of stderr.
+fn lines_of(
+    mut command: Command,
+    tool: &str,
+    mut line: impl FnMut(&str) -> Result<(), String>,
+) -> Result<(ExitStatus, String), String> {
+    let mut child = command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| {
+            format!(
+                "{tool} at {} is unavailable: {e}",
+                command.get_program().to_string_lossy()
+            )
+        })?;
+    let stdout = child.stdout.take().unwrap();
+    let mut stderr = child.stderr.take().unwrap();
+    std::thread::scope(|scope| {
+        let errors = scope.spawn(move || {
+            let mut head = Vec::new();
+            (&mut stderr).take(800).read_to_end(&mut head)?;
+            io::copy(&mut stderr, &mut io::sink())?;
+            Ok::<_, io::Error>(head)
+        });
+        let result = (|| -> Result<(), String> {
+            for text in BufReader::new(stdout).lines() {
+                line(&text.map_err(|e| format!("read {tool} output: {e}"))?)?;
+            }
+            Ok(())
+        })();
+        if result.is_err() {
+            let _ = child.kill();
+        }
+        let status = child.wait().map_err(|e| format!("wait for {tool}: {e}"))?;
+        let errors = errors
+            .join()
+            .unwrap()
+            .map_err(|e| format!("read {tool} errors: {e}"))?;
+        result?;
+        Ok((status, String::from_utf8_lossy(&errors).trim().to_owned()))
+    })
 }
 
 fn rg(
     program: &Path,
     root: &Root,
-    args: &Search,
+    flags: &[&str],
     patterns: &[String],
     files: &[PathBuf],
     context: (usize, usize),
@@ -132,13 +185,8 @@ fn rg(
         .arg("--before-context")
         .arg(context.0.to_string())
         .arg("--after-context")
-        .arg(context.1.to_string());
-    if args.fixed {
-        command.arg("--fixed-strings");
-    }
-    if args.ignore_case {
-        command.arg("--ignore-case");
-    }
+        .arg(context.1.to_string())
+        .args(flags);
     for pattern in patterns {
         command.arg("-e").arg(pattern);
     }
@@ -149,53 +197,176 @@ fn rg(
     } else {
         command.args(files);
     }
-    let mut child = command
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("ripgrep at {} is unavailable: {e}", program.display()))?;
-    let stdout = child.stdout.take().unwrap();
-    let mut stderr = child.stderr.take().unwrap();
-    std::thread::scope(|scope| {
-        let errors = scope.spawn(move || {
-            let mut head = Vec::new();
-            (&mut stderr).take(800).read_to_end(&mut head)?;
-            io::copy(&mut stderr, &mut io::sink())?;
-            Ok::<_, io::Error>(head)
-        });
-        let result = (|| -> Result<(), String> {
-            for line in BufReader::new(stdout).lines() {
-                let line = line.map_err(|e| format!("read ripgrep output: {e}"))?;
-                event(
-                    serde_json::from_str(&line)
-                        .map_err(|e| format!("invalid ripgrep JSON: {e}"))?,
-                );
+    let (status, detail) = lines_of(command, "ripgrep", |line| {
+        event(serde_json::from_str(line).map_err(|e| format!("invalid ripgrep JSON: {e}"))?);
+        Ok(())
+    })?;
+    match status.code() {
+        Some(0 | 1) => Ok(()),
+        _ => {
+            let kind = if detail.contains("regex parse error") {
+                "invalid pattern"
+            } else {
+                "ripgrep search failed"
+            };
+            Err(format!("{kind} ({status}): {detail}"))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+struct AstMatch {
+    file: PathBuf,
+    range: AstRange,
+    lines: String,
+}
+#[derive(Deserialize)]
+struct AstRange {
+    start: AstPoint,
+}
+#[derive(Deserialize)]
+struct AstPoint {
+    line: usize,
+}
+
+/// The words a structural pattern spells out, longest first. A file that matches the
+/// pattern contains each of them verbatim; `$NAME` and `$$$ARGS` are metavariables.
+fn literals(pattern: &str) -> Vec<String> {
+    let mut words = BTreeSet::new();
+    let mut previous = ' ';
+    let mut word = String::new();
+    let mut meta = false;
+    for c in pattern.chars().chain([' ']) {
+        if c.is_alphanumeric() || c == '_' {
+            if word.is_empty() {
+                meta = previous == '$';
+            }
+            word.push(c);
+        } else if !word.is_empty() {
+            if !meta && word.len() > 1 {
+                words.insert(std::mem::take(&mut word));
+            }
+            word.clear();
+        }
+        previous = c;
+    }
+    let mut words: Vec<_> = words.into_iter().collect();
+    words.sort_by_key(|word| std::cmp::Reverse(word.len()));
+    words.truncate(3);
+    words
+}
+
+/// Structural search. ripgrep keeps the files that contain every word of a pattern,
+/// ast-grep matches the pattern's syntax tree in those, and each match replays as a
+/// ripgrep hit on the line it starts on, so text and structure share one listing.
+fn ast(
+    programs: (&Path, &Path),
+    root: &Root,
+    patterns: &[String],
+    files: &[PathBuf],
+    context: (usize, usize),
+    counts: &mut [usize],
+    mut event: impl FnMut(Event),
+) -> Result<(), String> {
+    let (rg_program, ast_grep) = programs;
+    let mut hits: BTreeMap<PathBuf, BTreeMap<usize, String>> = BTreeMap::new();
+    for (pattern, count) in patterns.iter().zip(counts) {
+        let mut candidates = files.to_vec();
+        for word in literals(pattern) {
+            if candidates.is_empty() {
+                break;
+            }
+            let mut kept = vec![];
+            let mut open = None;
+            rg(
+                rg_program,
+                root,
+                &["--fixed-strings", "--max-count", "1"],
+                &[word],
+                &candidates,
+                (0, 0),
+                |event| match event {
+                    Event::Begin { path } => open = path.text,
+                    Event::End {
+                        binary_offset: None,
+                        stats,
+                    } if stats.matched_lines > 0 => kept.extend(open.take()),
+                    _ => {}
+                },
+            )?;
+            candidates = kept;
+        }
+        if candidates.is_empty() {
+            continue;
+        }
+        let mut command = Command::new(ast_grep);
+        command
+            .current_dir(&root.0)
+            .arg("run")
+            .arg(format!("--pattern={pattern}"))
+            .args(["--json=stream", "--color=never", "--threads=2", "--"])
+            .args(&candidates);
+        let mut found = BTreeSet::new();
+        let (status, detail) = lines_of(command, "ast-grep", |line| {
+            let hit: AstMatch =
+                serde_json::from_str(line).map_err(|e| format!("invalid ast-grep JSON: {e}"))?;
+            let number = hit.range.start.line + 1;
+            if found.insert((hit.file.clone(), number)) {
+                let text = hit.lines.lines().next().unwrap_or_default().to_owned();
+                hits.entry(hit.file).or_default().insert(number, text);
             }
             Ok(())
-        })();
-        if result.is_err() {
-            let _ = child.kill();
+        })?;
+        if !matches!(status.code(), Some(0 | 1)) {
+            return Err(format!("ast-grep search failed ({status}): {detail}"));
         }
-        let status = child.wait().map_err(|e| format!("wait for ripgrep: {e}"))?;
-        let errors = errors
-            .join()
-            .unwrap()
-            .map_err(|e| format!("read ripgrep errors: {e}"))?;
-        result?;
-        match status.code() {
-            Some(0 | 1) => Ok(()),
-            _ => {
-                let detail = String::from_utf8_lossy(&errors);
-                let kind = if detail.contains("regex parse error") {
-                    "invalid pattern"
-                } else {
-                    "ripgrep search failed"
-                };
-                Err(format!("{kind} ({status}): {}", detail.trim()))
+        *count += found.len();
+    }
+    let line = |number, text: &str| Line {
+        line_number: number,
+        lines: LineText {
+            text: format!("{text}\n"),
+        },
+    };
+    // ripgrep reports files in the order given; so does the replay.
+    for path in files {
+        let Some(matched) = hits.remove(path) else {
+            continue;
+        };
+        let source = if context == (0, 0) {
+            String::new()
+        } else {
+            std::fs::read(path).map_or_else(
+                |_| String::new(),
+                |bytes| String::from_utf8_lossy(&bytes).into_owned(),
+            )
+        };
+        let source: Vec<&str> = source.lines().collect();
+        let mut shown = BTreeSet::new();
+        for number in matched.keys() {
+            let first = number.saturating_sub(context.0).max(1);
+            shown.extend(first..=(number + context.1).min(source.len().max(*number)));
+        }
+        event(Event::Begin {
+            path: RgPath {
+                text: Some(path.clone()),
+                bytes: None,
+            },
+        });
+        for number in shown {
+            match matched.get(&number) {
+                Some(text) => event(Event::Match(line(number, text))),
+                None => event(Event::Context(line(number, source[number - 1]))),
             }
         }
-    })
+        event(Event::End {
+            binary_offset: None,
+            stats: Stats {
+                matched_lines: matched.len(),
+            },
+        });
+    }
+    Ok(())
 }
 
 struct Preview {
@@ -311,12 +482,27 @@ pub fn search(root: &Root, args: &Value) -> Result<Value, String> {
     if args.patterns.is_empty() {
         return Err("give at least one pattern".into());
     }
-    if !args.fixed && args.patterns.iter().any(|pattern| pattern.contains("\\|")) {
+    if args.ast && (args.fixed || args.ignore_case) {
+        return Err("ast patterns are code matched as written; drop fixed and ignore_case".into());
+    }
+    if !args.fixed && !args.ast && args.patterns.iter().any(|pattern| pattern.contains("\\|")) {
         return Err("pattern uses the grep spelling \\|; alternation here is |, or pass each alternative as its own pattern".into());
     }
 
     let (files, missing) = root.walk(&args.paths, args.glob.as_deref(), None, args.all)?;
-    let program = rg_binary()?;
+    let program = binary("rg", "BBOXY_CODE_RG")?;
+    let ast_grep = if args.ast {
+        Some(binary("ast-grep", "BBOXY_CODE_AST_GREP")?)
+    } else {
+        None
+    };
+    let mut flags = vec![];
+    if args.fixed {
+        flags.push("--fixed-strings");
+    }
+    if args.ignore_case {
+        flags.push("--ignore-case");
+    }
     let mut budget = Budget::new();
     let pattern_rows = |counts: &[usize]| {
         args.patterns
@@ -363,12 +549,12 @@ pub fn search(root: &Root, args: &Value) -> Result<Value, String> {
     for files in groups {
         // A combined rg match counts the union. Each pattern needs its own pass
         // to count lines where alternative matches overlap or mask each other.
-        if args.patterns.len() > 1 {
+        if args.patterns.len() > 1 && !args.ast {
             for (pattern, count) in args.patterns.iter().zip(&mut counts) {
                 rg(
                     &program,
                     root,
-                    &args,
+                    &flags,
                     std::slice::from_ref(pattern),
                     files,
                     (0, 0),
@@ -384,61 +570,71 @@ pub fn search(root: &Root, args: &Value) -> Result<Value, String> {
                 )?;
             }
         }
-        rg(
-            &program,
-            root,
-            &args,
-            &args.patterns,
-            files,
-            context,
-            |event| match event {
-                Event::Begin { path }
-                    if args.mode == Mode::Files
-                        || (args.mode == Mode::Lines && !full && shown < limit) =>
-                {
-                    preview = Some(Preview::new(root, path, &budget));
+        let mut ast_counts = vec![0; counts.len()];
+        let on = |event| match event {
+            Event::Begin { path }
+                if args.mode == Mode::Files
+                    || (args.mode == Mode::Lines && !full && shown < limit) =>
+            {
+                preview = Some(Preview::new(root, path, &budget));
+            }
+            Event::Match(line) if args.mode == Mode::Lines => {
+                if let Some(preview) = &mut preview {
+                    preview.push(line, true, limit - shown, context);
                 }
-                Event::Match(line) if args.mode == Mode::Lines => {
-                    if let Some(preview) = &mut preview {
-                        preview.push(line, true, limit - shown, context);
-                    }
+            }
+            Event::Context(line) if args.mode == Mode::Lines => {
+                if let Some(preview) = &mut preview {
+                    preview.push(line, false, limit - shown, context);
                 }
-                Event::Context(line) if args.mode == Mode::Lines => {
-                    if let Some(preview) = &mut preview {
-                        preview.push(line, false, limit - shown, context);
-                    }
+            }
+            Event::End {
+                binary_offset,
+                stats,
+            } => {
+                let file = preview.take();
+                if binary_offset.is_some() {
+                    return;
                 }
-                Event::End {
-                    binary_offset,
-                    stats,
-                } => {
-                    let file = preview.take();
-                    if binary_offset.is_some() {
-                        return;
-                    }
-                    total += stats.matched_lines;
-                    if let Some(file) = file {
-                        if args.mode == Mode::Files {
-                            let row = json!({"path": file.path, "hits": stats.matched_lines});
-                            if rows.len() < FILE_ROWS && budget.spend(&row) {
-                                rows.push(row);
-                            } else {
-                                dropped_files += 1;
-                            }
+                total += stats.matched_lines;
+                if let Some(file) = file {
+                    if args.mode == Mode::Files {
+                        let row = json!({"path": file.path, "hits": stats.matched_lines});
+                        if rows.len() < FILE_ROWS && budget.spend(&row) {
+                            rows.push(row);
                         } else {
-                            if !lines.is_empty() && !file.text.is_empty() && context != (0, 0) {
-                                lines.push_str("--\n");
-                            }
-                            lines.push_str(&file.text);
-                            shown += file.hits;
-                            budget = file.budget;
-                            full = file.full;
+                            dropped_files += 1;
                         }
+                    } else {
+                        if !lines.is_empty() && !file.text.is_empty() && context != (0, 0) {
+                            lines.push_str("--\n");
+                        }
+                        lines.push_str(&file.text);
+                        shown += file.hits;
+                        budget = file.budget;
+                        full = file.full;
                     }
                 }
-                _ => {}
-            },
-        )?;
+            }
+            _ => {}
+        };
+        match &ast_grep {
+            Some(ast_grep) => {
+                ast(
+                    (&program, ast_grep),
+                    root,
+                    &args.patterns,
+                    files,
+                    context,
+                    &mut ast_counts,
+                    on,
+                )?;
+                for (count, more) in counts.iter_mut().zip(ast_counts) {
+                    *count += more;
+                }
+            }
+            None => rg(&program, root, &flags, &args.patterns, files, context, on)?,
+        }
     }
 
     if counts.len() == 1 {

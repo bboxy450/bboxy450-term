@@ -538,7 +538,7 @@ fn definitions() -> Value {
             "path": path, "start": {"type": "integer", "minimum": 1}, "end": {"type": "integer", "minimum": 1},
             "around": {"type": "integer", "minimum": 1, "description": "Return the whole function, impl or type containing this line"},
             "rev": {"type": "string", "description": "Git revision, e.g. HEAD~1 or origin/main"}}}}}}},
-        {"name": "search", "description": "Search text with several regular expressions at once (Rust regex syntax; alternation is |). Returns compact path:line text with merged context and enclosing items. Bounded: default 50 hits, with totals per pattern. Use instead of rg, grep and git grep; from python_execute: tools.bboxy_code.search(patterns=[...]).",
+        {"name": "search", "description": "Search text with several regular expressions at once (Rust regex syntax; alternation is |). Returns compact path:line text with merged context and enclosing items. Bounded: default 50 hits, with totals per pattern. With ast: true the patterns are code shapes matched on the syntax tree by ast-grep, never inside comments or strings: `$X` is one node, `$$$ARGS` any run of nodes, e.g. `Command::new($P)` or `fn $F($$$A) -> Result<$T> { $$$B }`; a hit is the line a match starts on. Use instead of rg, grep, ast-grep and git grep; from python_execute: tools.bboxy_code.search(patterns=[...]).",
          "inputSchema": {"type": "object", "additionalProperties": false, "required": ["patterns"], "properties": {
             "patterns": {"type": "array", "minItems": 1, "items": {"type": "string"}, "description": "A line matching any pattern is a hit"},
             "paths": paths, "glob": {"type": "string", "description": "Only files matching this glob, e.g. *.rs or !tests/**"},
@@ -548,7 +548,8 @@ fn definitions() -> Value {
             "all": {"type": "boolean", "description": "Also search hidden and gitignored files (rg --hidden --no-ignore)"},
             "limit": {"type": "integer", "minimum": 1, "maximum": 500},
             "mode": {"enum": ["lines", "files", "count"], "description": "lines: compact text; files: hit counts per file; count: totals only"},
-            "fixed": {"type": "boolean", "description": "Take patterns literally"}}}},
+            "fixed": {"type": "boolean", "description": "Take patterns literally"},
+            "ast": {"type": "boolean", "description": "Take patterns as ast-grep code patterns (structural search); the language follows each file's extension. Not with fixed or ignore_case"}}}},
         {"name": "symbol", "description": "Find where names are defined, with signature and line range: Rust items in full, Den declarations (spec, event, invariant, theorem...), and Python, TypeScript, Go and Lean by syntax. refs also lists uses with their containing items. Use instead of grepping for 'fn name'.",
          "inputSchema": {"type": "object", "additionalProperties": false, "required": ["names"], "properties": {
             "names": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "kind": {"type": "string"}, "paths": paths,

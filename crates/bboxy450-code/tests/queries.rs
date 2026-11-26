@@ -162,6 +162,84 @@ fn search_names_the_containing_item_counts_each_pattern_and_reports_missing_path
     assert!(!names.iter().any(|n| n.starts_with(".git/")), "{names:?}");
 }
 
+/// Structural search against the text search it sits beside: the regex also hits the
+/// comment and the string, ast-grep only the call. Its hits equal ast-grep run alone
+/// (the ripgrep prefilter loses none) and go through the same listing, context and modes.
+#[test]
+fn ast_search_matches_code_shapes_and_agrees_with_ast_grep_alone() {
+    let (dir, root) = fixture();
+    std::fs::write(
+        dir.path().join("src/run.rs"),
+        "// Command::new(\"never\") in a comment\nfn run() {\n    let note = \"Command::new(x)\";\n    Command::new(\"ls\")\n        .spawn();\n    Command::new(\n        tool,\n    );\n}\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.path().join("tool.py"),
+        "def run(tool):\n    return tool\n",
+    )
+    .unwrap();
+
+    let text = call(&root, "search", &json!({"patterns": ["Command::new\\("]})).unwrap();
+    assert_eq!(text["total"], 4, "{text}");
+    let args = json!({"patterns": ["Command::new($P)", "def $F($$$A): $$$B"], "ast": true, "before": 1, "context": 1});
+    let found = call(&root, "search", &args).unwrap();
+    assert_eq!(
+        found["text"],
+        "src/run.rs:3:     let note = \"Command::new(x)\";\nsrc/run.rs:4:     Command::new(\"ls\") [fn run]\nsrc/run.rs:5:         .spawn();\nsrc/run.rs:6:     Command::new( [fn run]\nsrc/run.rs:7:         tool,\n--\ntool.py:1: def run(tool): [fn run]\ntool.py:2:     return tool\n",
+        "{found}"
+    );
+    assert_eq!(
+        found["patterns"],
+        json!([{"pattern": "Command::new($P)", "hits": 2}, {"pattern": "def $F($$$A): $$$B", "hits": 1}])
+    );
+    assert_eq!(found["total"], 3);
+
+    // ast-grep alone, on the whole tree, finds the same lines.
+    let ast_grep = std::env::var_os("BBOXY_CODE_AST_GREP").unwrap_or_else(|| "ast-grep".into());
+    let output = std::process::Command::new(&ast_grep)
+        .current_dir(dir.path())
+        .args(["run", "--pattern=Command::new($P)", "--json=stream", "."])
+        .output()
+        .unwrap();
+    let mut alone: Vec<String> = String::from_utf8(output.stdout)
+        .unwrap()
+        .lines()
+        .map(|line| {
+            let hit: Value = serde_json::from_str(line).unwrap();
+            format!(
+                "{}:{}",
+                hit["file"].as_str().unwrap().trim_start_matches("./"),
+                hit["range"]["start"]["line"].as_u64().unwrap() + 1
+            )
+        })
+        .collect();
+    alone.sort();
+    assert_eq!(alone, ["src/run.rs:4", "src/run.rs:6"]);
+
+    let files = call(
+        &root,
+        "search",
+        &json!({"patterns": ["Command::new($P)"], "ast": true, "mode": "files"}),
+    )
+    .unwrap();
+    assert_eq!(files["files"], json!([{"path": "src/run.rs", "hits": 2}]));
+    let none = call(
+        &root,
+        "search",
+        &json!({"patterns": ["Command::spawn($P)"], "ast": true, "mode": "count"}),
+    )
+    .unwrap();
+    assert_eq!(none["total"], 0);
+    for flag in ["fixed", "ignore_case"] {
+        let error = call(
+            &root,
+            "search",
+            &json!({"patterns": ["x"], "ast": true, flag: true}),
+        );
+        assert!(error.unwrap_err().contains("drop fixed and ignore_case"));
+    }
+}
+
 #[test]
 fn search_merges_overlapping_context_windows_and_matches_rg() {
     let (dir, root) = fixture();
