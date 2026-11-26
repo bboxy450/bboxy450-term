@@ -10970,6 +10970,11 @@ mod quantum_debt_tests {
                 .min(deadline);
             let setup = bootstrap_control(&control, || {
                 worker
+                    .install_bootstrap_entry_clock_bounds(
+                        native.entry_clock.ok_or(Code::ResourceLimit)?,
+                    )
+                    .map_err(wire_error)?;
+                worker
                     .bootstrap_spawn_returned(returned_at, deadline)
                     .map_err(wire_error)
             });
@@ -11075,7 +11080,12 @@ mod quantum_debt_tests {
             );
             let after = after.unwrap();
             if mode == "paid_probe" {
-                assert_eq!(admission, Ok(()), "native={sample:?}");
+                assert_eq!(
+                    admission,
+                    Ok(()),
+                    "native={sample:?} entry={:?}",
+                    worker.bootstrap_entry_evidence()
+                );
                 assert!(observation.granted && observation.qualified_hello);
                 assert_eq!(observation.bytes_written, Some(128));
                 assert!(after.paid_hello);
@@ -11103,7 +11113,7 @@ mod quantum_debt_tests {
                 "probe_start_parent_refused":probe_start_refused,"source_absent":true,"retained_real_effect_before_verdict":held_work,
                 "actual_native_cpu_ns":nanos(sample.cpu.unwrap()),"actual_native_wall_ns":nanos(sample.wall),
                 "actual_inclusive_cpu_ns":nanos(sample.inclusive.unwrap()),"actual_native_app_cpu_ns":control.cleanup.debt.native_app_max_cpu_ns.load(Ordering::Acquire),
-                "same_origin_readiness_ms":250,"original_deadline_preserved":original_deadline_preserved,"injected_timing":false,
+                "same_origin_readiness_ms":bootstrap::WINDOW.as_millis(),"original_deadline_preserved":original_deadline_preserved,"injected_timing":false,
                 "actual_reaped_and_both_eof":reaped,"waitpid_echild":true,"child_process_user_cpu_ns":usage.user_cpu_ns,"child_process_system_cpu_ns":usage.system_cpu_ns}));
             drop(worker);
             drop(protected);
