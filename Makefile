@@ -2431,7 +2431,7 @@ test-real-sessions: init-submodules
 # the producer's release test profile and CI timed group, after ordinary tests.
 # Leave their parent unclamped so the existing per-test QoS policy can apply.
 .PHONY: test-harness-source
-test-harness-source: SHELL = $(if $(filter off,$(BBOXY_QOS)),/bin/sh,/bin/sh scripts/qos.sh default)
+test-harness-source: SHELL = $(if $(filter off,$(BBOXY_QOS)),/bin/sh,/bin/sh scripts/qos.sh default /bin/sh)
 test-harness-source: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	sh scripts/quarantine-test.sh --locked -p bboxy450-harness --features acp-agent,acp,embedded,test-fixtures --lib --tests --target-dir '$(TARGET_DIR)' -E 'not test(dream::) & not (binary(=dream_c1) | binary(=dream_read))'; \
