@@ -387,6 +387,7 @@ help:
 	  'make test-harmony-host           Focused plugin, knowledge and Harmony host checks' \
 	  'make test-harmony-host-integration  Focused host integration without mux library suite' \
 	  'make test-harmony-host-gitkb     Real private GitKB host lifecycle integration' \
+	  'make test-task-reservation      GitKB allocation, shared-root admission and recovery' \
 	  'make install-gitkb-plugin-local  Install into the explicitly selected workspace' \
 	  'make parity-swarm                Existing swarm/sidebar visual parity cases' \
 	  'make smoke                      Unsigned private install + headless smoke' \
@@ -1897,6 +1898,13 @@ test-harmony-host-gitkb: build-gitkb-plugin
 	env "CARGO_TARGET_$${harmony_target}_RUNNER=$(CURDIR)/scripts/run-private-gitkb-host.sh" \
 	BBOXY_GITKB_ADAPTER='$(abspath $(GITKB_PLUGIN))' BBOXY_GITKB_BIN='$(GITKB_BIN)' \
 	cargo nextest run -E 'binary(it)&test(=harmony_host::real_gitkb_host_lifecycle)' --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' -- --ignored --nocapture
+
+.PHONY: test-task-reservation
+test-task-reservation: PROFILE=debug
+test-task-reservation: test-harmony-host-gitkb
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' -E 'test(mcp_task_reservation_)'; \
+	cargo nextest run --locked -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' -E 'test(original_operation_lookup_is_fresh_read_only_root_scoped_and_restart_safe)'
 
 .PHONY: build-recovery-test test-recovery-built test-recovery-disk test-lean-ignored
 test-lean-ignored:

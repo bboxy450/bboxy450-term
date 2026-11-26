@@ -269,7 +269,7 @@ fn workspace_frontmatter(doc: &Value, raw: &str) -> Result<Map<String, Value>, R
     }
     // GitKB 1.0 lifts these header keys out of `frontmatter` into document
     // fields; 0.2 left them in. The record keeps them where the header had them.
-    for key in ["status", "assignee", "priority"] {
+    for key in ["status", "assignee", "priority", "parent"] {
         if let Some(value) = source.get(key).filter(|_| !fields.contains_key(key)) {
             fields.insert(key.into(), value.clone());
         }

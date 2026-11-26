@@ -46,7 +46,7 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
         actor.seat_id
     ));
     let write_help = if actor.role.class == Class::Oracle {
-        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.den; the Index returns its numbered final path. Reports are append-only at reports/YYYY-MM-DD-slug.den; corrections create a new report with supersedes. Tasks are created open; their delegating Oracle may amend only brief/verify/allowed_paths while nonterminal. A same-swarm Oracle takes over on amendment if the delegating seat is closed or missing. To initialize a provider's blank, open, unowned task reservation, fetch it and write its brief, verify and allowed_paths. The host records you as its delegator in your swarm before delegation. This initialization applies only to blank, unowned reservations. Amendments wake the assignee in the task thread; changed verify requires a fresh report. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools."
+        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.den; the Index returns its numbered final path. Reports are append-only at reports/YYYY-MM-DD-slug.den; corrections create a new report with supersedes. Tasks are created open; their delegating Oracle may amend only brief/verify/allowed_paths while nonterminal. A same-swarm Oracle takes over on amendment if the delegating seat is closed or missing. To initialize a provider's blank, open, unowned task reservation, fetch it and write its body (the brief), verify and allowed_paths. The host records you as its delegator in your swarm before delegation. This initialization applies only to blank, unowned reservations. Amendments wake the assignee in the task thread; changed verify requires a fresh report. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools."
     } else {
         "Create/update e2e, comment, research, note and artifact records as your seat. Create append-only reports at reports/YYYY-MM-DD-slug.den for your assigned task; corrections create a new report with supersedes. For your assigned task retain its body and change only report.summary, report.commit, report.report and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools."
     };
@@ -402,11 +402,15 @@ pub(crate) enum WritePlan {
     Report(Call),
 }
 
-/// Number allocation may leave a provider-owned placeholder. Only an empty,
+/// Number allocation may leave an empty or title-only provider placeholder. Only an
 /// unowned open reservation can acquire its first delegator through a fenced
 /// knowledge_write; an existing brief or any custody/evidence prevents adoption.
 fn task_reservation(record: &d::Record) -> bool {
-    record.body.trim().is_empty()
+    let body = record.body.trim();
+    (body.is_empty()
+        || record.frontmatter["title"]
+            .as_str()
+            .is_some_and(|title| body.strip_prefix("# ") == Some(title)))
         && record.frontmatter["status"] == "open"
         && [
             "delegated_by",
@@ -425,8 +429,10 @@ fn task_reservation(record: &d::Record) -> bool {
                 .get(*field)
                 .is_none_or(|value| value.is_null() || value.as_str() == Some("none"))
         })
-        && record.frontmatter.get("verify").is_none_or(|value| {
-            value.is_null() || value.as_str().is_some_and(|s| s.trim().is_empty())
+        && ["brief", "verify"].iter().all(|field| {
+            record.frontmatter.get(*field).is_none_or(|value| {
+                value.is_null() || value.as_str().is_some_and(|s| s.trim().is_empty())
+            })
         })
         && record
             .frontmatter
@@ -520,7 +526,7 @@ pub(crate) fn write_plan(
                 return Err(denied(
                     "task_field_protected",
                     &format!(
-                        "protected task fields differ: {}; only brief, verify and allowed_paths may change; use task_* for lifecycle and assignment",
+                        "protected task fields differ: {}; only body (the brief), verify and allowed_paths may change; use task_* for lifecycle and assignment",
                         differences.into_iter().collect::<Vec<_>>().join(", ")
                     ),
                 ));

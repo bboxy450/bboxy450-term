@@ -126,7 +126,7 @@ impl Journal {
     pub(crate) fn root_id(&self) -> Option<&str> {
         self.root.as_ref().map(|root| root.id.as_str())
     }
-    /// Inspect an original document or Dream feedback effect without admission or replay.
+    /// Inspect an original document, plugin or Dream feedback effect without admission or replay.
     /// A current launch may recover its seat's earlier launch, but never another
     /// seat/swarm/issuer/root's result. Missing rows cannot prove no effect.
     pub(crate) fn operation_status(&self, actor: &super::SeatActor, op: Ulid) -> Result<Value> {
@@ -153,7 +153,8 @@ impl Journal {
             && (matches!(old.tool.as_str(), "knowledge_write" | "knowledge_commit")
                 || super::work_items::mutation(&old.tool)
                 || super::workspaces::mutation(&old.tool)
-                || old.tool == "dream_feedback");
+                || old.tool == "dream_feedback"
+                || super::plugin_tools::handles(&old.tool));
         if !allowed {
             return Ok(
                 json!({"original_op_id":op,"status":"forbidden","terminal":false,
@@ -1064,62 +1065,64 @@ mod tests {
 
     #[test]
     fn original_operation_lookup_is_fresh_read_only_root_scoped_and_restart_safe() {
-        let (_temp, store, actor, mut call) = effect_fixture();
-        call.tool = "knowledge_write".into();
-        call.args = json!({"path":"notes/one.md","body":"private arguments"});
-        let journal = Journal::new(store.clone()).with_root("root-A", "startup");
-        assert_eq!(
-            journal.operation_status(&actor, call.op_id).unwrap()["ledger"],
-            "missing"
-        );
-        assert!(journal.admit(&actor, &call).unwrap().1);
-        let before = store.list("control/").unwrap();
-        let unknown = journal.operation_status(&actor, call.op_id).unwrap();
-        assert_eq!(unknown["status"], "unknown");
-        assert_eq!(unknown["terminal"], false);
-        assert_eq!(before, store.list("control/").unwrap());
-        let result = super::super::success(
-            call.op_id,
-            json!({"record":{"id":call.op_id,"path":"notes/one.md"}}),
-        );
-        journal.complete(&actor, &call, result.clone()).unwrap();
-        let restarted = Journal::new(store.clone()).with_root("root-A", "startup");
-        let mut relaunched = actor.clone();
-        relaunched.process_generation += 1;
-        let before = store.list("control/").unwrap();
-        let applied = restarted.operation_status(&relaunched, call.op_id).unwrap();
-        assert_eq!(applied["status"], "applied");
-        assert_eq!(applied["result"], result["structuredContent"]);
-        assert!(!applied.to_string().contains("private arguments"));
-        assert_eq!(before, store.list("control/").unwrap());
-        let mut other = actor.clone();
-        other.seat_id = Ulid::new();
-        assert_eq!(
-            restarted.operation_status(&other, call.op_id).unwrap()["status"],
-            "forbidden"
-        );
-        other = actor.clone();
-        other.swarm_id = Ulid::new();
-        assert_eq!(
-            restarted.operation_status(&other, call.op_id).unwrap()["status"],
-            "forbidden"
-        );
-        assert_eq!(
-            Journal::new(store.clone())
-                .with_root("root-B", "startup")
-                .operation_status(&actor, call.op_id)
-                .unwrap()["status"],
-            "forbidden"
-        );
-        // A -> B -> A regains read access, without changing effect replay authority.
-        assert_eq!(
-            restarted.operation_status(&actor, call.op_id).unwrap(),
-            applied
-        );
-        store
-            .put(&format!("control/op/{}", call.op_id), b"incomplete")
-            .unwrap();
-        assert!(restarted.operation_status(&actor, call.op_id).is_err());
+        for tool in ["knowledge_write", "plugin_tool_gitkb_create_next"] {
+            let (_temp, store, actor, mut call) = effect_fixture();
+            call.tool = tool.into();
+            call.args = json!({"path":"notes/one.md","body":"private arguments"});
+            let journal = Journal::new(store.clone()).with_root("root-A", "startup");
+            assert_eq!(
+                journal.operation_status(&actor, call.op_id).unwrap()["ledger"],
+                "missing"
+            );
+            assert!(journal.admit(&actor, &call).unwrap().1);
+            let before = store.list("control/").unwrap();
+            let unknown = journal.operation_status(&actor, call.op_id).unwrap();
+            assert_eq!(unknown["status"], "unknown");
+            assert_eq!(unknown["terminal"], false);
+            assert_eq!(before, store.list("control/").unwrap());
+            let result = super::super::success(
+                call.op_id,
+                json!({"record":{"id":call.op_id,"path":"notes/one.md"}}),
+            );
+            journal.complete(&actor, &call, result.clone()).unwrap();
+            let restarted = Journal::new(store.clone()).with_root("root-A", "startup");
+            let mut relaunched = actor.clone();
+            relaunched.process_generation += 1;
+            let before = store.list("control/").unwrap();
+            let applied = restarted.operation_status(&relaunched, call.op_id).unwrap();
+            assert_eq!(applied["status"], "applied");
+            assert_eq!(applied["result"], result["structuredContent"]);
+            assert!(!applied.to_string().contains("private arguments"));
+            assert_eq!(before, store.list("control/").unwrap());
+            let mut other = actor.clone();
+            other.seat_id = Ulid::new();
+            assert_eq!(
+                restarted.operation_status(&other, call.op_id).unwrap()["status"],
+                "forbidden"
+            );
+            other = actor.clone();
+            other.swarm_id = Ulid::new();
+            assert_eq!(
+                restarted.operation_status(&other, call.op_id).unwrap()["status"],
+                "forbidden"
+            );
+            assert_eq!(
+                Journal::new(store.clone())
+                    .with_root("root-B", "startup")
+                    .operation_status(&actor, call.op_id)
+                    .unwrap()["status"],
+                "forbidden"
+            );
+            // A -> B -> A regains read access, without changing effect replay authority.
+            assert_eq!(
+                restarted.operation_status(&actor, call.op_id).unwrap(),
+                applied
+            );
+            store
+                .put(&format!("control/op/{}", call.op_id), b"incomplete")
+                .unwrap();
+            assert!(restarted.operation_status(&actor, call.op_id).is_err());
+        }
     }
 
     #[test]

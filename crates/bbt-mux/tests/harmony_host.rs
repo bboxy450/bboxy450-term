@@ -1537,17 +1537,32 @@ async fn real_gitkb_host_lifecycle() {
     assert_eq!(first_page["relationships"], expected);
     assert_eq!(first_page["relationships"]["parent"], reference.slug);
     // Review 5004 findings 2 and 8, through the plugin's seat tools.
-    let next = success(
-        call(
-            &logic.client,
-            oracle,
-            "plugin_tool_gitkb_create_next",
-            json!({"family":"tasks/review","title":"Next in family"}),
-        )
-        .await,
-    );
+    let allocation = Call {
+        op_id: Ulid::new(),
+        tool: "plugin_tool_gitkb_create_next".into(),
+        args: json!({"family":"tasks/review","title":"Next in family"}),
+    };
+    let next = success(invoke(&logic.client, oracle, allocation.clone()).await);
     assert_eq!(next["result"]["slug"], "tasks/review-1");
-    assert_eq!(next["result"]["authority"], "local");
+    assert!(next["result"]["authority"].is_null() || next["result"]["authority"].is_string());
+    let declaration = descriptor["tools"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|tool| tool["name"] == "create_next")
+        .unwrap();
+    let validator = jsonschema::validator_for(&declaration["output_schema"]).unwrap();
+    let mut variant = next["result"].clone();
+    variant["authority"] = Value::Null;
+    validator
+        .validate(&variant)
+        .expect("native allocation may return null authority");
+    variant["authority"] = json!(1);
+    assert!(validator.validate(&variant).is_err());
+    eprintln!(
+        "real GitKB allocation authority={}; published schema accepted null and rejected integer",
+        next["result"]["authority"]
+    );
     assert!(next["result"].get("sync_required").is_some());
     let sync = call(
         &logic.client,
@@ -1577,7 +1592,8 @@ async fn real_gitkb_host_lifecycle() {
             &slug,
         ]);
         let fm = &shown["document"]["frontmatter"];
-        assert_eq!(fm["status"], expected, "{fm:#}");
+        let status = fm.get("status").unwrap_or(&shown["document"]["status"]);
+        assert_eq!(status, expected, "{shown:#}");
         assert!(fm.get("bboxy_status").is_none(), "{fm:#}");
     };
     native_status("backlog");
@@ -1690,12 +1706,23 @@ async fn real_gitkb_host_lifecycle() {
         )
         .await,
     );
+    // Checkpoint tokens are opaque in the provider contract.
     assert!(
-        commit["commit"]
-            .as_str()
-            .is_some_and(|s| s.len() == 36 && s.contains('-'))
+        commit["commit"].as_str().is_some_and(|s| !s.is_empty()),
+        "{commit:#}"
     );
     assert_eq!(commit["committed"].as_array().unwrap().len(), 2);
+    let committed_refs = commit["committed"].as_array().unwrap();
+    let committed_note = committed_refs
+        .iter()
+        .find(|item| item["slug"] == reference.slug)
+        .unwrap();
+    let committed_task = committed_refs
+        .iter()
+        .find(|item| item["slug"] == slug)
+        .unwrap();
+    assert_eq!(committed_note["id"], reference.id);
+    assert_eq!(committed_task["id"], task["id"]);
     let committed_doc = success(
         call(
             &logic.client,
@@ -1706,15 +1733,15 @@ async fn real_gitkb_host_lifecycle() {
         .await,
     );
     let committed_reference: d::RecordRef = serde_json::from_value(committed_doc.clone()).unwrap();
-    assert_eq!(committed_reference.id, reference.id);
-    assert_eq!(committed_reference.external_id, reference.external_id);
+    assert_eq!(committed_reference.slug, reference.slug);
+    assert_eq!(committed_reference.path, reference.path);
     assert_ne!(
         committed_doc["digest"], doc["digest"],
         "native commit changes the selected source generation"
     );
     let materialized = success(call(&logic.client, oracle, "knowledge_write", json!({"ref":committed_reference,"etag":committed_doc["etag"],"frontmatter":committed_doc["frontmatter"],"body":"Signed edit after native commit"})).await)["record"].clone();
-    assert_eq!(materialized["id"], created["id"]);
-    assert_eq!(materialized["external_id"], created["external_id"]);
+    assert_eq!(materialized["id"], committed_doc["id"]);
+    assert_eq!(materialized["external_id"], committed_doc["external_id"]);
     assert_eq!(materialized["frontmatter"]["type"], "project-brief");
     assert_eq!(materialized["body"], "Signed edit after native commit");
     let native_committed = native(&[
@@ -1728,6 +1755,10 @@ async fn real_gitkb_host_lifecycle() {
     ]);
     let native_created = &native_committed["document"]["created_at"];
     assert!(native_created.is_string(), "{native_committed}");
+    assert_eq!(
+        committed_doc["external_id"],
+        native_committed["document"]["id"]
+    );
     assert_eq!(&committed_doc["frontmatter"]["created"], native_created);
     assert_eq!(&materialized["frontmatter"]["created"], native_created);
     for record in [&committed_doc, &materialized] {
@@ -1747,6 +1778,15 @@ async fn real_gitkb_host_lifecycle() {
             .unwrap()
             .is_empty()
     );
+    let canonical_task = success(
+        call(
+            &logic.client,
+            worker,
+            "task_status",
+            json!({"task_path":slug}),
+        )
+        .await,
+    );
     logic.shutdown().unwrap();
     let restarted = Logic::start_custodied_with_store(
         supervisor.connect().unwrap(),
@@ -1765,7 +1805,25 @@ async fn real_gitkb_host_lifecycle() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(resolved["id"], task["id"]);
+    assert_eq!(resolved["id"], canonical_task["id"]);
+    let persisted_task = success(
+        call(
+            &restarted.client,
+            worker,
+            "task_status",
+            json!({"task_path":slug}),
+        )
+        .await,
+    );
+    assert_eq!(persisted_task["body"], accepted["body"]);
+    assert_eq!(persisted_task["id"], canonical_task["id"]);
+    assert_eq!(persisted_task["metadata"]["status"], "accepted");
+    for field in ["report", "verify_result", "acceptance"] {
+        assert_eq!(
+            persisted_task["metadata"][field],
+            accepted["metadata"][field]
+        );
+    }
     let after_restart = restarted
         .client
         .gui_knowledge_scoped(
@@ -1787,6 +1845,154 @@ async fn real_gitkb_host_lifecycle() {
         .await,
     );
     assert_eq!(instruction["skill"]["content"], expected_skill["content"]);
+    // A native allocation contains only its generated title heading. A second
+    // swarm shares the root; initialization takes custody in the writing swarm.
+    let other_swarm = Ulid::new();
+    let other_oracle = Ulid::new();
+    let other_worker = Ulid::new();
+    spawn(
+        &restarted.client,
+        temp.path(),
+        other_oracle,
+        other_swarm,
+        true,
+    )
+    .await;
+    spawn(
+        &restarted.client,
+        temp.path(),
+        other_worker,
+        other_swarm,
+        false,
+    )
+    .await;
+    let shared = success(
+        call(
+            &restarted.client,
+            other_oracle,
+            "knowledge_status",
+            json!({}),
+        )
+        .await,
+    );
+    assert_eq!(shared["knowledge_root_id"], before.roots[0].id);
+    assert_eq!(shared["status"]["roots"][0]["provider"]["id"], candidate);
+    let reserved = success(
+        call(
+            &restarted.client,
+            other_oracle,
+            "knowledge_fetch",
+            json!({"locator":next["result"]["slug"]}),
+        )
+        .await,
+    );
+    assert_eq!(
+        reserved["body"].as_str().unwrap().trim(),
+        "# Next in family"
+    );
+    assert_eq!(reserved["frontmatter"]["status"], "open");
+    let reserved_ref: d::RecordRef = serde_json::from_value(reserved.clone()).unwrap();
+    let mut initialize = json!({"ref":reserved_ref,"etag":reserved["etag"],
+        "frontmatter":reserved["frontmatter"],"body":"ROLE: EXECUTOR\nA private initialized reservation."});
+    initialize["frontmatter"]["verify"] = json!("private reservation check");
+    initialize["frontmatter"]["allowed_paths"] = json!(["src/"]);
+    let refused = invoke(
+        &restarted.client,
+        worker,
+        Call {
+            op_id: Ulid::new(),
+            tool: "knowledge_write".into(),
+            args: initialize.clone(),
+        },
+    )
+    .await;
+    assert_eq!(
+        refused["structuredContent"]["error"]["code"], "task_field_protected",
+        "{refused:#}"
+    );
+    let mut forged = initialize.clone();
+    forged["frontmatter"]["swarm"] = json!(swarm);
+    let refused = call(&restarted.client, other_oracle, "knowledge_write", forged).await;
+    assert_eq!(
+        refused["structuredContent"]["error"]["code"], "task_field_protected",
+        "{refused:#}"
+    );
+    let initialized = success(
+        call(
+            &restarted.client,
+            other_oracle,
+            "knowledge_write",
+            initialize.clone(),
+        )
+        .await,
+    )["record"]
+        .clone();
+    assert_eq!(initialized["frontmatter"]["swarm"], json!(other_swarm));
+    assert_eq!(
+        initialized["frontmatter"]["delegated_by"],
+        format!("seat:{other_oracle}")
+    );
+    let stale = call(
+        &restarted.client,
+        other_oracle,
+        "knowledge_write",
+        initialize,
+    )
+    .await;
+    assert_eq!(
+        stale["structuredContent"]["error"]["code"], "stale_ref",
+        "{stale:#}"
+    );
+    success(
+        call(
+            &restarted.client,
+            other_oracle,
+            "task_delegate",
+            json!({"task_path":reserved_ref.slug,"seat_id":other_worker}),
+        )
+        .await,
+    );
+    let assigned = success(
+        call(
+            &restarted.client,
+            other_worker,
+            "task_status",
+            json!({"task_path":reserved_ref.slug}),
+        )
+        .await,
+    );
+    assert_eq!(assigned["body"], initialized["body"]);
+    assert_eq!(assigned["metadata"]["verify"], "private reservation check");
+    assert_eq!(assigned["metadata"]["allowed_paths"], json!(["src/"]));
+    let replayed = success(invoke(&restarted.client, oracle, allocation.clone()).await);
+    assert_eq!(
+        replayed, next,
+        "allocation replay must not allocate a second record"
+    );
+    assert!(!repo.join(".kb/workspaces/main/tasks/review-2.md").exists());
+    let recovered = success(
+        call(
+            &restarted.client,
+            oracle,
+            "operation_status",
+            json!({"original_op_id":allocation.op_id}),
+        )
+        .await,
+    );
+    assert_eq!(recovered["status"], "applied");
+    assert_eq!(recovered["result"]["result"], next["result"]);
+    let foreign = success(
+        call(
+            &restarted.client,
+            other_oracle,
+            "operation_status",
+            json!({"original_op_id":allocation.op_id}),
+        )
+        .await,
+    );
+    assert_eq!(foreign["status"], "unknown");
+    assert_eq!(foreign["ledger"], "missing");
+    assert!(foreign["result"].is_null());
     let mut changed = fs::read(&source).unwrap();
     changed.extend_from_slice(b"\n# private changed-source diagnostic\n");
     fs::write(&source, changed).unwrap();
@@ -1797,6 +2003,6 @@ async fn real_gitkb_host_lifecycle() {
     restarted.shutdown().unwrap();
     supervisor.shutdown().unwrap();
     eprintln!(
-        "real GitKB host: trust/check/enable/select, pinned root-scoped skill reads, typed create/update, proof kept out of the document, 16 KiB fetch pages, git-kb relationships, next-in-family create, slug delegate/report/accept on native status, native commit, signed post-commit edit, restart all completed"
+        "real GitKB host: trust/check/enable/select, pinned root-scoped skill reads, typed create/update, proof kept out of the document, 16 KiB fetch pages, git-kb relationships, next-in-family create, slug delegate/report/accept on native status, native commit, signed post-commit edit, restart, shared-root reservation initialization and operation recovery/replay all completed"
     );
 }

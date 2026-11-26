@@ -12,7 +12,7 @@ use serde_json::{Value, json};
 
 pub(crate) fn catalogue() -> Value {
     json!({"name":"operation_status",
-        "description":"Read your original knowledge/work-item write or Dream feedback outcome by original_op_id in your current root, including after restart. Missing/incomplete results remain unknown; never redispatch an unknown effect. This fresh lookup never admits an effect or returns raw arguments.",
+        "description":"Read your original knowledge/work-item write, plugin-tool or Dream feedback outcome by original_op_id in your current root, including after restart. Missing/incomplete results remain unknown; never redispatch an unknown effect. This fresh lookup never admits an effect or returns raw arguments.",
         "inputSchema":{"type":"object","properties":{"original_op_id":{"type":"string","pattern":"^[0-7][0-9A-HJKMNP-TV-Z]{25}$"}},"required":["original_op_id"],"additionalProperties":false},
         "outputSchema":{"type":"object","additionalProperties":true},
         "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}})
@@ -38,7 +38,7 @@ pub(crate) fn read(actor: &SeatActor, call: &Call, journal: &Journal) -> Value {
         Ok(value) if value["status"] == "forbidden" => super::error(
             call.op_id,
             "forbidden",
-            "original operation is outside current seat/root authority",
+            "original operation is outside current seat/root scope",
         ),
         Ok(value) => {
             super::knowledge::bounded(call.op_id, super::success(call.op_id, value), false)

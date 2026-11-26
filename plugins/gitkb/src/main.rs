@@ -274,7 +274,7 @@ impl Plugin for GitKb {
                         "description": "Exact configured family prefix from task_conventions, not a full task slug or number"},
                     "title": {"type": "string", "minLength": 1, "maxLength": 4096}}}),
             json!({"type": "object", "required": ["slug", "authority", "sync_required", "ref"],
-                "properties": {"slug": {"type": "string"}, "authority": {"type": "string"},
+                "properties": {"slug": {"type": "string"}, "authority": {"type": ["string", "null"]},
                     "sync_required": {"type": ["boolean", "null"]}, "ref": {"type": "object"}}}),
             RoleClass::Oracle,
         )

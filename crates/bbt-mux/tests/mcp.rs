@@ -7617,99 +7617,110 @@ fn mcp_orphan_close_checks_supervisor_absence_generation_and_swarm_without_a_win
 
 #[test]
 fn mcp_task_reservation_initializes_once_then_delegates_with_the_populated_brief() {
-    let f = Fixture::new();
-    let reserved =
-        json!({"id":f.task,"number":1,"type":"task","status":"open","title":"Reserved task"});
-    let path = f.config.repository.join(f.task_path());
-    std::fs::write(
-        &path,
-        format!("---\n{}---\n", serde_yaml::to_string(&reserved).unwrap()),
-    )
-    .unwrap();
-    let original = data(knowledge_fetch(&f, f.oracle.id, "#1"));
-    let mut args = knowledge_update_args(&original);
-    args["body"] = json!("ROLE: EXECUTOR\nWorktree: private fixture. Verify the assigned change.");
-    args["frontmatter"]["verify"] = json!("true");
-    args["frontmatter"]["allowed_paths"] = json!(["src/"]);
-    knowledge_denied(
-        f.mutate(f.own.id, Ulid::new(), "knowledge_write", args.clone()),
-        "task_field_protected",
-    );
-    for (field, value) in [
-        ("status", json!("claimed")),
-        ("assignee", json!(format!("seat:{}", f.own.id))),
-        ("delegated_by", json!(format!("seat:{}", f.peer.id))),
-        ("swarm", json!(f.outside.swarm)),
-    ] {
-        let mut forged = args.clone();
-        forged["frontmatter"][field] = value;
+    for reserved_body in ["", "# Reserved task\n"] {
+        let f = Fixture::new();
+        let reserved =
+            json!({"id":f.task,"number":1,"type":"task","status":"open","title":"Reserved task"});
+        let path = f.config.repository.join(f.task_path());
+        std::fs::write(
+            &path,
+            format!(
+                "---\n{}---\n{reserved_body}",
+                serde_yaml::to_string(&reserved).unwrap()
+            ),
+        )
+        .unwrap();
+        let original = data(knowledge_fetch(&f, f.oracle.id, "#1"));
+        let mut args = knowledge_update_args(&original);
+        args["body"] =
+            json!("ROLE: EXECUTOR\nWorktree: private fixture. Verify the assigned change.");
+        args["frontmatter"]["verify"] = json!("true");
+        args["frontmatter"]["allowed_paths"] = json!(["src/"]);
         knowledge_denied(
-            f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", forged),
+            f.mutate(f.own.id, Ulid::new(), "knowledge_write", args.clone()),
             "task_field_protected",
         );
+        for (field, value) in [
+            ("status", json!("claimed")),
+            ("assignee", json!(format!("seat:{}", f.own.id))),
+            ("delegated_by", json!(format!("seat:{}", f.peer.id))),
+            ("swarm", json!(f.outside.swarm)),
+        ] {
+            let mut forged = args.clone();
+            forged["frontmatter"][field] = value;
+            knowledge_denied(
+                f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", forged),
+                "task_field_protected",
+            );
+        }
+        let initialized = data(f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", args.clone()))
+            ["record"]
+            .clone();
+        assert_eq!(
+            initialized["frontmatter"]["delegated_by"],
+            format!("seat:{}", f.oracle.id)
+        );
+        assert_eq!(initialized["frontmatter"]["swarm"], json!(f.oracle.swarm));
+        assert_eq!(initialized["frontmatter"]["status"], "open");
+        assert!(initialized["frontmatter"]["assignee"].is_null());
+        knowledge_denied(
+            f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", args),
+            "stale_reference",
+        );
+        let mut stale_etag = knowledge_update_args(&initialized);
+        stale_etag["etag"] = original["etag"].clone();
+        knowledge_denied(
+            f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", stale_etag),
+            "etag_mismatch",
+        );
+        f.registry()
+            .update(f.peer.id, |seat| {
+                seat.role.class = Class::Oracle;
+                Ok(())
+            })
+            .unwrap();
+        let mut takeover = knowledge_update_args(&initialized);
+        takeover["body"] = json!("A different Oracle cannot take the task");
+        knowledge_denied(
+            f.mutate(f.peer.id, Ulid::new(), "knowledge_write", takeover),
+            "task_field_protected",
+        );
+        data(f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "task_delegate",
+            json!({"task_path":"#1","seat_id":f.own.id}),
+        ));
+        let current = data(f.call(
+            f.own.id,
+            Ulid::new(),
+            "task_status",
+            json!({"task_path":"#1"}),
+        ));
+        assert_eq!(current["body"], initialized["body"]);
+        assert_eq!(current["metadata"]["verify"], "true");
+        assert_eq!(
+            current["metadata"]["assignee"],
+            format!("seat:{}", f.own.id)
+        );
     }
-    let initialized =
-        data(f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", args.clone()))["record"].clone();
-    assert_eq!(
-        initialized["frontmatter"]["delegated_by"],
-        format!("seat:{}", f.oracle.id)
-    );
-    assert_eq!(initialized["frontmatter"]["swarm"], json!(f.oracle.swarm));
-    assert_eq!(initialized["frontmatter"]["status"], "open");
-    assert!(initialized["frontmatter"]["assignee"].is_null());
-    knowledge_denied(
-        f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", args),
-        "stale_reference",
-    );
-    let mut stale_etag = knowledge_update_args(&initialized);
-    stale_etag["etag"] = original["etag"].clone();
-    knowledge_denied(
-        f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", stale_etag),
-        "etag_mismatch",
-    );
-    f.registry()
-        .update(f.peer.id, |seat| {
-            seat.role.class = Class::Oracle;
-            Ok(())
-        })
-        .unwrap();
-    let mut takeover = knowledge_update_args(&initialized);
-    takeover["body"] = json!("A different Oracle cannot take the task");
-    knowledge_denied(
-        f.mutate(f.peer.id, Ulid::new(), "knowledge_write", takeover),
-        "task_field_protected",
-    );
-    data(f.mutate(
-        f.oracle.id,
-        Ulid::new(),
-        "task_delegate",
-        json!({"task_path":"#1","seat_id":f.own.id}),
-    ));
-    let current = data(f.call(
-        f.own.id,
-        Ulid::new(),
-        "task_status",
-        json!({"task_path":"#1"}),
-    ));
-    assert_eq!(current["body"], initialized["body"]);
-    assert_eq!(current["metadata"]["verify"], "true");
-    assert_eq!(
-        current["metadata"]["assignee"],
-        format!("seat:{}", f.own.id)
-    );
 }
 
 #[test]
 fn mcp_task_reservation_cannot_adopt_an_existing_unowned_brief_or_evidence() {
     for (field, value) in [
         ("verify", json!("true")),
+        ("brief", json!("Existing intent in frontmatter")),
         ("created_by", json!("seat:legacy-owner")),
         ("report", json!({"summary":"existing evidence"})),
         ("allowed_paths", json!(["src/"])),
         ("body", json!("Existing intent")),
+        ("body", json!("# Reserved task\n\nExisting intent")),
+        ("body", json!("# A different title")),
     ] {
         let f = Fixture::new();
-        let mut metadata = json!({"id":f.task,"number":1,"type":"task","status":"open"});
+        let mut metadata =
+            json!({"id":f.task,"number":1,"type":"task","status":"open","title":"Reserved task"});
         let body = if field == "body" {
             value.as_str().unwrap()
         } else {
