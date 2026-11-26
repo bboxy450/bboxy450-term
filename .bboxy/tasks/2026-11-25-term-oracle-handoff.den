@@ -1,0 +1,39 @@
+module tasks.`2026-11-25-term-oracle-handoff`
+
+task TermOracleHandoff {
+  title "Term Oracle: take the 2026-11-25 handoff, green main, land and close the six open tasks"
+  verify $ git -C /Users/feral/mydev/bboxy450-term fetch -q origin && git -C /Users/feral/mydev/bboxy450-term log -1 --format=%G? origin/main | grep -qx G
+  paths ".bboxy/**"
+  brief """
+    # Term Oracle handoff, 2026-11-25
+
+    ROLE: ORACLE, for the term swarm. Delegated by the sudo seat on the operator's order "close tasks!".
+
+    Brief: ~/mydev/bboxy450-term-oracle-handoff.md (copy /tmp/bboxy-oracle-handoff.md). Its operator orders and lessons apply.
+
+    Steps:
+    1. make tool-usage DAYS=1; record the number in the handoff.
+    2. One full make test on origin/main (7d722969a or later) in a fresh worktree. It must be fully green.
+    3. Delegate the open tasks to Codex executors, at most 2 compiling at once: artifact-claim-recovery-race and build-dirs-never-index first, then kb-watch-rescan-fallback and workspace-index-bounds, then harness-test-debt and dream-q3b-read-prepare.
+    4. Verify each landing from the diff and logs. task_accept, task_close, seat_close the executor, workspace_release.
+    5. Report: task_report with a report record, the full make test exit and its log path, and the final state of all six tasks.
+
+    Already done by sudo: the outgoing Oracle seat 01M8764DX3P3XKP4DF8R2DANYR is closed.
+    """
+
+  managed {
+    assignee = json"\"seat:01M89ZRSC32VXKQKRMXZ87PFCT\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"XLMAqZTUlsEIvVxlAso8YDW5Ud3ShPEW3Kz+hD0wm1c=\",\"signer\":\"seat:01M89Z74HN4GSHEPS6TC0H6FDX\"}"
+    created = json"\"2026-11-25T18:33:49.274Z\""
+    created_by = json"\"seat:01M89Z74HN4GSHEPS6TC0H6FDX\""
+    delegated_by = json"\"seat:01M89Z74HN4GSHEPS6TC0H6FDX\""
+    id = json"\"01M89ZRGFGQNDVYW4JMZAH6HYJ\""
+    number = json"1794292861627940"
+    role = json"\"oracle\""
+    status = Claimed
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-25T18:34:07.897Z\""
+    updated_by = json"\"seat:01M89Z74HN4GSHEPS6TC0H6FDX\""
+    provenance = json"{\"digest\":\"sha256:75794eba96448e74238957eab17fa2f30a409f9febf0b32bbfac91fbf16ec488\",\"frontmatter_digest\":\"sha256:cc8fc00320306e8a31fbc5a48459efd863a07fef7bff930a94dfe97df5e71358\",\"signer\":\"seat:01M89Z74HN4GSHEPS6TC0H6FDX\",\"sig\":\"V3+PX1p4R3XOHwe3WWzw+/0Z21Pz5p/DGshUQX5k6uFUk2O2XceH1i6hhgt2FGwdeAdgXL5956mZWRLntd0dDQ==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/2017\",\"event\":{\"id\":\"01M89ZS3A2WEBWXV7GM5EY4FNV\",\"sequence\":2017,\"hash\":\"c1cdb42a85133f9e96c9eb8c419eecdd98124b53df2e144682f845818744055d\"}}"
+  }
+}

@@ -1,0 +1,68 @@
+module tasks.`2026-11-25-landing-fixture-hang-guard`
+
+task LandingFixtureHangGuard {
+  title "test-landing fixture timeouts are hang guards, not speed checks"
+  verify $ make test-landing
+  paths "scripts/test-landing.py"
+  brief """
+    Our stand: subtract before you add; report what you removed.
+
+    ## Evidence
+    Full `make test` on `7d722969a` (Oracle Term Oracle, 2026-11-25, log `~/mydev/bboxy450-term-oracle-ci/target/ci-local.log:88-120`) failed only at `ConsolidatedIntegrationTests.test_make_land_rejects_an_empty_module_even_when_another_runs`: `subprocess.TimeoutExpired: Command ['make', 'land'] timed out after 45 seconds` (`scripts/test-landing.py:800-801`). Under load it ran 54 s; alone it passed in 12.4 s and 14.1 s (2/2). The 45 s limit measures machine load, not behavior.
+
+    ## Do
+    1. In `scripts/test-landing.py`, every fixture subprocess `timeout=45` (lines 801, 1007, 3589, 3638, 3651 on `7d722969a`; re-grep on current main) is a hang guard. Replace them with one named module constant of 300 s (nextest's hang limit), with a one-line comment saying it guards hangs and is not a speed assertion. Change no other timing.
+    2. `make test-landing` green, then `make land`.
+
+
+    ## Report from seat:01M8A0BZTA1Y6363Z5QY0JR5YW
+
+    Landed the signed five-minute fixture hang guard on main. `make test-landing` exited 0 with 259 fixtures passing, including the previously failing empty-module case in 8.479 s. One documented constant replaces five inline 45-second deadlines. The AST check and `git diff --check` exited 0, and `make land` exited 0. The worktree is clean.
+
+    ```json
+    {
+      "op_id": "01M8A0MW8AN6CZ7NP89TFE63GB",
+      "commit": "7dac1786c755e8cecd745c92957d067df4507c8c",
+      "report": "[[reports/2026-11-25-landing-fixture-hang-guard.den]]",
+      "verify_result": {
+        "command": "make test-landing",
+        "exit_code": 0,
+        "evidence": [
+          {
+            "criterion": "Five fixture subprocesses use one 300-second hang guard, with every other timing preserved",
+            "reference": "scripts/test-landing.py:35, 804, 1010, 3592, 3641, 3654. AST comparison against the parent exited 0."
+          },
+          {
+            "criterion": "Targeted fixture suite passes",
+            "reference": "make test-landing exited 0. Ran 259 fixture tests in 153.337 s, failures=0. The empty-module rejection case passed in 8.479 s."
+          },
+          {
+            "criterion": "Land the verified change",
+            "reference": "make land exited 0 and printed LANDED 7dac1786c755e8cecd745c92957d067df4507c8c. origin/main matched HEAD and git verify-commit HEAD exited 0."
+          }
+        ]
+      }
+    }
+    ```
+    """
+
+  managed {
+    assignee = json"\"seat:01M8A0BZTA1Y6363Z5QY0JR5YW\""
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"8vBJJUo859ud3HChzp/5sSde2DPae2JxjC/mzluItnA=\",\"signer\":\"seat:01M89ZRSC32VXKQKRMXZ87PFCT\"}"
+    closed = json"{\"by\":\"seat:01M89ZRSC32VXKQKRMXZ87PFCT\",\"op_id\":\"01M8A0NBK235BMZK0Q5T3ZFPSA\"}"
+    created = json"\"2026-11-25T18:44:05.218Z\""
+    created_by = json"\"seat:01M89ZRSC32VXKQKRMXZ87PFCT\""
+    delegated_by = json"\"seat:01M89ZRSC32VXKQKRMXZ87PFCT\""
+    id = json"\"01M8A0B9X7X3JYS4ANXHYNCW1T\""
+    number = json"1794292861627945"
+    report = json"{\"commit\":\"7dac1786c755e8cecd745c92957d067df4507c8c\",\"op_id\":\"01M8A0MW8AN6CZ7NP89TFE63GB\",\"report\":\"[[reports/2026-11-25-landing-fixture-hang-guard.den]]\",\"reported_by\":\"seat:01M8A0BZTA1Y6363Z5QY0JR5YW\",\"summary\":\"Landed the signed five-minute fixture hang guard on main. `make test-landing` exited 0 with 259 fixtures passing, including the previously failing empty-module case in 8.479 s. One documented constant replaces five inline 45-second deadlines. The AST check and `git diff --check` exited 0, and `make land` exited 0. The worktree is clean.\",\"verify_revision\":0}"
+    role = json"\"executor\""
+    status = Done
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-25T18:49:34.566Z\""
+    updated_by = json"\"seat:01M89ZRSC32VXKQKRMXZ87PFCT\""
+    verify_result = json"{\"command\":\"make test-landing\",\"evidence\":[{\"criterion\":\"Five fixture subprocesses use one 300-second hang guard, with every other timing preserved\",\"reference\":\"scripts/test-landing.py:35, 804, 1010, 3592, 3641, 3654. AST comparison against the parent exited 0.\"},{\"criterion\":\"Targeted fixture suite passes\",\"reference\":\"make test-landing exited 0. Ran 259 fixture tests in 153.337 s, failures=0. The empty-module rejection case passed in 8.479 s.\"},{\"criterion\":\"Land the verified change\",\"reference\":\"make land exited 0 and printed LANDED 7dac1786c755e8cecd745c92957d067df4507c8c. origin/main matched HEAD and git verify-commit HEAD exited 0.\"}],\"exit_code\":0}"
+    provenance = json"{\"digest\":\"sha256:6cff5bcef34efdf555bb9b5a8369675f0f0095c67284287639b0daa9c568a147\",\"frontmatter_digest\":\"sha256:80c0a1ec1a17d875348ae0866a8215511961f131283985aa58508bd241a76b5a\",\"signer\":\"seat:01M89ZRSC32VXKQKRMXZ87PFCT\",\"sig\":\"hHDdXjEWBB/R+iuIHX3HS7v74lIegzSHN9pmhdWY7mrDiuYvJePnRvRBzXVIxFB6S5GgzOF7WEhtjptQICJ2Dg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/2061\",\"event\":{\"id\":\"01M8A0NC7992H4WMBP8S2HP6X5\",\"sequence\":2061,\"hash\":\"2adca71b38c91c86e60c40518ab2ec741a91ab81c8593969ce803d9a48c4f6da\"}}"
+    body_tail = json"\"\\n\""
+  }
+}
