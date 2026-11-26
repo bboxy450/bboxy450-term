@@ -71,6 +71,7 @@ struct Idle {
     /// (device, inode) of the database file when opened: a replaced file is never reused.
     file: (u64, u64),
     fence: Option<PathFence>,
+    busy: Duration,
     db: Connection,
 }
 
@@ -85,6 +86,7 @@ pub struct Lease {
     path: PathBuf,
     file: (u64, u64),
     fence: Option<PathFence>,
+    busy: Duration,
     db: Option<Connection>,
 }
 
@@ -114,6 +116,7 @@ impl Drop for Lease {
                 path: std::mem::take(&mut self.path),
                 file: self.file,
                 fence: self.fence.take(),
+                busy: self.busy,
                 db,
             });
             (idle.len() > POOL).then(|| idle.pop_front())
@@ -123,11 +126,15 @@ impl Drop for Lease {
 }
 
 pub(crate) fn open(path: &Path) -> Result<Lease> {
+    open_with_timeout(path, Duration::from_secs(2))
+}
+
+fn open_with_timeout(path: &Path, busy: Duration) -> Result<Lease> {
     bbt_rt::assert_not_ui_thread();
     let reused = {
         let mut idle = IDLE.lock().unwrap_or_else(|e| e.into_inner());
         idle.iter()
-            .rposition(|c| c.path == path)
+            .rposition(|c| c.path == path && c.busy == busy)
             .and_then(|i| idle.remove(i))
     };
     if let Some(mut c) = reused {
@@ -140,12 +147,13 @@ pub(crate) fn open(path: &Path) -> Result<Lease> {
                 path: c.path,
                 file: c.file,
                 fence: c.fence,
+                busy,
                 db: Some(c.db),
             });
         }
     }
     let db = Connection::open(path)?;
-    db.busy_timeout(Duration::from_secs(2))?;
+    db.busy_timeout(busy)?;
     db.pragma_update(None, "journal_mode", "WAL")?;
     db.pragma_update(None, "synchronous", "FULL")?;
     db.pragma_update(None, "foreign_keys", true)?;
@@ -156,6 +164,7 @@ pub(crate) fn open(path: &Path) -> Result<Lease> {
         path: path.to_path_buf(),
         file,
         fence: PathFence::new(path, file),
+        busy,
         db: Some(db),
     })
 }
@@ -221,6 +230,10 @@ impl SqliteStore {
 
     pub fn connection(&self) -> Result<Lease> {
         open(&self.path)
+    }
+
+    pub(crate) fn connection_nowait(&self) -> Result<Lease> {
+        open_with_timeout(&self.path, Duration::ZERO)
     }
 }
 

@@ -42,6 +42,31 @@ pub enum Purpose {
 /// Parent ordinary-work binding. Field order is the producer's sorted canonical
 /// JSON order, including the borrowed typed Context; no intermediate JSON tree
 /// or context clone is required. This data grants no execution authority.
+impl Purpose {
+    /// Purpose name in the canonical permit binding.
+    pub const fn binding_name(self) -> &'static str {
+        match self {
+            Self::InspectC1 => "inspect-c1",
+            Self::ReadPrepare => "read-prepare",
+        }
+    }
+
+    /// Fixed sibling command selected by the inherited permit.
+    pub(crate) const fn command(self) -> &'static str {
+        match self {
+            Self::InspectC1 => "inspect-c1",
+            Self::ReadPrepare => "prepare-read",
+        }
+    }
+
+    pub(crate) const fn protocol(self) -> &'static str {
+        match self {
+            Self::InspectC1 => "bboxy.dream.c1/1",
+            Self::ReadPrepare => "bboxy.dream.read/1",
+        }
+    }
+}
+
 #[derive(serde::Serialize)]
 pub struct Binding<'a> {
     context: Option<CanonicalContext<'a>>,
@@ -107,10 +132,7 @@ impl<'a> Binding<'a> {
             op_id: &op_id.0,
             probe,
             profile: PROFILE,
-            purpose: match purpose {
-                Purpose::InspectC1 => "inspect-c1",
-                Purpose::ReadPrepare => "read-prepare",
-            },
+            purpose: purpose.binding_name(),
             run_id: &run_id.0,
             worker_sha256: &worker_sha256.0,
         })

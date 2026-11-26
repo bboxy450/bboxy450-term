@@ -1734,12 +1734,13 @@ impl Runtime {
                             }
                         };
                         let outcome = engine::probe_gated(&owner.path, proof.clone(), incarnation);
-                        let proof = outcome.verdict.is_ok().then_some(proof);
+                        let proof = outcome.verdict.as_ref().is_ok_and(|purpose| {
+                            *purpose == bboxy450_harness_wake_up::dream_bootstrap::Purpose::InspectC1
+                        }).then_some(proof);
                         (outcome, proof)
                     })();
                     let retained = owner.probe_audit.set(outcome.audit).is_ok();
-                    let supported = outcome.verdict.is_ok()
-                        && retained
+                    let supported = retained
                         && proof.is_some_and(|proof| owner.native_provision.set(proof).is_ok());
                     owner.supported.store(supported, Ordering::Release);
                     #[cfg(debug_assertions)]
@@ -2391,13 +2392,13 @@ impl Runtime {
 }
 
 impl Runtime {
-    pub(crate) fn read(&self,handle:&tokio::runtime::Handle,authority:Authority,call:crate::mcp::Call,done:impl FnOnce(serde_json::Value)+Send+'static) {
+    pub(crate) fn read(&self,handle:&tokio::runtime::Handle,authority:Authority,call:crate::mcp::Call,journal:Option<crate::mcp::journal::Journal>,done:impl FnOnce(serde_json::Value)+Send+'static) {
         let permit=match Permit::claim(&self.requests,2) {Ok(p)=>p,Err(_)=>{done(crate::mcp::dream_read::result(&call,bbt_proto::dream_read::Reply::unavailable(bbt_proto::dream_read::Reason::Busy)));return;}};
         let runtime=self.clone();
         handle.spawn_blocking(move||{
             let output=if engine::utility().is_err() || runtime.retired.load(Ordering::Acquire) {
                 crate::mcp::dream_read::result(&call,bbt_proto::dream_read::Reply::failure(bbt_proto::dream_read::Code::StaleContext))
-            }else{runtime.read_cache.respond(&runtime.path,&authority,&call)};
+            }else{runtime.read_cache.respond(&runtime.path,&authority,&call,journal.as_ref())};
             done(output);drop(permit);
         });
     }

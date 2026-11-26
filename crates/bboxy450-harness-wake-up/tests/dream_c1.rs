@@ -288,20 +288,27 @@ impl Script {
     }
 
     fn spawn(&self) -> TestWorker {
+        self.spawn_for(bootstrap::Purpose::InspectC1, false)
+    }
+
+    fn spawn_for(&self, purpose: bootstrap::Purpose, probe: bool) -> TestWorker {
         let start: w::WorkerIn = c1::decode(&bytes("valid/start.json")).unwrap();
         let w::WorkerIn::Start(start) = start else {
             unreachable!()
         };
         // Private transport-fault fixture only: this zero digest grants no
         // managed runner/profile/source authority and is not a binding vector.
-        let frozen = bootstrap::Frozen::inspect(
-            false,
-            ulid::Ulid::new().to_bytes(),
-            bootstrap::ulid(start.run_id.0.as_bytes()).unwrap(),
-            bootstrap::ulid(start.nonce.0.as_bytes()).unwrap(),
-            [0; 32],
-            1,
-        );
+        let frozen = bootstrap::Frozen {
+            purpose,
+            ..bootstrap::Frozen::inspect(
+                probe,
+                ulid::Ulid::new().to_bytes(),
+                bootstrap::ulid(start.run_id.0.as_bytes()).unwrap(),
+                bootstrap::ulid(start.nonce.0.as_bytes()).unwrap(),
+                [0; 32],
+                1,
+            )
+        };
         let gate = ordinary(|| bootstrap::Gate::prepare(frozen).unwrap());
         let buffers = ordinary(|| Worker::prepare_buffers().unwrap());
         let input = ordinary(|| Worker::prepare_pipe().unwrap());
@@ -510,6 +517,102 @@ print(json.dumps(dict(base, type='done', seq=2, outcome='completed', result_sha2
     assert_eq!(done.nonce, start.nonce);
     assert!(reaped(&mut worker).success());
     assert_reaped(pid);
+}
+
+#[test]
+fn dream_read_prepare_uses_the_owned_spawner_and_rejects_cross_purpose_start() {
+    use bboxy450_harness_wake_up::dream_read::{self as read, wire as rw};
+
+    let read_fixture = |name| {
+        std::fs::read(
+            fixtures()
+                .with_file_name("dream-read")
+                .join("valid")
+                .join(name),
+        )
+        .unwrap()
+    };
+    let hello = String::from_utf8(read_fixture("hello.json")).unwrap();
+    let start = read_fixture("start.json");
+    let rw::WorkerIn::Start(read_start) = read::decode(&start).unwrap() else {
+        panic!("producer fixture must be Start");
+    };
+    let prepared = PreparedStart::read(&read_start).unwrap();
+    assert_eq!(prepared.as_bytes().strip_suffix(b"\n").unwrap(), start);
+    let w::WorkerIn::Start(c1_start) = c1::decode(&bytes("valid/start.json")).unwrap() else {
+        unreachable!()
+    };
+    let wrong_start = PreparedStart::new(&c1_start).unwrap();
+
+    for (probe, wrong_protocol) in [(false, false), (false, true), (true, false)] {
+        let script = Script::new(&format!(
+            r#"
+assert sys.argv[1:4] == ['dream', 'prepare-read', '--job-dir']
+assert _permit[8] == 2  # purpose in the producer's fixed bootstrap layout
+assert os.environ['LANG'] == 'C.UTF-8'
+assert os.environ['TMPDIR'] == str(pathlib.Path(sys.argv[4]) / 'tmp')
+assert not any(k == 'HOME' or k == 'PATH' or (k != 'BBOXY_DREAM_BOOTSTRAP' and k.startswith(('BBOXY_', 'OPENAI_', 'ANTHROPIC_', 'CODEX_', 'CLAUDE_'))) for k in os.environ)
+print({hello:?}, flush=True)
+pathlib.Path('captured-input').write_bytes(sys.stdin.buffer.read())
+"#
+        ));
+        let mut worker = script.spawn_for(bootstrap::Purpose::ReadPrepare, probe);
+        ordinary(|| {
+            worker.command.take();
+            worker.unused.take();
+        });
+        let until = worker.bootstrap_deadline().unwrap();
+        loop {
+            assert!(Instant::now() < until);
+            if worker.read_hello_step().unwrap() {
+                break;
+            }
+            worker.wait_io(Duration::from_millis(1));
+        }
+        if probe || wrong_protocol {
+            let frame = if wrong_protocol {
+                &wrong_start
+            } else {
+                &prepared
+            };
+            assert_eq!(
+                worker.send_prepared_start(frame),
+                Err(w::Code::ProtocolError)
+            );
+            assert!(!worker.start_write_observation().attempted);
+        } else {
+            worker.send_prepared_start(&prepared).unwrap();
+            worker.close_input();
+        }
+        let process = worker.pid();
+        assert!(reaped(&mut worker).success());
+        assert_reaped(process);
+        assert_eq!(
+            std::fs::read(script.job.join("captured-input")).unwrap(),
+            if probe || wrong_protocol {
+                &[][..]
+            } else {
+                prepared.as_bytes()
+            },
+        );
+    }
+
+    let script = Script::new("print(HELLO, flush=True)");
+    let mut worker = script.spawn_for(bootstrap::Purpose::ReadPrepare, true);
+    ordinary(|| {
+        worker.command.take();
+        worker.unused.take();
+    });
+    let until = worker.bootstrap_deadline().unwrap();
+    loop {
+        assert!(Instant::now() < until);
+        match worker.read_hello_step() {
+            Ok(false) => worker.wait_io(Duration::from_millis(1)),
+            Err(w::Code::ProtocolError | w::Code::VersionMismatch) => break,
+            other => panic!("read-purpose accepted an InspectC1 Hello: {other:?}"),
+        }
+    }
+    assert!(!worker.bootstrap_observation().qualified_hello);
 }
 
 #[test]

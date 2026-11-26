@@ -22,7 +22,7 @@ mod transport_launch;
 mod workspace_ready;
 mod workspace_retention;
 
-pub fn families() -> [fn(bool) -> Model; 22] {
+pub fn families() -> [fn(bool) -> Model; 23] {
     [
         plugin_activation,
         plugin_connection,
@@ -46,6 +46,7 @@ pub fn families() -> [fn(bool) -> Model; 22] {
         managed_workspace::managed_workspace_release,
         managed_workspace::managed_workspace_ownership,
         managed_workspace::managed_workspace_provider_lease,
+        dream_read_prepare,
     ]
 }
 
@@ -60,6 +61,79 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         )])
         .chain(artifacts::cases())
         .collect()
+}
+
+// One immutable producer pin, one Child/permit, two purposes and two
+// Start modes. The detailed debt/authority/custody laws remain in
+// C1BootstrapAdmission; this model checks the protocol selected by that gate.
+fn dream_read_prepare(broken: bool) -> Model {
+    let (stage, purpose, probe, hello, started) = (0, 1, 2, 3, 4);
+    let mut m = model(
+        "DreamReadPreparePurpose",
+        broken,
+        &[
+            ("stage", 6, 0),
+            ("purpose", 1, 0),
+            ("probe", 1, 0),
+            ("hello", 1, 0),
+            ("started", 1, 0),
+        ],
+    );
+    for (mode, value) in [("Inspect", 0), ("Prepare", 1)] {
+        for (kind, is_probe) in [("Job", 0), ("Probe", 1)] {
+            action(
+                &mut m,
+                &format!("Admit{mode}{kind}"),
+                eq(stage, 0),
+                &[
+                    (stage, Int(1)),
+                    (purpose, Int(value)),
+                    (probe, Int(is_probe)),
+                ],
+            );
+        }
+        let ready = if broken {
+            eq(stage, 3)
+        } else {
+            all([eq(stage, 3), eq(purpose, value)])
+        };
+        action(
+            &mut m,
+            &format!("Accept{mode}Hello"),
+            ready,
+            &[(stage, Int(4)), (hello, Int(value))],
+        );
+    }
+    action(
+        &mut m,
+        "SpawnBoundCommand",
+        eq(stage, 1),
+        &[(stage, Int(2))],
+    );
+    action(&mut m, "GrantPaidPermit", eq(stage, 2), &[(stage, Int(3))]);
+    action(
+        &mut m,
+        "SendBoundStart",
+        all([eq(stage, 4), eq(probe, 0)]),
+        &[(stage, Int(5)), (started, Int(1))],
+    );
+    action(
+        &mut m,
+        "RetireOwnedChild",
+        Int(1).lt(Var(stage)).and(Var(stage).lt(Int(6))),
+        &[(stage, Int(6))],
+    );
+    safe(
+        &mut m,
+        "OnlyPurposeMatchedHello",
+        implies(eq(stage, 4).or(eq(started, 1)), Var(purpose).eq(Var(hello))),
+    );
+    safe(
+        &mut m,
+        "ProbeCannotStart",
+        implies(eq(probe, 1), eq(started, 0)),
+    );
+    m
 }
 
 // The per-root hook queue (plugins/hooks.rs, HOOK_QUEUE) shared by many
@@ -586,4 +660,24 @@ pub fn plugin_setup(b: bool) -> Model {
         implies(eq(5, 1), eq(8, 1)),
     );
     m
+}
+
+#[cfg(test)]
+#[test]
+fn dream_read_prepare_purpose_has_reachable_start_and_broken_hello() {
+    use bboxy450_tlc::build::family;
+    let output = std::env::var_os("BBOXY_DREAM_READ_PREPARE_MODELS");
+    let mut manifest = String::new();
+    for (model, expected) in family(dream_read_prepare) {
+        let checked = model.check(1_000).unwrap();
+        assert_eq!(checked.violations.is_empty(), expected == "pass");
+        assert!(checked.states.iter().any(|s| s[1] == 1 && s[4] == 1));
+        if let Some(root) = output.as_deref().map(std::path::Path::new) {
+            std::fs::create_dir_all(root).unwrap();
+            bboxy450_tlc::corpus::export(model, expected, root, &mut manifest).unwrap();
+        }
+    }
+    if let Some(root) = output.as_deref().map(std::path::Path::new) {
+        std::fs::write(root.join("manifest.tsv"), manifest).unwrap();
+    }
 }

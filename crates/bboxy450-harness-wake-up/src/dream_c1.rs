@@ -1843,7 +1843,18 @@ fn frame_buffer(capacity: usize) -> Result<Vec<u8>, Code> {
         .map_err(|_| Code::ResourceLimit)?;
     Ok(bytes)
 }
-fn take_frame(pending: &mut Vec<u8>, scratch: &mut Vec<u8>, end: usize) -> Result<WorkerOut, Code> {
+fn decode_read_frame(bytes: &[u8]) -> Result<crate::dream_read::wire::WorkerOut, Code> {
+    crate::dream_read::decode(bytes).map_err(|error| match error {
+        crate::dream_read::wire::Code::ResourceLimit => Code::ResourceLimit,
+        _ => Code::ProtocolError,
+    })
+}
+fn take_frame<T>(
+    pending: &mut Vec<u8>,
+    scratch: &mut Vec<u8>,
+    end: usize,
+    decode: impl FnOnce(&[u8]) -> Result<T, Code>,
+) -> Result<T, Code> {
     if end + 1 > wire::MAX_FRAME || end + 1 > scratch.capacity() {
         return Err(Code::ResourceLimit);
     }
@@ -1854,7 +1865,7 @@ fn take_frame(pending: &mut Vec<u8>, scratch: &mut Vec<u8>, end: usize) -> Resul
     let result = if scratch.len() == 1 {
         Err(Code::ProtocolError)
     } else {
-        decode_output(scratch)
+        decode(scratch)
     };
     scratch.clear();
     result
@@ -1901,6 +1912,7 @@ pub struct PreparedStart {
     len: usize,
     run_id: [u8; 16],
     nonce: [u8; 16],
+    purpose: bootstrap::Purpose,
 }
 impl PreparedStart {
     pub fn new(start: &wire::Start) -> Result<Self, Code> {
@@ -1916,6 +1928,39 @@ impl PreparedStart {
     /// Borrow the retained original scalar fields; preparing a fixed frame
     /// needs no intermediate owned Start or String clones.
     pub fn from_parts(
+        run: &str,
+        nonce: &str,
+        manifest: &str,
+        timeout_ms: u32,
+        activity_revision: u64,
+        foreground: bool,
+    ) -> Result<Self, Code> {
+        Self::encode(
+            bootstrap::Purpose::InspectC1,
+            run,
+            nonce,
+            manifest,
+            timeout_ms,
+            activity_revision,
+            foreground,
+        )
+    }
+
+    /// Use the same bounded atomic Start handoff with the prepared-input digest.
+    pub fn read(start: &crate::dream_read::wire::Start) -> Result<Self, Code> {
+        Self::encode(
+            bootstrap::Purpose::ReadPrepare,
+            &start.run_id.0,
+            &start.nonce.0,
+            &start.input_sha256.0,
+            start.timeout_ms,
+            start.activity_revision.0,
+            start.foreground,
+        )
+    }
+
+    fn encode(
+        purpose: bootstrap::Purpose,
         run: &str,
         nonce: &str,
         manifest: &str,
@@ -1940,9 +1985,12 @@ impl PreparedStart {
             // Producer canonical key order, without an intermediate JSON tree.
             activity_revision: u64,
             foreground: bool,
-            manifest_sha256: &'a str,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            input_sha256: Option<&'a str>,
+            #[serde(skip_serializing_if = "Option::is_none")]
+            manifest_sha256: Option<&'a str>,
             nonce: &'a str,
-            protocol: wire::Protocol,
+            protocol: &'static str,
             run_id: &'a str,
             timeout_ms: u32,
             #[serde(rename = "type")]
@@ -1955,10 +2003,11 @@ impl PreparedStart {
                 &mut cursor,
                 &Envelope {
                     kind: "start",
-                    protocol: wire::Protocol::V1,
+                    protocol: purpose.protocol(),
                     run_id: run,
                     nonce,
-                    manifest_sha256: manifest,
+                    input_sha256: (purpose == bootstrap::Purpose::ReadPrepare).then_some(manifest),
+                    manifest_sha256: (purpose == bootstrap::Purpose::InspectC1).then_some(manifest),
                     timeout_ms,
                     activity_revision,
                     foreground,
@@ -1974,6 +2023,7 @@ impl PreparedStart {
             len: len + 1,
             run_id,
             nonce: nonce_id,
+            purpose,
         })
     }
     pub fn as_bytes(&self) -> &[u8] {
@@ -2156,14 +2206,12 @@ impl Worker {
     ) -> Result<PreparedCommand, Code> {
         crate::assert_not_ui_thread();
         validate_runner(binary, job)?;
-        if bootstrap.frozen().purpose != bootstrap::Purpose::InspectC1 {
-            return Err(Code::ProtocolError);
-        }
+        let purpose = bootstrap.frozen().purpose;
         let bootstrap_environment = bootstrap.env_value()?;
         let bootstrap_fd = bootstrap.inherited_fd();
         let mut command = Command::new(binary);
         command
-            .args(["dream", "inspect-c1", "--job-dir"])
+            .args(["dream", purpose.command(), "--job-dir"])
             .arg(job)
             .current_dir(job)
             .env_clear()
@@ -2300,6 +2348,21 @@ impl Worker {
         self.bootstrap.readiness_deadline()
     }
     pub fn hello_step(&mut self) -> Result<Option<wire::Hello>, Code> {
+        self.qualify_hello(|worker| match worker.receive()? {
+            Some(WorkerOut::Hello(h))
+                if h.schema_sha256.0 == SCHEMA_SHA256 && h.ir_major == 1 && h.ir_minor_max == 3 =>
+            {
+                Ok(Some(h))
+            }
+            Some(_) => Err(Code::VersionMismatch),
+            None => Ok(None),
+        })
+    }
+
+    fn qualify_hello<T>(
+        &mut self,
+        receive: impl FnOnce(&mut Self) -> Result<Option<T>, Code>,
+    ) -> Result<Option<T>, Code> {
         let result = (|| {
             self.bootstrap.check_readiness().map_err(|code| {
                 if code == Code::Deadline {
@@ -2308,16 +2371,11 @@ impl Worker {
                     code
                 }
             })?;
-            match self.receive()? {
-                Some(WorkerOut::Hello(h))
-                    if h.schema_sha256.0 == SCHEMA_SHA256
-                        && h.ir_major == 1
-                        && h.ir_minor_max == 3 =>
-                {
+            match receive(self)? {
+                Some(hello) => {
                     self.bootstrap.qualify_hello()?;
-                    Ok(Some(h))
+                    Ok(Some(hello))
                 }
-                Some(_) => Err(Code::VersionMismatch),
                 None if self.eof => Err(Code::RunnerUnavailable),
                 None => Ok(None),
             }
@@ -2327,11 +2385,10 @@ impl Worker {
         }
         result
     }
-    /// Actual C1 readiness/probing requires entry+waiting and same-clock bounds.
-    /// Protocol-only fake peers use hello_step; that method is NOT entry proof.
-    /// Stdout can arrive before the stderr read: retain it in the existing
-    /// bounded byte buffer without accepting/discarding its queued Hello.
-    pub fn hello_entry_step(&mut self) -> Result<Option<wire::Hello>, Code> {
+
+    // Keep an early Hello queued until the independently observed stderr
+    // markers establish the same owned process's entry and timing.
+    fn hello_entry_ready(&mut self) -> Result<bool, Code> {
         let result = (|| {
             self.bootstrap
                 .check_readiness()
@@ -2342,15 +2399,62 @@ impl Worker {
                 BootstrapEntryEvidenceState::Unknown => Err(Code::RunnerUnavailable),
                 BootstrapEntryEvidenceState::Pending => {
                     self.buffer_stdout()?;
-                    Ok(None)
+                    Ok(false)
                 }
-                BootstrapEntryEvidenceState::Known => self.hello_step(),
+                BootstrapEntryEvidenceState::Known => Ok(true),
             }
         })();
         if result.is_err() {
             self.bootstrap.revoke();
         }
         result
+    }
+
+    /// Actual C1 readiness requires entry/waiting evidence as well as Hello.
+    pub fn hello_entry_step(&mut self) -> Result<Option<wire::Hello>, Code> {
+        if self.hello_entry_ready()? {
+            self.hello_step()
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Same readiness and paid Hello criteria for both frozen purposes.
+    pub fn qualified_hello_entry_step(&mut self) -> Result<bool, Code> {
+        match self.bootstrap.frozen().purpose {
+            bootstrap::Purpose::InspectC1 => self.hello_entry_step().map(|hello| hello.is_some()),
+            bootstrap::Purpose::ReadPrepare => {
+                if !self.hello_entry_ready()? {
+                    return Ok(false);
+                }
+                self.read_hello_step()
+            }
+        }
+    }
+
+    /// Protocol-only prepared-read Hello for private transport fixtures.
+    /// Managed launches also require the independent entry witness above.
+    pub fn read_hello_step(&mut self) -> Result<bool, Code> {
+        use crate::dream_read as read;
+        self.qualify_hello(|worker| {
+            if worker.bootstrap.frozen().purpose != bootstrap::Purpose::ReadPrepare {
+                return Err(Code::VersionMismatch);
+            }
+            match worker.receive_frame(|bytes| {
+                if bytes.len() > 512 {
+                    return Err(Code::ResourceLimit);
+                }
+                decode_read_frame(bytes)
+            })? {
+                Some(read::wire::WorkerOut::Hello(hello)) => {
+                    read::verify_hello(&hello).map_err(|_| Code::VersionMismatch)?;
+                    Ok(Some(()))
+                }
+                Some(_) => Err(Code::VersionMismatch),
+                None => Ok(None),
+            }
+        })
+        .map(|hello| hello.is_some())
     }
     pub fn is_eof(&self) -> bool {
         self.eof && self.stderr_eof
@@ -2378,47 +2482,74 @@ impl Worker {
 
     /// At most one pending frame; callers coalesce Activity before numbering.
     pub fn send(&mut self, frame: &WorkerIn) -> Result<bool, Code> {
-        if let WorkerIn::Start(start) = frame {
-            let prepared = PreparedStart::new(start)?;
-            return self.send_prepared_start(&prepared).map(|()| true);
+        match frame {
+            WorkerIn::Start(start) => self
+                .send_prepared_start(&PreparedStart::new(start)?)
+                .map(|()| true),
+            WorkerIn::Activity(v) => self.send_control(
+                bootstrap::Purpose::InspectC1,
+                &v.run_id,
+                &v.nonce,
+                Some((v.revision.0, v.foreground)),
+            ),
+            WorkerIn::Cancel(v) => {
+                self.send_control(bootstrap::Purpose::InspectC1, &v.run_id, &v.nonce, None)
+            }
         }
-        let (run, nonce) = match frame {
-            WorkerIn::Start(v) => (&v.run_id, &v.nonce),
-            WorkerIn::Activity(v) => (&v.run_id, &v.nonce),
-            WorkerIn::Cancel(v) => (&v.run_id, &v.nonce),
-        };
+    }
+
+    /// Prepared-read controls share the owned bounded input pipe.
+    pub fn send_read(&mut self, frame: &crate::dream_read::wire::WorkerIn) -> Result<bool, Code> {
+        use crate::dream_read::wire::WorkerIn as ReadIn;
+        match frame {
+            ReadIn::Start(start) => self
+                .send_prepared_start(&PreparedStart::read(start)?)
+                .map(|()| true),
+            ReadIn::Activity(v) => self.send_control(
+                bootstrap::Purpose::ReadPrepare,
+                &v.run_id,
+                &v.nonce,
+                Some((v.revision.0, v.foreground)),
+            ),
+            ReadIn::Cancel(v) => {
+                self.send_control(bootstrap::Purpose::ReadPrepare, &v.run_id, &v.nonce, None)
+            }
+        }
+    }
+
+    fn send_control(
+        &mut self,
+        purpose: bootstrap::Purpose,
+        run: &wire::Ulid,
+        nonce: &wire::Ulid,
+        activity: Option<(u64, bool)>,
+    ) -> Result<bool, Code> {
         let frozen = self.bootstrap.frozen();
         if !self.input_nonblocking.get()
+            || purpose != frozen.purpose
             || bootstrap::ulid(run.0.as_bytes()).ok() != Some(frozen.run_id)
             || bootstrap::ulid(nonce.0.as_bytes()).ok() != Some(frozen.nonce)
         {
             return Err(Code::ProtocolError);
         }
-        if let WorkerIn::Activity(v) = frame
-            && v.revision.0 > wire::MAX_SAFE
-        {
+        if activity.is_some_and(|(revision, _)| revision > wire::MAX_SAFE) {
             return Err(Code::ResourceLimit);
         }
         if !self.flush()? {
             return Ok(false);
         }
         self.write.clear();
-        // Fixed control framing only while the child owns work. The validated
-        // IDs are canonical ASCII, numbers have the wire's53-bit bound, and the
-        // sole boolean has a fixed spelling. No owned JSON graph, generic
-        // payload serialization or parser runs on this independent control lane.
-        {
-            let mut output = FrameWriter(&mut self.write);
-            match frame {
-                WorkerIn::Activity(v) => write!(output,
-                    r#"{{"type":"activity","protocol":"bboxy.dream.c1/1","run_id":"{}","nonce":"{}","revision":{},"foreground":{}}}"#,
-                    v.run_id.0, v.nonce.0, v.revision.0, v.foreground),
-                WorkerIn::Cancel(v) => write!(output,
-                    r#"{{"type":"cancel","protocol":"bboxy.dream.c1/1","run_id":"{}","nonce":"{}"}}"#,
-                    v.run_id.0, v.nonce.0),
-                WorkerIn::Start(_) => return Err(Code::ProtocolError),
-            }.map_err(|_| Code::ResourceLimit)?;
-        }
+        // Fixed controls only while the child owns work, with no generic JSON
+        // serialization on this lane. Run and nonce are validated ASCII.
+        let mut output = FrameWriter(&mut self.write);
+        match activity {
+            Some((revision, foreground)) => write!(output,
+                r#"{{"type":"activity","protocol":"{}","run_id":"{}","nonce":"{}","revision":{},"foreground":{}}}"#,
+                purpose.protocol(), run.0, nonce.0, revision, foreground),
+            None => write!(output,
+                r#"{{"type":"cancel","protocol":"{}","run_id":"{}","nonce":"{}"}}"#,
+                purpose.protocol(), run.0, nonce.0),
+        }.map_err(|_| Code::ResourceLimit)?;
         self.write.push(b'\n');
         if self.write.len() > 512 {
             return Err(Code::ResourceLimit);
@@ -2436,6 +2567,7 @@ impl Worker {
             || self.start_write.attempted
             || !self.bootstrap.observation().qualified_hello
             || frozen.probe
+            || frame.purpose != frozen.purpose
             || frame.run_id != frozen.run_id
             || frame.nonce != frozen.nonce
             || !self.write.is_empty()
@@ -2523,12 +2655,35 @@ impl Worker {
     /// Read no more than 16 KiB stdout and 256 B stderr per call. Every stderr
     /// read uses the same entry tracker, including reads after Hello.
     pub fn receive(&mut self) -> Result<Option<WorkerOut>, Code> {
+        if self.bootstrap.frozen().purpose != bootstrap::Purpose::InspectC1 {
+            return Err(Code::ProtocolError);
+        }
+        self.receive_frame(decode_output)
+    }
+
+    /// Read a bounded prepared-read frame from the same owned pipes.
+    pub fn receive_read(&mut self) -> Result<Option<crate::dream_read::wire::WorkerOut>, Code> {
+        if self.bootstrap.frozen().purpose != bootstrap::Purpose::ReadPrepare {
+            return Err(Code::ProtocolError);
+        }
+        self.receive_frame(decode_read_frame)
+    }
+
+    /// Drain during settlement after admission has ended, using the same pipe bounds.
+    pub fn drain_output(&mut self) -> Result<(), Code> {
+        self.receive_frame(|_| Ok(())).map(|_| ())
+    }
+
+    fn receive_frame<T>(
+        &mut self,
+        decode: impl FnOnce(&[u8]) -> Result<T, Code>,
+    ) -> Result<Option<T>, Code> {
         self.buffer_stdout()?;
         capture_stderr(&mut self.stderr, &mut self.stderr_capture, &mut self.entry)?;
         self.stderr_bytes = self.stderr_capture.len();
         self.stderr_eof |= self.entry.stderr_eof;
         if let Some(end) = self.pending.iter().position(|b| *b == b'\n') {
-            take_frame(&mut self.pending, &mut self.frame_scratch, end).map(Some)
+            take_frame(&mut self.pending, &mut self.frame_scratch, end, decode).map(Some)
         } else {
             Ok(None)
         }

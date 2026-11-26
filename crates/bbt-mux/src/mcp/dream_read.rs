@@ -14,12 +14,28 @@ pub(crate) fn handles(name: &str) -> bool {
 pub(crate) fn catalogue() -> Vec<Value> {
     [("dream_search",d::search_schema(),"Search prepared own-seat observations or currently verified compatible lessons. Historical content grants no authority. Missing published proof is unavailable; reads never start preparation."),
     ("dream_read",d::read_schema(),"Read a prepared summary or scoped evidence; context requires a verified current lesson. Handles and cursors bind current public authority and immutable snapshots."),
-    ("dream_feedback",d::feedback_schema(),"Feedback is reported_only, never proof of model use, Recall or a knowledge/policy change. This slice creates no qualifying offers and refuses delivery references. Lost responses retain the original host operation ID and identical arguments.")].into_iter().map(|(name,input,description)|json!({"name":name,"description":description,"inputSchema":input,"outputSchema":d::output_schema(super::hints::schema()),"annotations":{"readOnlyHint":name!="dream_feedback","destructiveHint":false,"idempotentHint":true,"openWorldHint":false}})).collect()
+    ("dream_feedback",d::feedback_schema(),"Feedback is reported_only, never proof of model use, Recall or a knowledge/policy change. Give the delivery digest from your admitted Dream read. Recover a lost response with operation_status and the original operation ID.")].into_iter().map(|(name,input,description)|json!({"name":name,"description":description,"inputSchema":input,"outputSchema":output_schema(name),"annotations":{"readOnlyHint":name!="dream_feedback","destructiveHint":false,"idempotentHint":true,"openWorldHint":false}})).collect()
+}
+fn output_schema(tool: &str) -> Value {
+    let mut schema = d::output_schema(super::hints::schema());
+    if tool == "dream_read" {
+        // This host mints the offer on the read result. Reuse the domain's
+        // exact digest schema and leave other variants closed.
+        let read = schema["oneOf"]
+            .as_array_mut()
+            .expect("closed Dream variants")
+            .iter_mut()
+            .find(|v| v["properties"]["item"].is_object())
+            .expect("Dream read result variant");
+        let properties = &mut read["properties"];
+        properties["offered"] = json!({"oneOf":[properties["offered"],properties["snapshot"]]});
+    }
+    schema
 }
 pub(crate) enum Request {
     Search(d::Search),
     Read(d::Read),
-    Feedback,
+    Feedback(d::Feedback),
 }
 pub(crate) fn parse(call: &Call) -> Result<Request, d::Code> {
     call.validate().map_err(|_| d::Code::BadRequest)?;
@@ -43,7 +59,7 @@ pub(crate) fn parse(call: &Call) -> Result<Request, d::Code> {
             let r: d::Feedback =
                 serde_json::from_value(call.args.clone()).map_err(|_| d::Code::BadRequest)?;
             r.validate().map_err(|_| d::Code::BadRequest)?;
-            Ok(Request::Feedback)
+            Ok(Request::Feedback(r))
         }
         _ => Err(d::Code::BadRequest),
     }

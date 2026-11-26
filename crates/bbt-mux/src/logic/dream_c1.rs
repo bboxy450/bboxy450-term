@@ -4494,7 +4494,7 @@ impl ProbeAudit {
 }
 pub(crate) struct ProbeOutcome {
     pub audit: ProbeAudit,
-    pub verdict: Result<transport::DreamOwner, Code>,
+    pub verdict: Result<bootstrap::Purpose, Code>,
 }
 impl ProbeOutcome {
     pub(crate) fn refused(stage: &'static str, code: Code) -> Self {
@@ -4710,7 +4710,7 @@ fn probe_gated_observe(
     proof: Arc<runner_provision::ProvisionProof>,
     incarnation: u64,
     observe: impl FnOnce(&mut Worker, &Control) -> Result<(), Code>,
-) -> Result<transport::DreamOwner, Code> {
+) -> Result<bootstrap::Purpose, Code> {
     probe_gated_core(
         root,
         proof,
@@ -4725,7 +4725,7 @@ fn probe_gated_core(
     incarnation: u64,
     audit: &mut ProbeAudit,
     observe: impl FnOnce(&mut Worker, &Control) -> Result<(), Code>,
-) -> Result<transport::DreamOwner, Code> {
+) -> Result<bootstrap::Purpose, Code> {
     let control = Control::default();
     let result = (|| {
         if incarnation == 0 {
@@ -4739,6 +4739,7 @@ fn probe_gated_core(
         let mut budget = Budget::new(&control, deadline);
         audit.stage = "entry_tuple_eligibility";
         budget.unit(|| entry_worker_eligible(&proof))?;
+        let purpose = proof.purpose();
         audit.stage = "provision_bind";
         budget.unit(|| control.install_native_provision(proof.clone()))?;
         let (op, run, nonce, birth) = budget.unit(|| {
@@ -4796,7 +4797,7 @@ fn probe_gated_core(
             let binding = birth_binding(
                 &BirthBinding {
                     profile: bootstrap::PROFILE,
-                    purpose: "inspect-c1",
+                    purpose: purpose.binding_name(),
                     probe: true,
                     op_id: &op,
                     run_id: &run,
@@ -4809,14 +4810,17 @@ fn probe_gated_core(
             )?;
             audit.binding = binding;
             audit.stage = "gate";
-            let frozen = bootstrap::Frozen::inspect(
-                true,
-                birth.to_bytes(),
-                bootstrap::ulid(run.0.as_bytes()).map_err(|_| Code::BadRequest)?,
-                bootstrap::ulid(nonce.0.as_bytes()).map_err(|_| Code::BadRequest)?,
-                binding,
-                incarnation,
-            );
+            let frozen = bootstrap::Frozen {
+                purpose,
+                ..bootstrap::Frozen::inspect(
+                    true,
+                    birth.to_bytes(),
+                    bootstrap::ulid(run.0.as_bytes()).map_err(|_| Code::BadRequest)?,
+                    bootstrap::ulid(nonce.0.as_bytes()).map_err(|_| Code::BadRequest)?,
+                    binding,
+                    incarnation,
+                )
+            };
             let mut gate = Paced::new(
                 budget.unit(|| bootstrap::Gate::prepare(frozen).map_err(wire_error))?,
                 &control,
@@ -4978,7 +4982,7 @@ fn probe_gated_core(
             {
                 return Err(Code::ResourceLimit);
             }
-            Ok(transport::DreamOwner::TermC1)
+            Ok(purpose)
         })();
         budget.deadline = deadline;
         // Only actual reap or a proven pre-birth refusal permits empty cleanup.
@@ -5081,8 +5085,7 @@ fn bootstrap_handshake(
         // no allocation-bearing/bulk owner is dropped while child owns work.
         if bootstrap_control(control, || {
             worker
-                .hello_entry_step()
-                .map(|hello| hello.is_some())
+                .qualified_hello_entry_step()
                 .map_err(wire_error)
         })? {
             control.end_child_bootstrap(true)?;
@@ -6153,7 +6156,7 @@ fn settle_probe(worker: &mut Worker, control: &Control) {
     loop {
         let mut settled = false;
         let _ = bootstrap_control(control, || {
-            if worker.receive().is_err() {
+            if worker.drain_output().is_err() {
                 worker.discard_pending_output();
             }
             settled = worker.try_wait().is_ok_and(|exit| exit.is_some()) && worker.is_eof();
@@ -6563,7 +6566,12 @@ fn execute_inner(
         .native_provision
         .get()
         .ok_or(Code::RunnerUnavailable)?;
-    preparation.unit(|| entry_worker_eligible(proof))?;
+    preparation.unit(|| {
+        if proof.purpose() != bootstrap::Purpose::InspectC1 {
+            return Err(Code::RunnerUnavailable);
+        }
+        entry_worker_eligible(proof)
+    })?;
     preparation.unit(|| private_dir(job))?;
     let (canonical, job_directory) = canonical_job(job, &mut preparation)?;
     let _job_directory = Paced::new(job_directory, control);
@@ -9398,6 +9406,7 @@ pub(crate) mod runner_provision {
         receipt: Seal,
         worker: Option<(Seal, Seal)>,
         worker_sha256: String,
+        purpose: bootstrap::Purpose,
         private_development: bool,
         _credit: Reservation,
     }
@@ -9429,6 +9438,9 @@ pub(crate) mod runner_provision {
             + 64;
         pub(crate) fn retained_declared_bytes(&self) -> usize {
             Self::RETAINED_DECLARED
+        }
+        pub(super) fn purpose(&self) -> bootstrap::Purpose {
+            self.purpose
         }
         pub(crate) fn worker_sha256(&self) -> &str {
             &self.worker_sha256
@@ -9702,6 +9714,11 @@ pub(crate) mod runner_provision {
             serde_json::from_slice::<Role<'_>>(&bytes[..len]).map_err(|_| Code::RunnerUnavailable)
         })?;
         let worker_sha256 = budget.unit(|| Ok(expected.binary.to_owned()))?;
+        let purpose = if expected.source == bboxy450_harness_wake_up::dream_read::PRODUCER_COMMIT {
+            bootstrap::Purpose::ReadPrepare
+        } else {
+            bootstrap::Purpose::InspectC1
+        };
         if role.role == "worker" {
             worker_fields(&bytes[..len], expected, &launch, &mut budget)?;
             if hash_binary(&mut launch, &mut budget)? != expected.binary {
@@ -9713,11 +9730,16 @@ pub(crate) mod runner_provision {
                 receipt,
                 worker: None,
                 worker_sha256,
+                purpose,
                 private_development: false,
                 _credit: credit,
             });
         }
-        if role.role != "private_wrapper" || !cfg!(debug_assertions) || !private_test_account {
+        if purpose == bootstrap::Purpose::ReadPrepare
+            || role.role != "private_wrapper"
+            || !cfg!(debug_assertions)
+            || !private_test_account
+        {
             return Err(Code::RunnerUnavailable);
         }
         let value = budget.unit(|| {
@@ -9742,6 +9764,7 @@ pub(crate) mod runner_provision {
             receipt,
             worker: Some(worker),
             worker_sha256,
+            purpose,
             private_development: false,
             _credit: credit,
         };

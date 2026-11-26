@@ -411,8 +411,8 @@ pub mod wire {
 use serde::Serialize;
 use wire::{Code, Hex, Input, PreparedEntry};
 
-/// Exact accepted producer revision from the assigned Q3 brief.
-pub const PRODUCER_COMMIT: &str = "f848c03ff0462e55dfa0b17fcfd550626a52db2b";
+/// Signed Q2 producer source. A source pin alone does not qualify a binary or proof tools.
+pub const PRODUCER_COMMIT: &str = "1f1b30ddec05e5d8e092d91b92c161bd94d1cc38";
 /// SHA256 of the producer-owned closed read artifact schema.
 pub const SCHEMA_SHA256: &str = "0afcbe084c959118cea8d3b49008e5cd9654d7ff5caa8565bf3691fe2ce7a08a";
 /// SHA256 of the complete producer fixture lock at the accepted revision.

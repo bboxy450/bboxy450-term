@@ -28,7 +28,7 @@ pub(crate) fn recovery(op: crate::Ulid) -> Vec<Value> {
     vec![tool(
         "operation_status",
         json!({"original_op_id":op}),
-        "Read the original operation outcome before retrying; never repeat an unknown effect.",
+        "Read the original outcome before retrying; never repeat an unknown effect.",
     )]
 }
 
@@ -75,11 +75,7 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
                 Some("unknown" | "op_id_reused")
             ))
     {
-        return vec![tool(
-            "orient",
-            json!({}),
-            "Retain original host operation ID and identical arguments. Dream operation_status unavailable.",
-        )];
+        return recovery(call.op_id);
     }
     if call.tool == "dream_feedback" && data["error"]["code"] == "not_found" {
         return vec![tool(

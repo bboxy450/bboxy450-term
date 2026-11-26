@@ -2164,6 +2164,16 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "DreamReadPreparePurpose"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadPreparePurpose"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "DreamReadFeedback"
 expected = "pass"
 frontend = "project"

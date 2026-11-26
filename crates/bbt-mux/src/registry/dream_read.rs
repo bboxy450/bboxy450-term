@@ -129,54 +129,56 @@ impl Drop for Cache {
 fn key(context: &c1::Context) -> String {
     crate::store::digest(&c1::canonical(context).expect("closed context"))
 }
-/// Original-operation recovery uses the existing own-seat journal. This narrow
-/// slice makes no offers and records no positive feedback/provenance event.
-/// Unsupported or foreign delivery references remain ordinary bounded refusals.
-pub(crate) fn journal_feedback(
-    journal: &crate::mcp::journal::Journal,
+fn journal_actor(
     authority: &Authority,
-    call: &Call,
-    output: Value,
-) -> Value {
-    let execute = || -> Result<d::Reply, d::Code> {
-        if output["structuredContent"]["error"]["code"] == "stale_context" {
-            return Err(d::Code::StaleContext);
-        }
-        let (context, fence) = authority.capture_all().map_err(code)?;
-        // Read only the exact admitted seat's bounded public role. No signing
-        // hold, credential admission or operator account is consulted.
-        let role=authority.fence.with_current(&fence,|db| {
-            let bytes:Vec<u8>=db.query_row("SELECT CASE WHEN length(role)<=1024 THEN role ELSE NULL END FROM msg_policies WHERE seat=?1 AND epoch=?2 AND muted=0",rusqlite::params![authority.seat.to_string(),i64::try_from(context.grant_epoch.0)?],|row|row.get(0))?;
+    context: &c1::Context,
+    fence: &crate::identity::PublicFence,
+) -> Result<crate::mcp::SeatActor, d::Code> {
+    // Only the admitted seat's bounded public role is read here.
+    let role = authority
+        .fence
+        .with_current(fence, |db| {
+            let bytes: Vec<u8> = db.query_row(
+                "SELECT CASE WHEN length(role)<=1024 THEN role ELSE NULL END FROM msg_policies
+             WHERE seat=?1 AND epoch=?2 AND muted=0",
+                rusqlite::params![
+                    authority.seat.to_string(),
+                    i64::try_from(context.grant_epoch.0)?
+                ],
+                |row| row.get(0),
+            )?;
             Ok(serde_json::from_slice::<crate::registry::Role>(&bytes)?)
-        }).map_err(|_|d::Code::StaleContext)?;
-        let actor = crate::mcp::SeatActor {
-            seat_id: authority.seat,
-            process_generation: context.generation.0,
-            swarm_id: context.swarm.0.parse().map_err(|_| d::Code::StaleContext)?,
-            role,
-            grant_epoch: context.grant_epoch.0,
-            issuer_kind: fence.issuer.kind,
-        };
-        let retained = journal
-            .call(&actor, call, || output)
-            .map_err(|_| d::Code::ResourceLimit)?;
-        if retained["structuredContent"]["error"]["code"] == "op_id_reused" {
-            return Err(d::Code::OpIdReused);
-        }
-        let mut domain = retained["structuredContent"].clone();
-        let fields = domain.as_object_mut().ok_or(d::Code::ProtocolError)?;
-        if fields.remove("op_id") != Some(json!(call.op_id))
-            || !fields.remove("hints").is_some_and(|h| h.is_array())
-        {
-            return Err(d::Code::ProtocolError);
-        }
-        let domain = serde_json::from_value(domain).map_err(|_| d::Code::ProtocolError)?;
-        if !authority.matches(&context, &Some(fence)) {
-            return Err(d::Code::StaleContext);
-        }
-        Ok(domain)
-    };
-    result(call, execute().unwrap_or_else(d::Reply::failure))
+        })
+        .map_err(|_| d::Code::StaleContext)?;
+    Ok(crate::mcp::SeatActor {
+        seat_id: authority.seat,
+        process_generation: context.generation.0,
+        swarm_id: context.swarm.0.parse().map_err(|_| d::Code::StaleContext)?,
+        role,
+        grant_epoch: context.grant_epoch.0,
+        issuer_kind: fence.issuer.kind,
+    })
+}
+
+fn pin(value: &impl serde::Serialize) -> Result<c1::Hex, d::Code> {
+    let bytes = c1::canonical(value).map_err(|_| d::Code::ProtocolError)?;
+    Ok(c1::Hex(crate::store::digest(&bytes)))
+}
+
+fn retained_reply(value: Value, call: &Call) -> Result<d::Reply, d::Code> {
+    let mut domain = value["structuredContent"].clone();
+    match domain["error"]["code"].as_str() {
+        Some("op_id_reused") => return Err(d::Code::OpIdReused),
+        Some("rejected") => return Err(d::Code::StaleContext),
+        _ => {}
+    }
+    let fields = domain.as_object_mut().ok_or(d::Code::ProtocolError)?;
+    if fields.remove("op_id") != Some(json!(call.op_id))
+        || !fields.remove("hints").is_some_and(|h| h.is_array())
+    {
+        return Err(d::Code::ProtocolError);
+    }
+    serde_json::from_value(domain).map_err(|_| d::Code::ProtocolError)
 }
 fn code(code: c1::Code) -> d::Code {
     match code {
@@ -638,14 +640,47 @@ impl Cache {
         q.retire(descriptor);
         q.check()
     }
-    pub(crate) fn respond(&self, path: &Path, authority: &Authority, call: &Call) -> Value {
+    pub(crate) fn respond(
+        &self,
+        path: &Path,
+        authority: &Authority,
+        call: &Call,
+        journal: Option<&crate::mcp::journal::Journal>,
+    ) -> Value {
         let response = (|| -> Result<d::Reply, d::Code> {
             let request = parse(call)?;
             let (context, fence) = authority.capture_all().map_err(code)?;
-            if matches!(&request, Request::Feedback) {
-                // Offer provenance/positive report admission belongs to Q3b.
-                // A delivery digest supplied by a caller is never proof.
-                return Err(d::Code::NotFound);
+            if let Request::Feedback(feedback) = &request {
+                let journal = journal.ok_or(d::Code::ResourceLimit)?;
+                let actor = journal_actor(authority, &context, &fence)?;
+                let epoch = pin(&(&context, &fence))?;
+                let report = if journal
+                    .dream_offer_allows(&actor, &epoch, feedback)
+                    .map_err(|_| d::Code::ResourceLimit)?
+                {
+                    d::Reply::Feedback(d::FeedbackResult {
+                        v: c1::Version,
+                        status: d::Recorded::Recorded,
+                        report: pin(&(epoch, &actor, call.op_id, &call.args))?,
+                        assessment: d::Assessment::ReportedOnly,
+                        duplicate: false,
+                    })
+                } else {
+                    d::Reply::failure(d::Code::NotFound)
+                };
+                if !authority.matches(&context, &Some(fence.clone())) {
+                    return Err(d::Code::StaleContext);
+                }
+                let value = result(call, report);
+                let retained = journal
+                    .checked_authorized(&actor, call, value.clone(), |retained| {
+                        retained["structuredContent"]["status"] != "recorded" || retained == &value
+                    })
+                    .map_err(|_| d::Code::ResourceLimit)?;
+                if !authority.matches(&context, &Some(fence)) {
+                    return Err(d::Code::StaleContext);
+                }
+                return retained_reply(retained, call);
             }
             if let Request::Search(s) = &request
                 && s.kind == d::Kind::Lesson
@@ -681,7 +716,7 @@ impl Cache {
                     }
                     Request::Search(_) => d::Reply::failure(d::Code::StaleCursor),
                     Request::Read(_) => d::Reply::failure(d::Code::NotFound),
-                    Request::Feedback => unreachable!(),
+                    Request::Feedback(_) => unreachable!(),
                 });
             };
             let q = Quantum::new(None).map_err(code)?;
@@ -693,6 +728,7 @@ impl Cache {
             }
             let job = path.join(&snapshot.record.view.run_id.0);
             let descriptor = descriptor(&job, &snapshot.record, &q).map_err(code)?;
+            let mut offer = None;
             let answer = match request {
                 Request::Search(s) => self.search(call, &snapshot, s, &job, &descriptor, &q)?,
                 Request::Read(r) => {
@@ -723,7 +759,7 @@ impl Cache {
                                 },
                             },
                         };
-                        let reply = d::Reply::Read(Box::new(d::ReadPage {
+                        let mut page = d::ReadPage {
                             v: c1::Version,
                             status: d::Available::Available,
                             snapshot: snapshot.digest.clone(),
@@ -733,7 +769,17 @@ impl Cache {
                             next: None,
                             truncated: false,
                             offered: None,
-                        }));
+                        };
+                        let actor = journal_actor(authority, &context, &fence)?;
+                        let epoch = pin(&(&context, &fence))?;
+                        let id = pin(&(&epoch, &actor, call.op_id, &call.args, &page))?;
+                        page.offered = Some(id.clone());
+                        let provenance = crate::mcp::journal::DreamOffer {
+                            id,
+                            snapshot: page.snapshot.clone(),
+                            authority: epoch,
+                        };
+                        let reply = d::Reply::Read(Box::new(page));
                         if !fits(
                             call,
                             &reply,
@@ -741,31 +787,48 @@ impl Cache {
                         ) {
                             d::Reply::failure(d::Code::BudgetExceeded)
                         } else {
+                            offer = Some((actor, provenance));
                             reply
                         }
                     }
                 }
-                Request::Feedback => unreachable!(),
+                Request::Feedback(_) => unreachable!(),
             };
             q.retire(descriptor);
             #[cfg(test)]
             if let Some(hook) = self.before_present.lock().unwrap().take() {
                 hook();
             }
-            // A completion can replace this disposable epoch during file IO.
-            // Never present an old page or mint a mixed-revision cursor then.
-            if !self
-                .snapshots
-                .try_lock()
-                .map_err(|_| d::Code::ResourceLimit)?
-                .get(&key(&context))
-                .is_some_and(|current| Arc::ptr_eq(current, &snapshot))
-            {
-                return Err(d::Code::StaleCursor);
-            }
-            if !authority.matches(&context, &snapshot.record.identity_fence) {
-                return Err(d::Code::StaleContext);
-            }
+            let context_key = key(&context);
+            let check_current = || {
+                // A completion can replace this disposable epoch during IO.
+                // The retained operation cannot authorize presentation of an
+                // older epoch, even when its offer transaction succeeded.
+                if !self
+                    .snapshots
+                    .try_lock()
+                    .map_err(|_| d::Code::ResourceLimit)?
+                    .get(&context_key)
+                    .is_some_and(|current| Arc::ptr_eq(current, &snapshot))
+                {
+                    return Err(d::Code::StaleCursor);
+                }
+                if !authority.matches(&context, &snapshot.record.identity_fence) {
+                    return Err(d::Code::StaleContext);
+                }
+                Ok(())
+            };
+            check_current()?;
+            let answer = if let Some((actor, offer)) = offer {
+                let journal = journal.ok_or(d::Code::ResourceLimit)?;
+                let retained = journal
+                    .offer_dream_read(&actor, call, result(call, answer), offer)
+                    .map_err(|_| d::Code::ResourceLimit)?;
+                check_current()?;
+                retained_reply(retained, call)?
+            } else {
+                answer
+            };
             q.retire(snapshot.take_value());
             q.check().map_err(code)?;
             Ok(answer)

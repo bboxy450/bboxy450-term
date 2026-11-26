@@ -124,7 +124,7 @@ fn dream_read_actual_admitted_row_pins_context_tamper_and_currentness() {
             assert_eq!(read["reason"], "not_a_lesson");
         } else {
             assert_eq!(read["item"], *hit);
-            assert_eq!(read["offered"], Value::Null);
+            assert_eq!(read["offered"].as_str().unwrap().len(), 64);
         }
     }
     let foreign = dream_read_client(
@@ -323,6 +323,87 @@ fn dream_read_actual_inflight_snapshot_invalidation_refuses_old_page() {
 }
 
 #[test]
+fn dream_read_feedback_requires_exact_own_offer_and_recovers_once() {
+    let cluster = w::Row::Cluster(w::Cluster {
+        repo: w::Repo("private.invalid/public-api".into()),
+        fingerprint: w::Hex("a".repeat(64)),
+        count: 2,
+        first_ms: w::Number(1),
+        last_ms: w::Number(2),
+    });
+    let f = Fixture::open_with_rows(Some(vec![cluster]));
+    let before = f.counts();
+    let search = dream_read_client(
+        &f,
+        f.own.id,
+        "dream_search",
+        json!({"v":1,"kind":"observation","budget_tokens":4096}),
+    );
+    let read_args =
+        json!({"v":1,"handle":search["items"][0]["handle"],"view":"summary","budget_tokens":4096});
+    let read_op = Ulid::new();
+    let send = |seat, tool, op, args| {
+        f.mcp_protocol_reply(
+            seat,
+            "tools/call",
+            json!({"name":tool,"arguments":args,"_meta":{"bboxy450/op_id":op}}),
+        )["result"]["structuredContent"]
+            .clone()
+    };
+    let offer = send(f.own.id, "dream_read", read_op, read_args.clone());
+    assert_eq!(offer["status"], "available", "{offer}");
+    assert_eq!(offer, send(f.own.id, "dream_read", read_op, read_args));
+    let args = json!({"v":1,"delivery":offer["offered"],"outcome":"used","evidence":[]});
+    assert_eq!(
+        send(f.peer.id, "dream_feedback", Ulid::new(), args.clone())["error"]["code"],
+        "not_found"
+    );
+    let mut invented = args.clone();
+    invented["evidence"] = json!([{"kind":"event","session":Ulid::new(),
+                                    "seq":1,"digest":format!("sha256:{}","b".repeat(64))}]);
+    assert_eq!(
+        send(f.own.id, "dream_feedback", Ulid::new(), invented)["error"]["code"],
+        "not_found"
+    );
+    let op = Ulid::new();
+    let first = send(f.own.id, "dream_feedback", op, args.clone());
+    assert_eq!(first["status"], "recorded", "{first}");
+    assert_eq!(first["assessment"], "reported_only");
+    assert_eq!(first, send(f.own.id, "dream_feedback", op, args.clone()));
+    let mut changed = args.clone();
+    changed["outcome"] = json!("contradicted");
+    assert_eq!(
+        send(f.own.id, "dream_feedback", op, changed)["error"]["code"],
+        "op_id_reused"
+    );
+    let recovered = f.mcp_tool_reply(f.own.id, "operation_status", json!({"original_op_id":op}));
+    let retained = &recovered["result"]["structuredContent"];
+    assert_eq!(retained["status"], "applied", "{recovered}");
+    assert_eq!(retained["result"]["report"], first["report"]);
+    let foreign = f.mcp_tool_reply(f.peer.id, "operation_status", json!({"original_op_id":op}));
+    assert_eq!(foreign["result"]["structuredContent"]["status"], "unknown");
+    let head_key = "identity/head";
+    let original = f.account.get(head_key).unwrap().unwrap();
+    let mut head: crate::identity::Signed<crate::identity::AccountHead> =
+        serde_json::from_slice(&original).unwrap();
+    head.payload
+        .revoked_devices
+        .push(head.payload.active_devices[0].device_id);
+    for bytes in [serde_json::to_vec(&head).unwrap(), original] {
+        f.account.put(head_key, &bytes).unwrap();
+        let stale = send(f.own.id, "dream_feedback", Ulid::new(), args.clone());
+        assert!(
+            matches!(
+                stale["error"]["code"].as_str(),
+                Some("stale_context" | "not_found")
+            ),
+            "{stale}"
+        );
+    }
+    f.unchanged(before, "Q3b own-seat offer and reported-only journal");
+}
+
+#[test]
 fn dream_read_feedback_original_operation_unknown_reply_foreign_and_poison_refuse() {
     let f = Fixture::open_with_rows(Some(vec![]));
     let before = f.counts();
@@ -347,19 +428,17 @@ fn dream_read_feedback_original_operation_unknown_reply_foreign_and_poison_refus
         conflict["structuredContent"]["error"]["code"],
         "op_id_reused"
     );
-    let recovery = &conflict["structuredContent"]["hints"];
-    assert!(
-        recovery
-            .as_array()
-            .unwrap()
-            .iter()
-            .all(|hint| hint["params"]["name"] != "operation_status")
+    let recovery = &conflict["structuredContent"]["hints"][0];
+    assert_eq!(recovery["params"]["name"], "operation_status");
+    assert_eq!(
+        recovery["params"]["arguments"],
+        json!({"original_op_id":op})
     );
-    assert!(
-        serde_json::to_string(recovery)
-            .unwrap()
-            .contains("original host operation ID")
-    );
+    let recovered = f.mcp_tool_reply(f.own.id, "operation_status", json!({"original_op_id":op}));
+    let retained = &recovered["result"]["structuredContent"];
+    assert_eq!(retained["status"], "rejected");
+    assert_eq!(retained["tool"], "dream_feedback");
+    assert_eq!(retained["result"]["error"]["code"], "not_found");
     let foreign = dream_read_client(&f, f.peer.id, "dream_feedback", args.clone());
     assert_eq!(foreign["error"]["code"], "not_found");
     let mut foreign = args.clone();

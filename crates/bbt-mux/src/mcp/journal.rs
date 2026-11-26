@@ -40,6 +40,15 @@ struct RootContext {
     startup: String,
 }
 
+// Offer provenance is an index into the original operation, with no second
+// copy of the rendered response. Only the host writes these fixed-size pins.
+#[derive(Serialize, Deserialize)]
+pub(crate) struct DreamOffer {
+    pub id: bbt_proto::dream::Hex,
+    pub snapshot: bbt_proto::dream::Hex,
+    pub authority: bbt_proto::dream::Hex,
+}
+
 #[derive(Serialize, Deserialize)]
 struct Entry {
     actor: Principal,
@@ -50,6 +59,8 @@ struct Entry {
     root_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     native_unlock: Option<NativeAttempt>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    dream_offer: Option<DreamOffer>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -86,6 +97,12 @@ enum Mode {
     Effect,
 }
 
+enum Extra {
+    None,
+    NativeUnlock(String, crate::identity::unlock::Reference),
+    DreamOffer(DreamOffer),
+}
+
 impl Journal {
     pub fn new(store: SqliteStore) -> Self {
         Self {
@@ -109,7 +126,7 @@ impl Journal {
     pub(crate) fn root_id(&self) -> Option<&str> {
         self.root.as_ref().map(|root| root.id.as_str())
     }
-    /// Inspect an original document effect without admission, replay or an audit write.
+    /// Inspect an original document or Dream feedback effect without admission or replay.
     /// A current launch may recover its seat's earlier launch, but never another
     /// seat/swarm/issuer/root's result. Missing rows cannot prove no effect.
     pub(crate) fn operation_status(&self, actor: &super::SeatActor, op: Ulid) -> Result<Value> {
@@ -135,7 +152,8 @@ impl Journal {
             && self.accepts_root(old.root_id.as_deref())
             && (matches!(old.tool.as_str(), "knowledge_write" | "knowledge_commit")
                 || super::work_items::mutation(&old.tool)
-                || super::workspaces::mutation(&old.tool));
+                || super::workspaces::mutation(&old.tool)
+                || old.tool == "dream_feedback");
         if !allowed {
             return Ok(
                 json!({"original_op_id":op,"status":"forbidden","terminal":false,
@@ -216,8 +234,86 @@ impl Journal {
         call: &Call,
         dispatch: impl FnOnce() -> Value,
     ) -> Result<Value> {
-        self.record(&actor.into(), call, dispatch, Mode::Read, |_| true, None)
-            .map(|(value, _)| value)
+        self.record(
+            &actor.into(),
+            call,
+            dispatch,
+            Mode::Read,
+            |_| true,
+            Extra::None,
+        )
+        .map(|(value, _)| value)
+    }
+
+    pub(crate) fn offer_dream_read(
+        &self,
+        actor: &super::SeatActor,
+        call: &Call,
+        value: Value,
+        offer: DreamOffer,
+    ) -> Result<Value> {
+        self.record(
+            &actor.into(),
+            call,
+            || value.clone(),
+            Mode::Read,
+            |retained| retained == &value,
+            Extra::DreamOffer(offer),
+        )
+        .map(|(value, _)| value)
+    }
+
+    /// Read only the exact immutable offer in this actor's root and epoch.
+    pub(crate) fn dream_offer_allows(
+        &self,
+        actor: &super::SeatActor,
+        authority: &bbt_proto::dream::Hex,
+        feedback: &bbt_proto::dream_read::Feedback,
+    ) -> Result<bool> {
+        use bbt_proto::dream_read::{ObservationProof, Pin, Reply};
+        let db = self.store.connection_nowait()?;
+        let bytes: Option<Vec<u8>> = db
+            .query_row(
+                "SELECT o.value FROM kv i JOIN kv o ON o.key=CAST(i.value AS TEXT)
+             WHERE i.key=?1 AND length(o.value)<=?2",
+                params![
+                    format!("control/dream-offer/{}", feedback.delivery.0),
+                    (bbt_proto::dream_read::MAX_OUTPUT * 2) as i64
+                ],
+                |row| row.get(0),
+            )
+            .optional()?;
+        let Some(bytes) = bytes else { return Ok(false) };
+        let entry: Entry = serde_json::from_slice(&bytes)?;
+        let Some(offer) = entry.dream_offer else {
+            return Ok(false);
+        };
+        if entry.tool != "dream_read"
+            || !entry.actor.same_authority(&actor.into())
+            || !self.accepts_root(entry.root_id.as_deref())
+            || &offer.authority != authority
+            || offer.id != feedback.delivery
+        {
+            return Ok(false);
+        }
+        let mut domain = entry.result["structuredContent"].clone();
+        let Some(fields) = domain.as_object_mut() else {
+            return Ok(false);
+        };
+        fields.remove("op_id");
+        fields.remove("hints");
+        let Reply::Read(page) = serde_json::from_value(domain)? else {
+            return Ok(false);
+        };
+        if page.offered.as_ref() != Some(&offer.id) || page.snapshot != offer.snapshot {
+            return Ok(false);
+        }
+        // The compact observation reply exposes at most one exact EventPin.
+        // An arbitrary user-supplied record or event is not admitted evidence.
+        Ok(feedback.evidence.iter().all(|pin| {
+            matches!((&page.item.proof, pin),
+                (ObservationProof::ClosedIrEpisode { origin, .. }, Pin::Event(event)) if origin == event)
+        }))
     }
 
     /// Read a native result by its operation ID, without creating or admitting an effect.
@@ -286,8 +382,15 @@ impl Journal {
     pub fn checked(&self, actor: impl Into<Principal>, call: &Call, value: Value) -> Result<Value> {
         let actor = actor.into();
         if value["isError"] == true {
-            self.record(&actor, call, || value, Mode::Rejected, |_| true, None)
-                .map(|(value, _)| value)
+            self.record(
+                &actor,
+                call,
+                || value,
+                Mode::Rejected,
+                |_| true,
+                Extra::None,
+            )
+            .map(|(value, _)| value)
         } else {
             self.call(&actor, call, || value)
         }
@@ -306,8 +409,15 @@ impl Journal {
         if value["isError"] == true {
             return self.checked(&actor, call, value);
         }
-        self.record(&actor, call, || value, Mode::Read, retained_allowed, None)
-            .map(|(value, _)| value)
+        self.record(
+            &actor,
+            call,
+            || value,
+            Mode::Read,
+            retained_allowed,
+            Extra::None,
+        )
+        .map(|(value, _)| value)
     }
 
     /// Commit an intent and audit before dispatch, with no SQLite transaction
@@ -331,7 +441,7 @@ impl Journal {
     pub fn admit(&self, actor: impl Into<Principal>, call: &Call) -> Result<(Value, bool)> {
         self.record(&actor.into(),call,||error(
             call.op_id,"unknown","durable attempt has no recorded outcome; retain the operation ID and check its receipts"
-        ),Mode::Effect,|_|true,None)
+        ),Mode::Effect,|_|true,Extra::None)
     }
 
     /// The existing operator journal admits the native act and pending audit atomically.
@@ -356,7 +466,7 @@ impl Journal {
             || initial,
             Mode::Effect,
             |_| true,
-            Some((hold, reference)),
+            Extra::NativeUnlock(hold, reference),
         )
     }
 
@@ -401,6 +511,7 @@ impl Journal {
             result: result.clone(),
             root_id: self.root_id().map(str::to_owned),
             native_unlock: admitted.native_unlock,
+            dream_offer: admitted.dream_offer,
         };
         if tx.execute(
             "UPDATE kv SET value=?2 WHERE key=?1",
@@ -439,13 +550,17 @@ impl Journal {
         dispatch: impl FnOnce() -> Value,
         mode: Mode,
         retained_allowed: impl FnOnce(&Value) -> bool,
-        native: Option<(String, crate::identity::unlock::Reference)>,
+        extra: Extra,
     ) -> Result<(Value, bool)> {
         let hash = args_digest(&call.args)?;
         let key = format!("control/op/{}", call.op_id);
         // The lookup and result publication use the same write transaction, so
         // overlapping logic owners cannot return two results for one op_id.
-        let mut db = self.store.connection()?;
+        let mut db = if matches!(call.tool.as_str(), "dream_read" | "dream_feedback") {
+            self.store.connection_nowait()?
+        } else {
+            self.store.connection()?
+        };
         let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
         let retained: Option<Vec<u8>> = tx
             .query_row("SELECT value FROM kv WHERE key=?1", [&key], |row| {
@@ -509,26 +624,57 @@ impl Journal {
             fresh && mode == Mode::Effect,
         );
         self.root_audit(&mut event);
-        let native_unlock = if fresh {
-            native.map(|(hold, reference)| {
+        let (native_unlock, dream_offer) = match extra {
+            Extra::NativeUnlock(hold, reference) if fresh => {
                 event.payload["signature"] = json!("pending");
                 event.payload["hold_reason"] = json!(hold);
                 event.payload["outcome"] = json!("unknown");
-                NativeAttempt {
-                    reference,
-                    hold,
-                    pending_event: event.id,
-                    position: None,
-                    outcome: bbt_proto::identity::UnlockOutcome::Unknown,
-                    finished: false,
-                    started: false,
-                    steps: Vec::new(),
-                    completion: None,
-                }
-            })
-        } else {
-            None
+                (
+                    Some(NativeAttempt {
+                        reference,
+                        hold,
+                        pending_event: event.id,
+                        position: None,
+                        outcome: bbt_proto::identity::UnlockOutcome::Unknown,
+                        finished: false,
+                        started: false,
+                        steps: Vec::new(),
+                        completion: None,
+                    }),
+                    None,
+                )
+            }
+            Extra::DreamOffer(offer)
+                if fresh
+                    && result["structuredContent"]["offered"].as_str() == Some(&offer.id.0) =>
+            {
+                (None, Some(offer))
+            }
+            _ => (None, None),
         };
+        if let Some(offer) = &dream_offer {
+            tx.execute(
+                "INSERT INTO kv VALUES(?1,?2)",
+                params![
+                    format!("control/dream-offer/{}", offer.id.0),
+                    key.as_bytes()
+                ],
+            )?;
+            event.payload["dream_offer"] = json!(offer);
+        }
+        if fresh
+            && call.tool == "dream_feedback"
+            && result["structuredContent"]["status"] == "recorded"
+        {
+            event.payload["dream_feedback"] = json!({
+                "report": result["structuredContent"]["report"],
+                "assessment": "reported_only",
+                "delivery": call.args["delivery"],
+                "outcome": call.args["outcome"],
+                "evidence": call.args["evidence"],
+                "note": call.args["note"],
+            });
+        }
         if fresh {
             if native_unlock.is_some() {
                 let pending: i64 = tx.query_row("SELECT count(*) FROM (SELECT 1 FROM kv WHERE key >= 'control/unlock/' AND key < 'control/unlock0' LIMIT 128)", [], |row| row.get(0))?;
@@ -554,6 +700,7 @@ impl Journal {
                         result: result.clone(),
                         root_id: self.root_id().map(str::to_owned),
                         native_unlock,
+                        dream_offer,
                     })?
                 ],
             )?;
