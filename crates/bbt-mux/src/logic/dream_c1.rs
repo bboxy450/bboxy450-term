@@ -9283,18 +9283,46 @@ pub(crate) mod runner_provision {
         compiler: &'a str,
         binary: &'a str,
     }
-    // Decision66058 approves this exact canonical Make1.99.1 build closure.
-    // This is pre-birth eligibility, not a successful runtime/profile verdict.
-    // Match the canonical build-side APPROVED_NATIVE_BUILD; stopped historical
-    // workers remain refused separately, without a fallback tuple or retry.
-    const APPROVED_NATIVE: Option<Expected<'static>> = Some(Expected {
-        source: "2ce4359df034405043d419fe550b0f6cafe7887e",
-        compiler: "e003fd3d385fcd0de16bc6b049124efb20207831dd810fd4ab39ff079bbb12a5",
-        binary: "2b85c7114545f35a62842115ae91e08e1a22fbfcd24dfd27e3aa45fa1d3837cb",
-    });
-    // Exact signed development milestone only; never receipt self-approval or
-    // final production conformance. Cleared when the reviewed tuple is promoted.
-    const PRIVATE_DEVELOPMENT_NATIVE: Option<Expected<'static>> = None;
+    impl Expected<'_> {
+        fn commitment(self) -> Result<[u8; 32], Code> {
+            let hex = |value: &str, len: usize| {
+                value.len() == len
+                    && value
+                        .bytes()
+                        .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+            };
+            if !hex(self.source, 40) || !hex(self.compiler, 64) || !hex(self.binary, 64) {
+                return Err(Code::RunnerUnavailable);
+            }
+            let mut hash = Sha256::new();
+            hash.update(b"bboxy.dream.c1.provision/1\0");
+            hash.update(self.source.as_bytes());
+            hash.update(self.compiler.as_bytes());
+            hash.update(self.binary.as_bytes());
+            Ok(hash.finalize().into())
+        }
+    }
+    impl Drain for Expected<'_> {
+        fn drain_step(&mut self) -> bool {
+            false
+        }
+    }
+
+    // Commitment to APPROVED_NATIVE_BUILD in scripts/test-dream-c1.py under
+    // task 01M878HHAHFJVH8E6H7SDHEZBM. Runtime reads the tuple from that
+    // provisioner's receipt and verifies this commitment before birth.
+    const APPROVED_NATIVE_COMMITMENT: Option<[u8; 32]> = Some([
+        0xba, 0x0a, 0xce, 0x9f, 0xca, 0x0e, 0x93, 0x27,
+        0xa3, 0xf4, 0x3e, 0x0a, 0x5c, 0xee, 0x6b, 0xd4,
+        0xf4, 0x70, 0x8f, 0xca, 0xaa, 0xce, 0xea, 0xd8,
+        0xe6, 0x6e, 0x48, 0xf6, 0x07, 0xd2, 0xba, 0x2d,
+    ]);
+    const PRIVATE_DEVELOPMENT_NATIVE_COMMITMENT: Option<[u8; 32]> = None;
+
+    struct WorkerPin {
+        purpose: bootstrap::Purpose,
+        sha256: String,
+    }
 
     #[derive(Clone, Copy, PartialEq, Eq)]
     struct Stamp {
@@ -9642,22 +9670,25 @@ pub(crate) mod runner_provision {
         budget.unit(|| seal.current())?;
         budget.unit(|| Ok(format!("{:x}", hash.finalize())))
     }
-    fn worker_fields(
-        bytes: &[u8],
-        expected: Expected<'_>,
+    fn worker_fields<'a>(
+        bytes: &'a [u8],
+        approval: [u8; 32],
         binary: &Seal,
         budget: &mut Budget<'_>,
-    ) -> Result<(), Code> {
+    ) -> Result<Expected<'a>, Code> {
         budget.unit(|| {
             let value: WorkerReceipt<'_> =
                 serde_json::from_slice(bytes).map_err(|_| Code::RunnerUnavailable)?;
+            let expected = Expected {
+                source: value.source_commit,
+                compiler: value.compiler_sha256,
+                binary: value.binary_sha256,
+            };
             if value.schema != SCHEMA
                 || value.role != "worker"
                 || value.metrics_profile != PROFILE
                 || value.bootstrap_profile != BOOTSTRAP_PROFILE
-                || value.source_commit != expected.source
-                || value.compiler_sha256 != expected.compiler
-                || value.binary_sha256 != expected.binary
+                || expected.commitment()? != approval
                 || value.build_profile != "release"
                 || !value.default_features
                 || !value.explicit_features.is_empty()
@@ -9667,37 +9698,44 @@ pub(crate) mod runner_provision {
             {
                 return Err(Code::RunnerUnavailable);
             }
-            Ok(())
+            Ok(expected)
         })
+    }
+    fn verify_worker(
+        binary: &mut Seal,
+        bytes: &[u8],
+        approval: [u8; 32],
+        budget: &mut Budget<'_>,
+    ) -> Result<WorkerPin, Code> {
+        let expected = worker_fields(bytes, approval, binary, budget)?;
+        let sha256 = hash_binary(binary, budget)?;
+        if sha256 != expected.binary {
+            return Err(Code::RunnerUnavailable);
+        }
+        let purpose = if expected.source == bboxy450_harness_wake_up::dream_read::PRODUCER_COMMIT {
+            bootstrap::Purpose::ReadPrepare
+        } else {
+            bootstrap::Purpose::InspectC1
+        };
+        Ok(WorkerPin { purpose, sha256 })
     }
     fn worker_pair(
         binary: &Path,
-        expected: Expected<'_>,
+        approval: [u8; 32],
         budget: &mut Budget<'_>,
-    ) -> Result<(Seal, Seal), Code> {
+    ) -> Result<(Seal, Seal, WorkerPin), Code> {
         let mut binary = Seal::open(binary, false, budget)?;
         let mut receipt = Seal::open(&binary.path.with_extension("dream-c1.json"), true, budget)?;
         let (bytes, len) = read_receipt(&mut receipt, budget)?;
-        worker_fields(&bytes[..len], expected, &binary, budget)?;
-        if hash_binary(&mut binary, budget)? != expected.binary {
-            return Err(Code::RunnerUnavailable);
-        }
-        Ok((binary, receipt))
+        let pin = verify_worker(&mut binary, &bytes[..len], approval, budget)?;
+        Ok((binary, receipt, pin))
     }
-    fn verify_expected(
+
+    fn verify_provision(
         binary: &Path,
         private_test_account: bool,
-        expected: Expected<'_>,
+        approval: [u8; 32],
     ) -> Result<ProvisionProof, Code> {
-        let hex = |value: &str, len: usize| {
-            value.len() == len
-                && value
-                    .bytes()
-                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-        };
-        if !hex(expected.source, 40) || !hex(expected.compiler, 64) || !hex(expected.binary, 64) {
-            return Err(Code::RunnerUnavailable);
-        }
         utility()?;
         let control = Control::default();
         control.foreground.store(false, Ordering::Release);
@@ -9713,33 +9751,20 @@ pub(crate) mod runner_provision {
         let role = budget.unit(|| {
             serde_json::from_slice::<Role<'_>>(&bytes[..len]).map_err(|_| Code::RunnerUnavailable)
         })?;
-        let worker_sha256 = budget.unit(|| Ok(expected.binary.to_owned()))?;
-        let purpose = if expected.source == bboxy450_harness_wake_up::dream_read::PRODUCER_COMMIT {
-            bootstrap::Purpose::ReadPrepare
-        } else {
-            bootstrap::Purpose::InspectC1
-        };
         if role.role == "worker" {
-            worker_fields(&bytes[..len], expected, &launch, &mut budget)?;
-            if hash_binary(&mut launch, &mut budget)? != expected.binary {
-                return Err(Code::RunnerUnavailable);
-            }
+            let pin = verify_worker(&mut launch, &bytes[..len], approval, &mut budget)?;
             budget.pay_work_debt()?;
             return Ok(ProvisionProof {
                 launch,
                 receipt,
                 worker: None,
-                worker_sha256,
-                purpose,
+                worker_sha256: pin.sha256,
+                purpose: pin.purpose,
                 private_development: false,
                 _credit: credit,
             });
         }
-        if purpose == bootstrap::Purpose::ReadPrepare
-            || role.role != "private_wrapper"
-            || !cfg!(debug_assertions)
-            || !private_test_account
-        {
+        if role.role != "private_wrapper" || !cfg!(debug_assertions) || !private_test_account {
             return Err(Code::RunnerUnavailable);
         }
         let value = budget.unit(|| {
@@ -9750,21 +9775,28 @@ pub(crate) mod runner_provision {
             || value.role != "private_wrapper"
             || value.metrics_profile != PROFILE
             || value.bootstrap_profile != BOOTSTRAP_PROFILE
-            || value.actual_worker_sha256 != expected.binary
-            || !hex(value.binary_sha256, 64)
+            || value.binary_sha256.len() != 64
+            || !value
+                .binary_sha256
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
         {
             return Err(Code::RunnerUnavailable);
         }
         if hash_binary(&mut launch, &mut budget)? != value.binary_sha256 {
             return Err(Code::RunnerUnavailable);
         }
-        let worker = worker_pair(Path::new(value.actual_worker), expected, &mut budget)?;
+        let (worker, worker_receipt, pin) =
+            worker_pair(Path::new(value.actual_worker), approval, &mut budget)?;
+        if pin.purpose != bootstrap::Purpose::InspectC1 || value.actual_worker_sha256 != pin.sha256 {
+            return Err(Code::RunnerUnavailable);
+        }
         let proof = ProvisionProof {
             launch,
             receipt,
-            worker: Some(worker),
-            worker_sha256,
-            purpose,
+            worker: Some((worker, worker_receipt)),
+            worker_sha256: pin.sha256,
+            purpose: pin.purpose,
             private_development: false,
             _credit: credit,
         };
@@ -9772,6 +9804,7 @@ pub(crate) mod runner_provision {
         budget.pay_work_debt()?;
         Ok(proof)
     }
+
     /// Verify BEFORE any candidate process birth, including the source-free
     /// probe. Unknown/old workers cannot be executed to discover gate support.
     /// Runs on the isolated capability owner; never probes/builds/searches PATH.
@@ -9779,29 +9812,17 @@ pub(crate) mod runner_provision {
         binary: &Path,
         private_test_account: bool,
     ) -> Result<ProvisionProof, Code> {
-        // Select at most one immutable tuple before verification. There is no
-        // retry under another tuple after a timing/hash/metadata refusal.
         let development =
-            APPROVED_NATIVE.is_none() && cfg!(debug_assertions) && private_test_account;
-        let expected = if development {
-            PRIVATE_DEVELOPMENT_NATIVE
+            APPROVED_NATIVE_COMMITMENT.is_none() && cfg!(debug_assertions) && private_test_account;
+        let approval = if development {
+            PRIVATE_DEVELOPMENT_NATIVE_COMMITMENT
         } else {
-            APPROVED_NATIVE
-        };
-        let mut proof = verify_approved(binary, private_test_account, expected)?;
+            APPROVED_NATIVE_COMMITMENT
+        }
+        .ok_or(Code::RunnerUnavailable)?;
+        let mut proof = verify_provision(binary, private_test_account, approval)?;
         proof.private_development = development;
         Ok(proof)
-    }
-    fn verify_approved(
-        binary: &Path,
-        private_test_account: bool,
-        expected: Option<Expected<'_>>,
-    ) -> Result<ProvisionProof, Code> {
-        verify_expected(
-            binary,
-            private_test_account,
-            expected.ok_or(Code::RunnerUnavailable)?,
-        )
     }
 
     #[cfg(test)]
@@ -9856,10 +9877,20 @@ pub(crate) mod runner_provision {
             );
         }
 
+        fn verify_expected(
+            binary: &Path,
+            private_test_account: bool,
+            expected: Expected<'_>,
+        ) -> Result<ProvisionProof, Code> {
+            verify_provision(binary, private_test_account, expected.commitment()?)
+        }
+
         #[test]
-        fn native_provision_no_approved_tuple_never_grants_from_json() {
+        fn native_provision_receipt_cannot_approve_its_own_tuple() {
+            let (_root, binary, _, value) = fixture();
+            receipt(&binary, &value);
             assert!(matches!(
-                verify_approved(Path::new("/unread/unapproved"), true, None),
+                verify_native_provision(&binary, true),
                 Err(Code::RunnerUnavailable)
             ));
         }
