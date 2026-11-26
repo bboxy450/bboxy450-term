@@ -2428,6 +2428,7 @@ test-real-sessions: init-submodules
 # Nothing is tested against a published release.
 # Both Dream suites use the producer's frozen read fixture after the term
 # gate admits that exact ordinary worker. The test build uses its own image.
+# Use CI's timed group while retaining the harness suite's two-thread default.
 .PHONY: test-harness-source
 test-harness-source: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -2437,6 +2438,7 @@ test-harness-source: init-submodules
 	env -u CARGO_PROFILE_DEV_DEBUG_ASSERTIONS -u CARGO_PROFILE_TEST_DEBUG_ASSERTIONS \
 	  $(MAKE) admit-dream-c1-file TARGET_DIR='$(abspath $(TARGET_DIR))' DREAM_C1_ADMIT_FILE="$$worker"; \
 	DREAM_C1_RUNNER="$$worker" DREAM_READ_RUNNER="$$worker" \
+	NEXTEST_PROFILE=gate NEXTEST_TEST_THREADS="$${NEXTEST_TEST_THREADS:-2}" \
 	sh scripts/quarantine-test.sh --locked -p bboxy450-harness --features acp-agent,acp,embedded,test-fixtures --lib --tests --target-dir '$(TARGET_DIR)' -E 'not test(dream::)'
 
 .PHONY: test-harness-native format-harness-embed
