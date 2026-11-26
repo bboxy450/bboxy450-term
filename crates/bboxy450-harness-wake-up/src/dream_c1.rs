@@ -672,7 +672,10 @@ impl ProducerMetrics {
     pub fn work_debt_paid_for(&self, run: &str, nonce: &str) -> bool {
         self.native_profile.is_some_and(|p| {
             p.run.as_slice() == run.as_bytes() && p.nonce.as_slice() == nonce.as_bytes()
-        }) && self.get("cost_known") == Some(1)
+        }) && self.terminal_debt_paid()
+    }
+    fn terminal_debt_paid(&self) -> bool {
+        self.get("cost_known") == Some(1)
             && self.get("terminal_remaining_debt_ns") == Some(0)
             && (45..63).all(|i| self.values[i].is_some_and(|v| v <= wire::MAX_SAFE))
     }
@@ -839,7 +842,7 @@ fn metric_fields(
         .all(Option::is_some)
         .then_some(())
 }
-fn parse_producer_metrics(stderr: &[u8]) -> Option<ProducerMetrics> {
+fn parse_producer_metrics(stderr: &[u8], probe: bool) -> Option<ProducerMetrics> {
     if stderr.len() > 16 * 1024 || !stderr.ends_with(b"\n") {
         return None;
     }
@@ -1012,7 +1015,13 @@ fn parse_producer_metrics(stderr: &[u8]) -> Option<ProducerMetrics> {
             values[index] = Some(metric_number(numeric)?);
         }
     }
-    if !compute || values[0]? > values[1]? {
+    // A probe exits on EOF before Start, so it emits no compute or publication
+    // report. Inspection completion still requires its run/nonce publication binding.
+    if probe {
+        if compute || mask != 31 {
+            return None;
+        }
+    } else if !compute || values[0]? > values[1]? {
         return None;
     }
     let native_profile = if mask == 63 {
@@ -2709,7 +2718,19 @@ impl Worker {
     }
     /// Only numeric allowlisted diagnostics; raw stderr is never returned or echoed.
     pub fn producer_metrics(&self) -> Option<ProducerMetrics> {
-        parse_producer_metrics(&self.stderr_capture)
+        parse_producer_metrics(&self.stderr_capture, false)
+    }
+    /// Terminal costs of the exact source-free worker after qualified Hello and reap.
+    pub fn settled_probe_metrics(&self) -> Option<ProducerMetrics> {
+        if !self.bootstrap.frozen().probe
+            || !self.bootstrap.observation().qualified_hello
+            || !self.is_eof()
+            || !self.reaped.is_some_and(|status| status.success())
+        {
+            return None;
+        }
+        let metrics = parse_producer_metrics(&self.stderr_capture, true)?;
+        metrics.terminal_debt_paid().then_some(metrics)
     }
     fn reap(&mut self, flags: i32) -> Result<Option<ExitStatus>, Code> {
         if self.reaped.is_some() {
@@ -2991,7 +3012,7 @@ mod diagnostic_tests {
 
     #[test]
     fn native_profile_requires_disaggregated_bounds_debt_identity_and_capture_cutoff() {
-        let metrics = parse_producer_metrics(PROFILE.as_bytes()).unwrap();
+        let metrics = parse_producer_metrics(PROFILE.as_bytes(), false).unwrap();
         assert!(metrics.has_native_profile());
         assert!(metrics.work_debt_paid_for(RUN, NONCE));
         assert!(metrics.valid_native_completion(RUN, NONCE, 1));
@@ -3005,6 +3026,39 @@ mod diagnostic_tests {
         assert_eq!(metrics.values[22], Some(100_000));
         assert_eq!(metrics.values[23], Some(2 * 1024 * 1024));
         assert_eq!(metrics.values[68], Some(0));
+    }
+
+    #[test]
+    fn source_free_probe_requires_paid_terminal_costs_without_start_receipts() {
+        let probe = PROFILE
+            .lines()
+            .filter(|line| {
+                !line.starts_with("dream-c1 metrics ")
+                    && !line.starts_with("dream-c1 publication_custody ")
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n";
+        let metrics = parse_producer_metrics(probe.as_bytes(), true).unwrap();
+        assert!(metrics.terminal_debt_paid());
+        assert!(!metrics.work_debt_paid_for(RUN, NONCE));
+        assert!(parse_producer_metrics(probe.as_bytes(), false).is_none());
+        assert!(parse_producer_metrics(PROFILE.as_bytes(), true).is_none());
+        for prefix in ["dream-c1 terminal_metrics ", "dream-c1 cost_known="] {
+            let missing = probe
+                .lines()
+                .filter(|line| !line.starts_with(prefix))
+                .collect::<Vec<_>>()
+                .join("\n")
+                + "\n";
+            assert!(parse_producer_metrics(missing.as_bytes(), true).is_none());
+        }
+        let unpaid = probe.replace("remaining_debt_ns=0", "remaining_debt_ns=1");
+        assert!(
+            !parse_producer_metrics(unpaid.as_bytes(), true)
+                .unwrap()
+                .terminal_debt_paid()
+        );
     }
 
     #[test]
@@ -3044,7 +3098,7 @@ mod diagnostic_tests {
             ("effect=1 errno=0", "effect=2 errno=5"),
         ] {
             let text = PROFILE.replace(from, to);
-            let metrics = parse_producer_metrics(text.as_bytes()).unwrap();
+            let metrics = parse_producer_metrics(text.as_bytes(), false).unwrap();
             assert!(
                 !metrics.valid_native_completion(RUN, NONCE, 1),
                 "{from} -> {to}"
@@ -3056,7 +3110,7 @@ mod diagnostic_tests {
             .collect::<Vec<_>>()
             .join("\n")
             + "\n";
-        let metrics = parse_producer_metrics(missing.as_bytes()).unwrap();
+        let metrics = parse_producer_metrics(missing.as_bytes(), false).unwrap();
         assert!(!metrics.has_native_profile());
         assert!(!metrics.valid_native_completion(RUN, NONCE, 1));
     }
@@ -3074,11 +3128,11 @@ mod diagnostic_tests {
             ("cleanup_uncertain=false", "cleanup_uncertain=0"),
             ("operation=4096", "operation=4096 unknown=1"),
         ] {
-            assert!(parse_producer_metrics(PROFILE.replace(from, to).as_bytes()).is_none());
+            assert!(parse_producer_metrics(PROFILE.replace(from, to).as_bytes(), false).is_none());
         }
         let duplicate = PROFILE.to_string() + "dream-c1 cost_known=true\n";
-        assert!(parse_producer_metrics(duplicate.as_bytes()).is_none());
-        assert!(parse_producer_metrics(PROFILE.trim_end().as_bytes()).is_none());
+        assert!(parse_producer_metrics(duplicate.as_bytes(), false).is_none());
+        assert!(parse_producer_metrics(PROFILE.trim_end().as_bytes(), false).is_none());
     }
 
     #[test]
@@ -3086,7 +3140,7 @@ mod diagnostic_tests {
         let text = format!(
             "dream-c1 reactor_max_cpu_ns=80 startup_runtime=none\n{COMPUTE}dream-c1 control_max_cpu_ns=90\n"
         );
-        let metrics = parse_producer_metrics(text.as_bytes()).unwrap();
+        let metrics = parse_producer_metrics(text.as_bytes(), false).unwrap();
         assert_eq!(PRODUCER_METRIC_KEYS[0], "heap_live_bytes");
         assert_eq!(PRODUCER_METRIC_KEYS[20], "max_cleanup_unit_cpu_ns");
         assert_eq!(metrics.values[0], Some(12));
@@ -3096,12 +3150,12 @@ mod diagnostic_tests {
         let alternate =
             format!("{COMPUTE}dream-c1 reactor_max_cpu_ns=81\ndream-c1 control_max_cpu_ns=91\n");
         assert_eq!(
-            parse_producer_metrics(alternate.as_bytes())
+            parse_producer_metrics(alternate.as_bytes(), false)
                 .unwrap()
                 .get("reactor_max_cpu_ns"),
             Some(81)
         );
-        let partial = parse_producer_metrics(COMPUTE.as_bytes()).unwrap();
+        let partial = parse_producer_metrics(COMPUTE.as_bytes(), false).unwrap();
         assert_eq!(partial.get("reactor_max_cpu_ns"), None);
         assert_eq!(partial.get("control_max_cpu_ns"), None);
     }
@@ -3123,14 +3177,15 @@ mod diagnostic_tests {
         ] {
             let text = format!("{COMPUTE}{suffix}");
             assert!(
-                parse_producer_metrics(text.as_bytes()).is_none(),
+                parse_producer_metrics(text.as_bytes(), false).is_none(),
                 "{suffix:?}"
             );
         }
-        assert!(parse_producer_metrics(&[b'x'; 16 * 1024 + 1]).is_none());
+        assert!(parse_producer_metrics(&[b'x'; 16 * 1024 + 1], false).is_none());
         assert!(
             parse_producer_metrics(
-                b"dream-c1 metrics heap_live_bytes=1 heap_live_bytes=1 heap_peak_bytes=2\n"
+                b"dream-c1 metrics heap_live_bytes=1 heap_live_bytes=1 heap_peak_bytes=2\n",
+                false,
             )
             .is_none()
         );

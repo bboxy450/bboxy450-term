@@ -4704,21 +4704,6 @@ pub(crate) fn probe_gated(
     audit.error = verdict.as_ref().err().copied();
     ProbeOutcome { audit, verdict }
 }
-#[cfg(test)]
-fn probe_gated_observe(
-    root: &Path,
-    proof: Arc<runner_provision::ProvisionProof>,
-    incarnation: u64,
-    observe: impl FnOnce(&mut Worker, &Control) -> Result<(), Code>,
-) -> Result<bootstrap::Purpose, Code> {
-    probe_gated_core(
-        root,
-        proof,
-        incarnation,
-        &mut ProbeAudit::empty(incarnation),
-        observe,
-    )
-}
 fn probe_gated_core(
     root: &Path,
     proof: Arc<runner_provision::ProvisionProof>,
@@ -4950,13 +4935,12 @@ fn probe_gated_core(
                 return Err(Code::ResourceLimit);
             }
             audit.stage = "terminal_metrics";
-            let metrics = worker.producer_metrics().ok_or(Code::RunnerUnavailable)?;
-            audit.child_cost_known = metrics.work_debt_paid_for(&run.0, &nonce.0);
+            let metrics = worker
+                .settled_probe_metrics()
+                .ok_or(Code::RunnerUnavailable)?;
+            audit.child_cost_known = true;
             audit.child_terminal_max_cpu_ns = metrics.get("terminal_inclusive_max_cpu_ns");
             audit.child_remaining_debt_ns = metrics.get("terminal_remaining_debt_ns");
-            if !audit.child_cost_known {
-                return Err(Code::RunnerUnavailable);
-            }
             for name in [
                 "terminal_app_max_cpu_ns",
                 "terminal_control_max_cpu_ns",
@@ -6746,9 +6730,10 @@ fn execute_inner(
         drop(command.take());
         drop(unused_command.take());
         preparation.pay_work_debt()?;
-        record.worker_start =
-            Some(preparation.unit(|| transport::process_stamp(worker.pid()).map_err(wire_error))?);
+        // Meter the process stamp and image check as one bounded identity
+        // observation before checkpointing it and granting the permit.
         preparation.unit(|| {
+            record.worker_start = Some(transport::process_stamp(worker.pid()).map_err(wire_error)?);
             #[cfg(debug_assertions)]
             if control.private_fixture && proof.control_only_wrapper() {
                 // Explicit private protocol-fault fixture only. Its source is
@@ -8469,10 +8454,13 @@ mod tests {
         let proof = Arc::new(runner_provision::verify_native_provision(&binary, false).unwrap());
         let mut witnessed = None;
         let mut observed_heap = None;
-        probe_gated_observe(
+        let incarnation = monotonic_ns().unwrap();
+        let mut audit = ProbeAudit::empty(incarnation);
+        let result = probe_gated_core(
             &evidence,
             proof,
-            monotonic_ns().unwrap(),
+            incarnation,
+            &mut audit,
             |worker, control| {
                 let pid = worker.pid();
                 let mut budget = Budget::new(control, Instant::now() + Duration::from_secs(30));
@@ -8520,8 +8508,8 @@ mod tests {
                 observed_heap = Some(control.heap.clone());
                 Ok(())
             },
-        )
-        .unwrap();
+        );
+        assert_eq!(result, Ok(bootstrap::Purpose::InspectC1), "{audit:?}");
         let (pid, process_start, before, cached_control_ns, reap_ns) = witnessed.unwrap();
         let heap = observed_heap.unwrap();
         let live = isolated_heap::LIVE_PEAK.load(Ordering::Acquire);
@@ -8546,18 +8534,6 @@ mod tests {
             "C1_PARENT_OVERFLOW_RECEIPT={}",
             evidence.join("parent-overflow.json").display()
         );
-        if let Some(path) = std::env::var_os("DREAM_C1_EVIDENCE") {
-            let path = PathBuf::from(path);
-            assert!(path.is_absolute());
-            let nonce = std::env::var("DREAM_C1_GATE_NONCE")
-                .expect("driver evidence requires DREAM_C1_GATE_NONCE");
-            let mut runtime = receipt.clone();
-            runtime["schema"] = json!("bboxy.dream.c1.runtime-evidence/1");
-            runtime["driver_nonce"] = json!(nonce);
-            let mut out = create(&path.join("runtime-parent-overflow.json")).unwrap();
-            serde_json::to_writer(&mut out, &runtime).unwrap();
-            out.sync_all().unwrap();
-        }
         isolated_heap::ENABLED.store(false, Ordering::Release);
         assert!(live > 0 && live <= 32 * 1024 * 1024 && touched <= 32 * 1024 * 1024);
         assert_eq!(work.reserved_peak, WORK_HEAP);
@@ -8566,6 +8542,18 @@ mod tests {
         assert_eq!(protected.reserved_peak, CONTROL_HEAP);
         assert_eq!(protected.reserved, 0);
         assert!(cached_control_ns < 100_000_000 && reap_ns < 2_000_000_000);
+        if let Some(path) = std::env::var_os("DREAM_C1_EVIDENCE") {
+            let path = PathBuf::from(path);
+            assert!(path.is_absolute());
+            let nonce = std::env::var("DREAM_C1_GATE_NONCE")
+                .expect("driver evidence requires DREAM_C1_GATE_NONCE");
+            let mut runtime = receipt;
+            runtime["schema"] = json!("bboxy.dream.c1.runtime-evidence/1");
+            runtime["driver_nonce"] = json!(nonce);
+            let mut out = create(&path.join("runtime-parent-overflow.json")).unwrap();
+            serde_json::to_writer(&mut out, &runtime).unwrap();
+            out.sync_all().unwrap();
+        }
     }
     #[cfg(target_os = "macos")]
     fn isolated_actual_store_heap_jobs(instances: usize) {
@@ -8750,23 +8738,6 @@ mod tests {
             samples,
             all_ok
         );
-        if let Some(driver_path) = std::env::var_os("DREAM_C1_EVIDENCE") {
-            let driver_path = PathBuf::from(driver_path);
-            assert!(driver_path.is_absolute());
-            let nonce = std::env::var("DREAM_C1_GATE_NONCE")
-                .expect("explicit driver evidence requires DREAM_C1_GATE_NONCE");
-            let mut runtime = receipt.clone();
-            runtime["schema"] = json!("bboxy.dream.c1.runtime-evidence/1");
-            runtime["driver_nonce"] = json!(nonce);
-            let path = driver_path.join(if instances == 1 {
-                "runtime-isolated-heap.json"
-            } else {
-                "runtime-isolated-four-heap.json"
-            });
-            let mut output = create(&path).unwrap();
-            serde_json::to_writer(&mut output, &runtime).unwrap();
-            output.sync_all().unwrap();
-        }
         isolated_heap::ENABLED.store(false, Ordering::Release);
         assert!(
             all_ok,
@@ -8790,6 +8761,25 @@ mod tests {
             expected.sha256.0,
             "original Store bytes immutable"
         );
+        // A failed attempt leaves only its own scratch diagnostic. It cannot
+        // occupy the joined gate's successful witness path before a retry.
+        if let Some(driver_path) = std::env::var_os("DREAM_C1_EVIDENCE") {
+            let driver_path = PathBuf::from(driver_path);
+            assert!(driver_path.is_absolute());
+            let nonce = std::env::var("DREAM_C1_GATE_NONCE")
+                .expect("explicit driver evidence requires DREAM_C1_GATE_NONCE");
+            let mut runtime = receipt;
+            runtime["schema"] = json!("bboxy.dream.c1.runtime-evidence/1");
+            runtime["driver_nonce"] = json!(nonce);
+            let path = driver_path.join(if instances == 1 {
+                "runtime-isolated-heap.json"
+            } else {
+                "runtime-isolated-four-heap.json"
+            });
+            let mut output = create(&path).unwrap();
+            serde_json::to_writer(&mut output, &runtime).unwrap();
+            output.sync_all().unwrap();
+        }
     }
 }
 
