@@ -9308,15 +9308,8 @@ pub(crate) mod runner_provision {
         }
     }
 
-    // Commitment to APPROVED_NATIVE_BUILD in scripts/test-dream-c1.py under
-    // task 01M878HHAHFJVH8E6H7SDHEZBM. Runtime reads the tuple from that
-    // provisioner's receipt and verifies this commitment before birth.
-    const APPROVED_NATIVE_COMMITMENT: Option<[u8; 32]> = Some([
-        0xba, 0x0a, 0xce, 0x9f, 0xca, 0x0e, 0x93, 0x27,
-        0xa3, 0xf4, 0x3e, 0x0a, 0x5c, 0xee, 0x6b, 0xd4,
-        0xf4, 0x70, 0x8f, 0xca, 0xaa, 0xce, 0xea, 0xd8,
-        0xe6, 0x6e, 0x48, 0xf6, 0x07, 0xd2, 0xba, 0x2d,
-    ]);
+    // The provisioner reads the same reviewed source/compiler/executable tuple.
+    const APPROVED_NATIVE_BUILD: &str = include_str!("dream-c1-worker-build.txt");
     const PRIVATE_DEVELOPMENT_NATIVE_COMMITMENT: Option<[u8; 32]> = None;
 
     struct WorkerPin {
@@ -9650,18 +9643,19 @@ pub(crate) mod runner_provision {
         Ok((bytes, len))
     }
     fn hash_binary(seal: &mut Seal, budget: &mut Budget<'_>) -> Result<String, Code> {
-        let mut chunk = [0u8; 64 * 1024];
+        let mut chunk = [0u8; HASH_CHUNK];
         let mut hash = Sha256::new();
         let mut left = seal.stamp.len;
         while left > 0 {
             let count = usize::try_from(left.min(chunk.len() as u64))
                 .map_err(|_| Code::RunnerUnavailable)?;
+            // Meter the read and hash as one bounded unit. Paying two sleeps
+            // per chunk can spend the prebirth deadline on utility-QoS timer
+            // oversleeping before the digest is complete.
             budget.unit(|| {
                 seal.file
                     .read_exact(&mut chunk[..count])
-                    .map_err(|_| Code::RunnerUnavailable)
-            })?;
-            budget.unit(|| {
+                    .map_err(|_| Code::RunnerUnavailable)?;
                 hash.update(&chunk[..count]);
                 Ok(())
             })?;
@@ -9812,14 +9806,24 @@ pub(crate) mod runner_provision {
         binary: &Path,
         private_test_account: bool,
     ) -> Result<ProvisionProof, Code> {
+        let mut fields = APPROVED_NATIVE_BUILD.split_ascii_whitespace();
         let development =
-            APPROVED_NATIVE_COMMITMENT.is_none() && cfg!(debug_assertions) && private_test_account;
+            fields.clone().next().is_none() && cfg!(debug_assertions) && private_test_account;
         let approval = if development {
-            PRIVATE_DEVELOPMENT_NATIVE_COMMITMENT
+            PRIVATE_DEVELOPMENT_NATIVE_COMMITMENT.ok_or(Code::RunnerUnavailable)?
         } else {
-            APPROVED_NATIVE_COMMITMENT
-        }
-        .ok_or(Code::RunnerUnavailable)?;
+            let (Some(source), Some(compiler), Some(binary), None) =
+                (fields.next(), fields.next(), fields.next(), fields.next())
+            else {
+                return Err(Code::RunnerUnavailable);
+            };
+            Expected {
+                source,
+                compiler,
+                binary,
+            }
+            .commitment()?
+        };
         let mut proof = verify_provision(binary, private_test_account, approval)?;
         proof.private_development = development;
         Ok(proof)
@@ -9894,6 +9898,26 @@ pub(crate) mod runner_provision {
                 Err(Code::RunnerUnavailable)
             ));
         }
+
+        #[test]
+        fn native_provision_meters_one_unit_per_binary_chunk() {
+            let root = tempfile::tempdir().unwrap();
+            let binary = root.path().canonicalize().unwrap().join("worker");
+            let bytes = vec![0x42; HASH_CHUNK + 1];
+            write(&binary, &bytes, 0o700);
+            let control = Control::default();
+            control.foreground.store(false, Ordering::Release);
+            let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(30));
+            let mut seal = Seal::open(&binary, false, &mut budget).unwrap();
+            let before = control.work_unit_count.load(Ordering::Relaxed);
+            assert_eq!(
+                hash_binary(&mut seal, &mut budget).unwrap(),
+                format!("{:x}", Sha256::digest(&bytes))
+            );
+            // Two chunk units, then seal validation and digest formatting.
+            assert_eq!(control.work_unit_count.load(Ordering::Relaxed) - before, 4);
+        }
+
         #[test]
         fn native_provision_first_launch_missing_failed_unknown_and_foreign_inode_refuse() {
             for field in ["missing","wall_ns","exit_code","actual_reap","state","path","inode","sha256","ctime_ns","argument","schema"] {

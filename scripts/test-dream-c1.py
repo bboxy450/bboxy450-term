@@ -33,14 +33,9 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_SHA256 = "5e3d8a602eeaa1da5cb97d0f6af0b4f331b216a02255d3dff990be84c30d6a30"
 LOCK_SHA256 = "31113dd0968ace9daf43b1e610b53a3fc9b586e7ff9a707136ec25ab5e9f2c31"
-# Updated only with the Oracle's reviewed producer pin/artifact handoff.
-# Task 01M878HHAHFJVH8E6H7SDHEZBM's 2026-11-25 ruling admits this tuple; historical diagnosis
-# below remains consumed/stopped. Eligibility never certifies runtime readiness.
-APPROVED_NATIVE_BUILD = (  # source, exact rustc -vV SHA256, ordinary executable
-    "f9f0b4a666ea4a9fdd49b71302b4c1e9be86229c",
-    "408acb044ad9f92dcbaeb61386ef4dc1c39dd1c92d20b02c82b694a783c4b809",
-    "87794659c83500d720fd46454c4a80ca1e9c30f436a896c55762165a50ed3d75",
-)
+# The staged producer pin and this exact tuple are reviewed together.
+NATIVE_BUILD_PIN = "crates/bbt-mux/src/logic/dream-c1-worker-build.txt"
+APPROVED_NATIVE_BUILD = tuple((ROOT / NATIVE_BUILD_PIN).read_text().split())
 BOOTSTRAP_VECTORS_SHA256 = "de919016ac6e5a464de60c86b2bf3bf6b54edc08e29c05f89688a5c80da37307"
 PRIVATE_DEVELOPMENT_BUILD = None
 LAUNCH_DIAGNOSIS_ID = "65882"
@@ -59,7 +54,7 @@ PROBE_NULL_CONTEXT_APPROVED = True
 FRAME = 256 * 1024
 PINNED_FIXTURES = ROOT / "crates/bboxy450-harness/tests/fixtures/dream-c1"
 SOURCES = [
-    "Makefile", "scripts/test-dream-c1.py",
+    "Makefile", "scripts/test-dream-c1.py", NATIVE_BUILD_PIN,
     "Cargo.toml", "Cargo.lock", "scripts/quarantine-test.sh", "scripts/landing.py",
     "scripts/quarantine.py", "scripts/test-landing.py",
     "rust-toolchain.toml", ".cargo/config.toml", ".config/nextest.toml", "scripts/cache-env.sh",
@@ -242,7 +237,8 @@ def build_closure_before(*, cargo_argv, target, source_hashes, compiler_version,
     cargo_argv = argv(cargo_argv)
     target = Path(target).resolve()
     entry = environment.get("BBOXY_DREAM_BUILD_ENTRY")
-    entries = {"bundle-files", "prepare-dream-c1-worker", "prepare-dream-c1", "test-dream-c1", "diagnose-dream-c1-launch"}
+    entries = {"bundle-files", "bump-harness", "prepare-dream-c1-worker", "prepare-dream-c1",
+               "test-dream-c1", "diagnose-dream-c1-launch"}
     make_entry = {"present": entry is not None, "recognized": entry in entries}
     if entry in entries:
         make_entry["value"] = entry
@@ -2334,7 +2330,8 @@ def check_launch_diagnosis_controls():
             refused.append(label)
         import contextlib
         import io
-        for other in ("--prepare-only", "--worker-only", "--seat-only", "--prepare-development", "--check-profile-only"):
+        for other in ("--prepare-only", "--worker-only", "--stage-worker-build", "--seat-only",
+                      "--prepare-development", "--check-profile-only"):
             with mock.patch.object(sys, "argv", ["test-dream-c1.py", "--diagnose-launch", other]), \
                     contextlib.redirect_stderr(io.StringIO()), \
                     mock.patch.object(subprocess, "Popen", side_effect=AssertionError("CLI control must not spawn")):
@@ -3285,6 +3282,8 @@ def main():
                         help="build/probe the two pinned artifacts; does not verify the consumer")
     mode.add_argument("--worker-only", action="store_true",
                         help="build/provision the ordinary release sibling; does not verify the consumer")
+    mode.add_argument("--stage-worker-build", action="store_true",
+                        help="build the staged harness pin and stage its exact tuple for review; no worker execution")
     mode.add_argument("--seat-only", action="store_true",
                         help="build the private optimized seat fixture without executing any worker")
     mode.add_argument("--prepare-development", action="store_true")
@@ -3296,7 +3295,7 @@ def main():
     parser.add_argument("--development-source", type=Path)
     parser.add_argument("--development-worker", type=Path)
     args = parser.parse_args()
-    evidence = Path(tempfile.mkdtemp(prefix="bboxy-dream-c1-gate-"))
+    evidence = Path(tempfile.mkdtemp(prefix="bboxy-dream-c1-gate-")).resolve()
     os.chmod(evidence, 0o700)
     receipt = {"commands": [], "complete": False, "evidence": str(evidence)}
     if args.diagnose_launch:
@@ -3325,9 +3324,11 @@ def main():
             receipt["scope"] = "Signed private development worker only; not a pinned producer or completed consumer"
             code = 0
             return code
-        harness = ROOT / "crates/bboxy450-harness"
+        member = "crates/bboxy450-harness"
+        harness = ROOT / member
+        pin_ref = ":" if args.stage_worker_build else "HEAD:"
         gitlink = subprocess.check_output(
-            ["git", "rev-parse", "HEAD:crates/bboxy450-harness"], cwd=ROOT, text=True).strip()
+            ["git", "rev-parse", pin_ref + member], cwd=ROOT, text=True).strip()
         revision = subprocess.check_output(
             ["git", "-C", str(harness), "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
         dirty = subprocess.check_output(
@@ -3336,12 +3337,17 @@ def main():
         receipt["producer_pin"] = {"gitlink": gitlink, "actual_head": revision,
                                    "tracked_source_clean": not dirty}
         if revision != gitlink or dirty:
-            raise ValueError("real runner source differs from the deliberately committed producer pin")
+            raise ValueError("real runner source differs from the selected producer pin")
         fixtures = Path(os.environ.get("DREAM_C1_FIXTURES", str(PINNED_FIXTURES))).resolve()
         receipt["corpus"] = corpus(fixtures)
-        if not args.worker_only:
+        if not (args.worker_only or args.stage_worker_build):
             receipt["bootstrap_corpus"] = bootstrap_corpus(fixtures)
         receipt["joined_pinned_corpus"] = fixtures == PINNED_FIXTURES.resolve()
+        if args.stage_worker_build:
+            if os.environ.get("BBOXY_DREAM_BUILD_ENTRY") != "bump-harness" or not receipt["joined_pinned_corpus"]:
+                raise ValueError("staging requires make bump-harness with the pinned producer corpus")
+            if subprocess.check_output(["git", "status", "--porcelain", "--", NATIVE_BUILD_PIN], cwd=ROOT):
+                raise ValueError("refuse to replace changes to the worker approval under review")
         source_names = SOURCES + sorted(str(path.relative_to(ROOT)) for path in
                                        (ROOT / "crates/bboxy450-harness/src").rglob("*.rs"))
         receipt["source_hashes"] = {name: sha(ROOT / name) for name in source_names}
@@ -3421,11 +3427,38 @@ def main():
                                          "explicit_features": [], "test_fixtures": False,
                                          "compiler_sha256": hashlib.sha256(receipt["compiler"].encode()).hexdigest()}
         actual_build = (revision, receipt["real_worker_build"]["compiler_sha256"], receipt["real_worker_build"]["sha256"])
-        if args.worker_only and (conflicting or APPROVED_NATIVE_BUILD != actual_build):
+        if args.stage_worker_build:
+            if actual_build[2] in STOPPED_BOOTSTRAP_WORKERS:
+                raise ValueError("refuse to stage the stopped worker")
+            pin = ROOT / NATIVE_BUILD_PIN
+            previous = pin.read_bytes()
+            pin.write_text("\n".join(actual_build) + "\n")
+            try:
+                subprocess.run(["git", "add", "--", NATIVE_BUILD_PIN], cwd=ROOT, check=True)
+            except (OSError, subprocess.SubprocessError):
+                pin.write_bytes(previous)
+                raise
+            receipt["scope"] = "Measured the staged producer tuple for review without executing the worker"
+            print(f"Dream C1 worker tuple staged for review: {NATIVE_BUILD_PIN}", flush=True)
+            code = 0
+            return code
+        if conflicting or APPROVED_NATIVE_BUILD != actual_build:
+            reason = ("native worker source/compiler/executable differs from the reviewed tuple"
+                      if not conflicting else "native worker has conflicting build overrides")
+            if args.worker_only:
+                runner.with_suffix(".dream-c1.json").unlink(missing_ok=True)
+            if not args.worker_only or os.environ.get("BBOXY_DREAM_BUILD_ENTRY") != "bundle-files":
+                raise ValueError(reason)
             receipt["native_provision"] = None
             receipt["native_profile_supported"] = False
-            runner.with_suffix(".dream-c1.json").unlink(missing_ok=True)
+            print("Dream C1 native provisioning omitted from bundle: " + reason, file=sys.stderr)
         else:
+            if not (args.worker_only or args.diagnose_launch or args.prepare_only):
+                # Cargo's release tests can relink its output, even at the same hash.
+                # Admit the private copy that every runtime witness actually uses.
+                private_runner = evidence / runner.name
+                shutil.copy2(runner, private_runner)
+                runner = private_runner
             receipt["native_provision"] = provision_native_runner(runner, revision, receipt["compiler"], evidence=evidence)
             receipt["first_launch_admission"] = receipt["native_provision"]["first_launch_admission"]
             if args.diagnose_launch:
@@ -3457,35 +3490,31 @@ def main():
             code = 0
             return code
 
-        def tests(package, selection, profile="dream-c1-fixture"):
+        def tests(package, selection, profile="dream-c1-fixture", **test_environment):
             run(["sh", "scripts/quarantine-test.sh", "--locked", "--jobs", "2",
                  *(["--release"] if profile == "release" else ["--profile", profile]),
-                 "-p", package, "--target-dir", str(target), *selection],
-                environment, evidence, receipt["commands"])
+                 "--no-tests=fail", "-p", package, "--target-dir", str(target), *selection],
+                dict(environment, **test_environment), evidence, receipt["commands"])
 
         # Export using the pinned producer's actual Store/Blobs test, then read
         # those immutable bytes from isolated consumer hosts. This is a component
         # memory bound; own-seat admission remains the separate real-app gate.
         bundle = evidence / "actual-store-bundle"
-        export_environment = dict(environment, DREAM_C1_EXPORT_BUNDLE=str(bundle))
-        run(["sh", "scripts/quarantine-test.sh", "--locked", "--jobs", "2",
-             "--release",
-             "-p", "bboxy450-harness", "--target-dir", str(target), "--test", "dream_c1",
-             "-E", "test(real_store_multi_mib_ir_and_typed_blob_bundle)", "--", "--nocapture"],
-            export_environment, evidence, receipt["commands"])
+        tests("bboxy450-harness", ["--test", "dream_c1",
+              "-E", "test(=real_store_multi_mib_ir_and_typed_blob_bundle)",
+              "--run-ignored", "all", "--", "--nocapture"],
+              profile="release", DREAM_C1_EXPORT_BUNDLE=str(bundle))
         environment["DREAM_C1_STORE_BUNDLE"] = str(bundle)
         fork_bundle = evidence / "actual-store-fork-bundle"
-        run(["sh", "scripts/quarantine-test.sh", "--locked", "--jobs", "2", "--release",
-             "-p", "bboxy450-harness", "--target-dir", str(target), "--test", "dream_c1",
-             "-E", "test(actual_store_fork_is_explicitly_unsupported_and_parent_rows_never_pass)",
-             "--", "--nocapture"],
-            dict(environment, DREAM_C1_EXPORT_FORK_BUNDLE=str(fork_bundle)),
-            evidence, receipt["commands"])
+        tests("bboxy450-harness", ["--test", "dream_c1",
+              "-E", "test(=actual_store_fork_is_explicitly_unsupported_and_parent_rows_never_pass)",
+              "--run-ignored", "all", "--", "--nocapture"],
+              profile="release", DREAM_C1_EXPORT_FORK_BUNDLE=str(fork_bundle))
         environment["DREAM_C1_FORK_BUNDLE"] = str(fork_bundle)
         tests("bboxy450-harness", ["--test", "dream_c1", "-E",
               "test(child_declared_storage_overflow_precedes_serde_and_controls_still_settle) | "
               "test(four_children_keep_independent_controls_and_individual_memory_shares)",
-              "--", "--nocapture"], profile="release")
+              "--run-ignored", "all", "--", "--nocapture"], profile="release")
         tests("bboxy450-term-mux", ["--lib", "-E",
               "test(dream_c1_private_signed_gated_worker_held_parent_paid_probe_and_refusals)",
               "--run-ignored", "only", "--", "--nocapture"])
@@ -3508,7 +3537,7 @@ def main():
                                "--nocapture"])
         if receipt["source_hashes"] != {name: sha(ROOT / name) for name in source_names}:
             raise ValueError("C1 source changed while gate ran; receipt cannot bind current source")
-        if (sha(runner) != receipt["real_worker_probe"]["runner_sha256"]
+        if (first_launch_image(runner) != receipt["first_launch_admission"]["image"]
                 or sha(seat_runner) != receipt["private_seat_fixture"]["sha256"]):
             raise ValueError("a production worker or private seat artifact changed while the gate ran")
         receipt["runtime"] = runtime_receipts(

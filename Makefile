@@ -177,7 +177,7 @@ help:
 	  'make convert-kb KIND=dir [ROOT=.bboxy] [DRY_RUN=1]  Markdown records of one kind to Den, same metadata/body/signature' \
 	  'make lock                       Refresh workspace lock metadata offline' \
 	  'make lock-online                Resolve added dependencies with the registry' \
-	  'make bump-harness [REV=sha]      Move and stage the harness submodule and changed lockfile (default origin/main)' \
+	  'make bump-harness [REV=sha]      Stage the harness pin, lock change and measured Dream worker tuple for review' \
 	  'make tools                      Install the Rust workflow tools (cargo-nextest, kache) once per machine' \
 	  'make land / make push           Diff-scoped gate (affected crates + dependents, nextest), then push' \
 	  'make land-full                  Full signed gate (make test in a warm, queued gate slot)' \
@@ -442,7 +442,8 @@ lock-online:
 
 .PHONY: bump-harness
 bump-harness:
-	@set -eu; . ./scripts/cache-env.sh; python3 -I scripts/bump-harness.py '$(REV)'
+	@set -eu; . ./scripts/cache-env.sh; python3 -I scripts/bump-harness.py '$(REV)'; \
+	BBOXY_DREAM_BUILD_ENTRY=bump-harness CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --stage-worker-build
 
 # The harness builds alone: built with the app in one invocation, Cargo unifies
 # its ACP dependency's serde_json/preserve_order into the app, whose record
