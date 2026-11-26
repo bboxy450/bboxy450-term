@@ -17,7 +17,8 @@ use crate::messaging::{MessageClass, WakeMode};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SwarmRecord {
     pub id: Ulid,
-    #[serde(default)]
+    // absent when false: records written before the field re-encode byte for byte (#320)
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub archived: bool,
     pub name: Option<String>,
     pub workdir: Option<String>,
