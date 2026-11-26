@@ -514,8 +514,10 @@ impl Router {
                     if self.cache.roots().count() + self.mounting.len() + self.retiring.len()
                         >= self.root_limit
                     {
-                        // Keep retiring roots charged until their watches/providers drop.
-                        retired.extend(self.evict_idle_root());
+                        // An in-flight retirement still owns its slot and will make room.
+                        if self.retiring.is_empty() {
+                            retired.extend(self.evict_idle_root());
+                        }
                         self.failed(swarm, &desired, Error::Pending(swarm));
                         continue;
                     }

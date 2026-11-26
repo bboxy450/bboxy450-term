@@ -91,18 +91,33 @@ impl Fixture {
         self.router.poll(&self.registry);
     }
 
-    fn ready(&mut self, swarm: Ulid) -> Port {
+    fn until<T>(
+        &mut self,
+        waiting_for: &str,
+        mut observe: impl FnMut(&mut Self) -> Option<T>,
+    ) -> T {
         let deadline = Instant::now() + Duration::from_secs(35);
         loop {
             self.poll();
-            match self.router.select(&self.registry, swarm, None) {
-                Ok(port) => return port,
-                Err(e) if e.downcast_ref::<Error>() == Some(&Error::Pending(swarm)) => (),
-                Err(e) => panic!("{e}"),
+            if let Some(value) = observe(self) {
+                return value;
             }
-            assert!(Instant::now() < deadline, "workspace {swarm} never mounted");
+            assert!(
+                Instant::now() < deadline,
+                "timed out waiting for {waiting_for}"
+            );
             std::thread::sleep(Duration::from_millis(2));
         }
+    }
+
+    fn ready(&mut self, swarm: Ulid) -> Port {
+        self.until(&format!("workspace {swarm} to mount"), |f| {
+            match f.router.select(&f.registry, swarm, None) {
+                Ok(port) => Some(port),
+                Err(e) if e.downcast_ref::<Error>() == Some(&Error::Pending(swarm)) => None,
+                Err(e) => panic!("{e}"),
+            }
+        })
     }
 
     fn assert_slots(&self, roots: usize, swarms: usize) {
@@ -159,6 +174,50 @@ fn workspace_pressure_evicts_the_least_recent_idle_root_and_caps_shared_bindings
     let touched = f.ready(recent).binding;
     let evicted = f.ready(idle).binding;
     assert_eq!(f.ready(recent).binding, touched);
+
+    let (enter, entered) = std::sync::mpsc::channel();
+    let (release, held) = std::sync::mpsc::channel::<()>();
+    f.router
+        .cache
+        .root_mut(&evicted.root_id)
+        .unwrap()
+        .watch
+        .on_drop(move || {
+            let _ = enter.send(());
+            let _ = held.recv();
+        });
+    let prepare = |f: &mut Fixture| {
+        assert_eq!(
+            f.router
+                .select(&f.registry, incoming, None)
+                .err()
+                .unwrap()
+                .downcast_ref::<Error>(),
+            Some(&Error::Pending(incoming))
+        );
+        f.until("the capacity check for the incoming workspace", |f| {
+            f.router.attempts[&incoming].failed
+        });
+    };
+    prepare(&mut f);
+    entered.recv_timeout(Duration::from_secs(35)).unwrap();
+    assert!(f.router.retiring.contains(&evicted.root_id));
+
+    // Advance the caller's existing backoff while the first retirement is held.
+    let elapsed_backoff = Some(Instant::now() - Duration::from_secs(1));
+    f.router.attempts.get_mut(&incoming).unwrap().failed = elapsed_backoff;
+    prepare(&mut f);
+    assert!(f.router.retiring.contains(&evicted.root_id));
+    assert!(
+        f.router.cache.root(&touched.root_id).is_some(),
+        "pressure retry evicted the recently used root before the retiring slot became free"
+    );
+    drop(release);
+    f.until("the retiring slot to be released", |f| {
+        (!f.router.retiring.contains(&evicted.root_id)).then_some(())
+    });
+    f.router.attempts.get_mut(&incoming).unwrap().failed = elapsed_backoff;
+
     let added = f.ready(incoming).binding;
     f.assert_slots(4, 3);
     assert!(f.router.cache.root(&evicted.root_id).is_none());
