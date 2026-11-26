@@ -3457,7 +3457,7 @@ def main():
             if not (args.worker_only or args.diagnose_launch or args.prepare_only):
                 # Cargo's release tests can relink its output, even at the same hash.
                 # Admit the private copy that every runtime witness actually uses.
-                private_runner = evidence / runner.name
+                private_runner = evidence / "worker"
                 shutil.copy2(runner, private_runner)
                 runner = private_runner
             receipt["native_provision"] = provision_native_runner(runner, revision, receipt["compiler"], evidence=evidence)
@@ -3490,6 +3490,12 @@ def main():
             receipt["scope"] = "Pinned production worker and private optimized seat preparation only; consumer verification incomplete"
             code = 0
             return code
+
+        # The pinned producer's test checks its prepare-dream-c1-worker
+        # sidecars before birth. Bind them to the already admitted copy.
+        provision = receipt["native_provision"]
+        (evidence / "bootstrap-support.txt").write_text(provision["bootstrap_profile"] + "\n")
+        (evidence / "hashes.txt").write_text(f"{provision['binary_sha256']}  {runner}\n")
 
         def tests(package, selection, profile="dream-c1-fixture", **test_environment):
             run(["sh", "scripts/quarantine-test.sh", "--locked", "--jobs", "2",
