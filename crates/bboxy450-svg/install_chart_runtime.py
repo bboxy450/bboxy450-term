@@ -24,13 +24,14 @@ def install(destination):
     with tempfile.TemporaryDirectory(prefix=".chart-install-", dir=destination.parent) as staging:
         staging = Path(staging)
         if not (version / "bin/python").is_file():
+            uv = os.environ.get("BBOXY_UV", "uv")
             venv = staging / "venv"
             python = venv / "bin/python"
             subprocess.run(
-                ["uv", "venv", "--python", "3.12", "--relocatable", str(venv)], check=True
+                [uv, "venv", "--python", "3.12", "--relocatable", str(venv)], check=True
             )
             subprocess.run(
-                ["uv", "pip", "sync", "--python", str(python), "--require-hashes",
+                [uv, "pip", "sync", "--python", str(python), "--require-hashes",
                  "--only-binary", ":all:", str(lock)], check=True
             )
             subprocess.run(

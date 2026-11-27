@@ -78,6 +78,18 @@ impl Fixture {
         command
     }
     fn environment(&self, command: &mut Command) {
+        let uv = std::env::var_os("BBOXY_PREPARED_GUI_BUNDLE").map(|_| {
+            let path = std::env::var_os("PATH").unwrap_or_default();
+            std::env::split_paths(&path)
+                .map(|dir| dir.join("uv"))
+                .filter_map(|candidate| candidate.canonicalize().ok())
+                .find(|candidate| {
+                    candidate.metadata().is_ok_and(|entry| {
+                        entry.is_file() && entry.permissions().mode() & 0o111 != 0
+                    })
+                })
+                .expect("uv must be on the host PATH for the private GUI handoff installer")
+        });
         command
             .env_clear()
             .env("HOME", self.root.join("home"))
@@ -89,6 +101,9 @@ impl Fixture {
             .env("LANG", "en_US.UTF-8")
             .current_dir(&self.root)
             .stdin(Stdio::null());
+        if let Some(uv) = uv {
+            command.env("BBOXY_UV", uv);
+        }
     }
     fn ctl(&self, args: &[&str]) -> Value {
         let output = self
