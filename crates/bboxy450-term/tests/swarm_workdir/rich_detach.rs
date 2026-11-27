@@ -6,16 +6,21 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Actual App, native rich actor, independent backend and real scripted harness turn.
 use super::*;
+use bboxy450_harness::protocol::{Item, ItemStatus};
 use serde_json::json;
 
 #[track_caller]
-pub(super) fn wait<T>(mut read: impl FnMut() -> Option<T>) -> T {
+pub(super) fn wait<T>(read: impl FnMut() -> Option<T>) -> T {
+    wait_with_message("rich App witness did not progress", read)
+}
+#[track_caller]
+fn wait_with_message<T>(failure: &str, mut read: impl FnMut() -> Option<T>) -> T {
     let until = Instant::now() + Duration::from_secs(35);
     loop {
         if let Some(value) = read() {
             return value;
         }
-        assert!(Instant::now() < until, "rich App witness did not progress");
+        assert!(Instant::now() < until, "{failure}");
         std::thread::sleep(Duration::from_millis(20));
     }
 }
@@ -372,7 +377,7 @@ fn rich_app_routes_composer_approval_scroll_and_focus() {
     );
 }
 #[test]
-#[ignore = "real private headless App, native harness and 30-second tool; make test-rich-app-detach"]
+#[ignore = "real private headless App, native harness and held tool; make test-rich-app-detach"]
 fn rich_app_detach_during_native_turn_retains_owner_and_replays() {
     app_detach(false);
 }
@@ -431,7 +436,14 @@ fn app_detach(replace: bool) {
     println!("rich-app-detach: private_root={}", f.root.display());
     let quote = |p: &Path| format!("'{}'", p.to_str().unwrap().replace('\'', "'\\''"));
     let pid_path = f.root.join("tool.pid");
-    let command = format!("printf '%s\\n' \"$$\" > {}; sleep 30", quote(&pid_path));
+    let release_path = f.root.join("tool.release");
+    let command = format!(
+        "printf '%s\\n' \"$$\" > {}; SECONDS=0; while [ ! -f {} ]; do \
+         if [ \"$SECONDS\" -ge 120 ]; then echo 'detach tool timed out waiting for fixture release' >&2; exit 1; fi; \
+         sleep 0.1; done",
+        quote(&pid_path),
+        quote(&release_path),
+    );
     let delta = json!({"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"detach-tool","type":"function","function":{"name":"bash","arguments":serde_json::to_string(&json!({"command":command})).unwrap()}}]},"finish_reason":null}]});
     let tool = f.root.join("tool.sse");
     fs::write(&tool,format!("data: {delta}\n\ndata: {{\"choices\":[{{\"index\":0,\"delta\":{{}},\"finish_reason\":\"tool_calls\"}}]}}\n\ndata: [DONE]\n\n")).unwrap();
@@ -544,7 +556,14 @@ fn app_detach(replace: bool) {
         active["cursor"]["generation"]
     );
     assert_eq!(resumed["cursor"]["epoch"], active["cursor"]["epoch"]);
-    wait(|| {
+    assert_eq!(
+        unsafe { libc::kill(tool_pid, 0) },
+        0,
+        "tool exited before release"
+    );
+    let survived_ms = detached.elapsed().as_millis();
+    fs::write(&release_path, b"release\n").expect("release the detached tool");
+    wait_with_message("detached tool did not finish after fixture release", || {
         events(&log)
             .iter()
             .any(|e| e["event"]["type"] == "turn_ended")
@@ -569,6 +588,23 @@ fn app_detach(replace: bool) {
             .count(),
         1
     );
+    let turn_ends: Vec<_> = complete
+        .iter()
+        .filter(|e| e["event"]["type"] == "turn_ended")
+        .collect();
+    assert_eq!(turn_ends.len(), 1, "turn must end exactly once");
+    assert_eq!(turn_ends[0]["event"]["reason"]["reason"], "end_turn");
+    let tool_completions: Vec<_> = complete
+        .iter()
+        .filter(|e| {
+            e["event"]["type"] == "item_completed" && e["event"]["body"]["call_id"] == "detach-tool"
+        })
+        .collect();
+    assert_eq!(tool_completions.len(), 1, "tool must complete exactly once");
+    assert_eq!(
+        tool_completions[0]["event"]["status"]["status"],
+        "completed"
+    );
     let tail = complete.last().unwrap()["seq"].as_u64().unwrap();
     let final_frame = rich(&f, &seat, tail);
     let mut transcript = bboxy450_harness::frontends::gui::model::Transcript::default();
@@ -577,6 +613,19 @@ fn app_detach(replace: bool) {
             &bboxy450_harness::protocol::Envelope::from_line(&format!("{event}\n")).unwrap(),
         );
     }
+    let completed_items = transcript
+        .order
+        .iter()
+        .filter_map(|id| transcript.items.get(id))
+        .filter(|row| {
+            matches!(&row.body, Item::ToolCall { call_id, .. } if call_id == "detach-tool")
+                && row.status == Some(ItemStatus::Completed)
+        })
+        .count();
+    assert_eq!(
+        completed_items, 1,
+        "replayed rich transcript must contain one completed detach tool"
+    );
     assert_eq!(
         final_frame["retained_items"].as_u64().unwrap(),
         transcript.items.len() as u64,
@@ -712,7 +761,8 @@ fn app_detach(replace: bool) {
         "GUI replacement/face toggles changed the durable session"
     );
     println!(
-        "rich-app-detach: ui_pid={ui_pid} exit={exit} detached_ms={} owners={owners:?} identity={before} before={} after={} head={tail}",
+        "rich-app-detach: ui_pid={ui_pid} exit={exit} survived_ms={survived_ms} completion_seq={} detached_ms={} owners={owners:?} identity={before} before={} after={} head={tail}",
+        tool_completions[0]["seq"],
         detached.elapsed().as_millis(),
         active["cursor"],
         final_frame["cursor"]
