@@ -72,6 +72,11 @@ bboxy450-term-desktop-core = { path = "crates/bboxy450-term-desktop-core" }
 bboxy450-term-desktop = { path = "crates/bboxy450-term-desktop" }
 bboxy450-term-desktop-macos = { path = "crates/bboxy450-term-desktop-macos" }
 
+# The harness linker removes macOS debug maps. Keep Cargo from attempting a
+# separate strip whose success depends on the compiler wrapper's environment.
+[profile.release.package.bboxy450-harness]
+strip = "none"
+
 # Private Dream C1 performance fixtures retain every assertion and overflow check.
 # Decision: d93377961364684-dream-c1-optimized-private-fixture.
 [profile.dream-c1-fixture]

@@ -2990,11 +2990,11 @@ test-dream-c1-profile:
 # diagnostics cannot establish ordinary readiness or final runtime conformance.
 diagnose-dream-c1-launch: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
-	BBOXY_DREAM_BUILD_ENTRY=diagnose-dream-c1-launch CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --diagnose-launch
+	BBOXY_DREAM_BUILD_ENTRY=diagnose-dream-c1-launch CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(TARGET_ABS)' --diagnose-launch
 
 prepare-dream-c1-worker: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
-	BBOXY_DREAM_BUILD_ENTRY=prepare-dream-c1-worker CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --worker-only
+	BBOXY_DREAM_BUILD_ENTRY=prepare-dream-c1-worker CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(TARGET_ABS)' --worker-only
 
 # Decision66076: exact reviewed private copy admission, never a Dream run.
 .PHONY: admit-dream-c1-file
@@ -3004,19 +3004,19 @@ admit-dream-c1-file: init-submodules
 
 prepare-dream-c1-seat: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
-	BBOXY_DREAM_BUILD_ENTRY=prepare-dream-c1-seat CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --seat-only
+	BBOXY_DREAM_BUILD_ENTRY=prepare-dream-c1-seat CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(TARGET_ABS)' --seat-only
 
 prepare-dream-c1-development:
-	@python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --prepare-development --development-source '$(DREAM_C1_DEVELOPMENT_SOURCE)' --development-worker '$(DREAM_C1_DEVELOPMENT_WORKER)'
+	@python3 -I scripts/test-dream-c1.py --target '$(TARGET_ABS)' --prepare-development --development-source '$(DREAM_C1_DEVELOPMENT_SOURCE)' --development-worker '$(DREAM_C1_DEVELOPMENT_WORKER)'
 
 prepare-dream-c1: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
-	BBOXY_DREAM_BUILD_ENTRY=prepare-dream-c1 CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --prepare-only
+	BBOXY_DREAM_BUILD_ENTRY=prepare-dream-c1 CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(TARGET_ABS)' --prepare-only
 
 test-dream-c1: init-submodules
 	@python3 -I scripts/test-landing.py CargoProfileForwardingTests IgnoredIntegrationTests
 	@set -eu; . ./scripts/cache-env.sh; \
-	BBOXY_DREAM_BUILD_ENTRY=test-dream-c1 CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))'
+	BBOXY_DREAM_BUILD_ENTRY=test-dream-c1 CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(TARGET_ABS)'
 
 # Closed Dream reads/feedback, pinned producer codec, private socket and native process.
 .PHONY: test-dream-mcp
