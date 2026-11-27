@@ -201,6 +201,41 @@ impl Worker {
         }
     }
 
+    #[cfg(all(feature = "browser", target_os = "macos"))]
+    pub(super) fn finish_browser_capture(&mut self, capture: browser::Capture) {
+        let prepared = (|| -> Result<_> {
+            let (actor, record) =
+                self.control_actor(capture.actor.seat_id, capture.actor.process_generation)?;
+            let port = self.seat_workspace(&actor)?;
+            if actor != capture.actor
+                || port.binding != capture.binding
+                || record.lifecycle != Lifecycle::Open
+            {
+                return Err(invalid("browser capture authority or workspace changed"));
+            }
+            let control = self.control_journal(actor.seat_id)?;
+            let journal = self.root_journal(&control, &port);
+            let mut artifact = self.artifact_admission(&actor, &port, None)?;
+            artifact.browser_png = Some(capture.png);
+            Ok(((Actor::from(&actor), port, journal), artifact))
+        })();
+        match prepared {
+            Ok((prepared, artifact)) => self.dispatch_document_effect(
+                Ok(prepared),
+                capture.call,
+                EffectReply::Seat(capture.reply),
+                false,
+                Some(artifact),
+            ),
+            Err(reason) => {
+                let _ = capture.reply.send(Ok(mcp::artifacts::failure(
+                    capture.call.op_id,
+                    reason.as_ref(),
+                )));
+            }
+        }
+    }
+
     pub(super) fn start_operator_effect(
         &mut self,
         scope: Option<bbt_proto::gui::SwarmScope>,

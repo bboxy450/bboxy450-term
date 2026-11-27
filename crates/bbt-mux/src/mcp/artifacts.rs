@@ -172,6 +172,8 @@ impl Page {
 pub(crate) enum Payload {
     Inline(Value),
     Staged(String),
+    #[cfg(all(feature = "browser", target_os = "macos"))]
+    Browser,
 }
 
 pub(crate) struct Prepared {
@@ -206,6 +208,23 @@ fn media_type(value: &str) -> Result<String> {
 }
 
 impl Write {
+    #[cfg(all(feature = "browser", target_os = "macos"))]
+    pub(crate) fn browser(call: &super::Call) -> Result<Self> {
+        Ok(Self {
+            expected: None,
+            media_type: "image/png".into(),
+            inputs: Vec::new(),
+            payload: Payload::Browser,
+            fingerprint: Self::fingerprint(call)?,
+        })
+    }
+
+    fn fingerprint(call: &super::Call) -> Result<String> {
+        let mut canonical = json!({"tool":call.tool,"arguments":call.args});
+        canonical.sort_all_objects();
+        Ok(digest(&serde_json::to_vec(&canonical)?))
+    }
+
     pub(crate) fn parse(call: &super::Call) -> Result<Self> {
         let mut args = call
             .args
@@ -256,14 +275,12 @@ impl Write {
         if !args.is_empty() {
             return Err(invalid("unknown artifact arguments"));
         }
-        let mut canonical = json!({"tool":call.tool,"arguments":call.args});
-        canonical.sort_all_objects();
         Ok(Self {
             expected,
             media_type,
             inputs,
             payload,
-            fingerprint: digest(&serde_json::to_vec(&canonical)?),
+            fingerprint: Self::fingerprint(call)?,
         })
     }
 }

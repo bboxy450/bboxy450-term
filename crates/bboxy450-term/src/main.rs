@@ -10269,6 +10269,10 @@ fn screen_hash(screen: &bbt_proto::Screen) -> String {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(all(feature = "browser", target_os = "macos"))]
+    if let Some(result) = browser_host::entry() {
+        return result;
+    }
     let hook_args: Vec<_> = std::env::args().skip(1).collect();
     qos::startup(hook_args.first().map_or("", String::as_str));
     if cfg!(debug_assertions) && hook_args.len() == 2 && hook_args[0] == "--qos-witness" {

@@ -31,6 +31,8 @@ pub(super) struct Admission {
     pub(super) guard: Option<Guard>,
     harness: Option<crate::adapters::Binding>,
     pub(super) fresh: bool,
+    #[cfg(all(feature = "browser", target_os = "macos"))]
+    pub(super) browser_png: Option<Vec<u8>>,
 }
 
 pub(super) fn stage_root(port: &WorkspacePort) -> Result<PathBuf> {
@@ -77,6 +79,8 @@ impl Worker {
             guard,
             harness,
             fresh: false,
+            #[cfg(all(feature = "browser", target_os = "macos"))]
+            browser_png: None,
         })
     }
 }
@@ -108,6 +112,13 @@ impl Admission {
             .actor
             .seat()
             .ok_or_else(|| invalid("artifact write requires an admitted seat"))?;
+        #[cfg(all(feature = "browser", target_os = "macos"))]
+        let write = if self.browser_png.is_some() {
+            artifacts::Write::browser(&context.call)?
+        } else {
+            artifacts::Write::parse(&context.call)?
+        };
+        #[cfg(not(all(feature = "browser", target_os = "macos")))]
         let write = artifacts::Write::parse(&context.call)?;
         let store = Store::new(
             &context.port.index,
@@ -140,6 +151,11 @@ impl Admission {
             handle.block_on(offer.resolve(binding, &context.call, &guard.expected))
         }).transpose()?;
         let bytes = match &write.payload {
+            #[cfg(all(feature = "browser", target_os = "macos"))]
+            artifacts::Payload::Browser => self
+                .browser_png
+                .clone()
+                .ok_or_else(|| invalid("browser capture unavailable"))?,
             artifacts::Payload::Inline(value) => {
                 artifacts::inline_bytes(&write.media_type, value.clone())?
             }

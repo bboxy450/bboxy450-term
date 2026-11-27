@@ -91,6 +91,9 @@ gate() {
     if printf '%s\n' "$changed" | grep -q '^\.bboxy/'; then
         run cargo test --locked -q -p bboxy450-doc --test corpus || return 1
     fi
+    if printf '%s\n' "$changed" | grep -qE '^(crates/bboxy450-cef/|crates/bboxy450-term/src/browser_host\.rs|crates/bbt-mux/src/(logic|mcp)/browser([/.])|scripts/(bundle|test)-browser\.|packaging/macos/|Makefile$)'; then
+        run make test-browser || return 1
+    fi
     if printf '%s\n' "$changed" | grep -qE '(^|/)models(/|\.rs$)|^verification/'; then
         run make test-formal FORMAL_REUSE=1 || return 1
     fi

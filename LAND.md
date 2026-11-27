@@ -40,7 +40,8 @@ It runs `scripts/land-fast.sh` (`make push` is the same command):
    The app's `scrollback` allocation fixture keeps a separate binary because its
    `#[global_allocator]` would otherwise change every linked test's allocator.
    `.bboxy/` changes add the doc corpus test; model or `verification/`
-   changes add `make test-formal`. A nonempty integration target skipped entirely by
+   changes add `make test-formal`. Browser source and app packaging changes add
+   the private macOS `make test-browser` gate. A nonempty integration target skipped entirely by
    `#[ignore]` is metadata-checked and reported as compiled only; its native Make check
    remains explicit. Empty filters and build/test failures still fail the gate.
    `LAND_MODE=wide make land` instead lints and tests the

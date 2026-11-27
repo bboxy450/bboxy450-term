@@ -10,6 +10,7 @@ pub(crate) mod artifact_source;
 pub(crate) mod artifacts;
 pub(crate) mod attention;
 pub mod bridge;
+pub(crate) mod browser;
 pub(crate) mod canvas;
 pub(crate) mod diagnostics;
 pub(crate) mod dream_c1;

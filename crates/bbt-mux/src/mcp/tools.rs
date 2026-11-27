@@ -87,6 +87,7 @@ pub(crate) fn catalogue(actor: &Actor, plugins: Vec<Value>) -> Value {
     tools.extend(super::knowledge::catalogue(actor));
     tools.extend(super::provenance::catalogue());
     tools.extend(super::artifacts::catalogue());
+    tools.extend(super::browser::catalogue());
     tools.extend(super::skills::catalogue());
     tools.extend(super::canvas::catalogue());
     tools.push(super::recovery::catalogue());
@@ -95,10 +96,17 @@ pub(crate) fn catalogue(actor: &Actor, plugins: Vec<Value>) -> Value {
     for tool in &mut tools {
         // Host advice stays outside a plugin's nested `result` schema.
         tool["outputSchema"]["properties"]["hints"] = super::hints::schema();
+        let operation = if super::browser::handles(tool["name"].as_str().unwrap_or_default())
+            && tool["name"] != "browser_screenshot"
+        {
+            "Optional correlation ID. Browser commands operate on a live session and are not replayed from storage."
+        } else {
+            "Optional. Omit unless you are retrying: the server mints and returns it. Reuse with the same arguments returns the first result; different arguments are refused as op_id_reused."
+        };
         tool["inputSchema"]["properties"]["op_id"] = json!({
             "type":"string",
             "pattern":"^[0-7][0-9A-HJKMNP-TV-Z]{25}$",
-            "description":"Optional. Omit unless you are retrying: the server mints and returns it. Reuse with the same arguments returns the first result; different arguments are refused as op_id_reused."
+            "description":operation
         });
         tool["inputSchema"]["required"]
             .as_array_mut()

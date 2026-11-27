@@ -12,6 +12,9 @@ use bboxy450_tlc::{Action, Expr, Invariant, Model, Response, Variable};
 #[path = "idle_frame_model.rs"]
 mod idle_frame_model;
 
+#[path = "browser_host.rs"]
+mod browser_host;
+
 #[path = "dream_c1.rs"]
 mod dream_c1;
 
@@ -1953,6 +1956,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     // Includes d93377961364581 declared credits and public-authority controls;
     // opaque helper/native heap remains measured implementation coverage.
     cases.extend(dream_c1::cases());
+    cases.extend(browser_host::cases());
     cases
 }
 

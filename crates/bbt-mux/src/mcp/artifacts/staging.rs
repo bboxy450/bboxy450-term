@@ -67,14 +67,20 @@ pub(crate) fn read(root: &Path, path: &str) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
+#[cfg(any(
+    feature = "canvas-image",
+    all(feature = "browser", target_os = "macos")
+))]
+pub(crate) const MAX_IMAGE_PIXELS: u64 = 4_000_000;
+
 /// A displayed revision reaches the same bounded preparation as a viewed image.
 #[cfg(feature = "canvas-image")]
 pub(crate) fn validate_image(media_type: &str, bytes: &[u8]) -> Result<()> {
     match media_type {
-        SVG => bboxy450_svg::prepare_image(bytes, 4_000_000)
+        SVG => bboxy450_svg::prepare_image(bytes, MAX_IMAGE_PIXELS)
             .map(|_| ())
             .map_err(|reason| invalid(format!("artifact_image_refused: {reason}"))),
-        PNG => bbt_render::image::decode_png(bytes, 4_000_000)
+        PNG => bbt_render::image::decode_png(bytes, MAX_IMAGE_PIXELS)
             .map(|_| ())
             .map_err(|reason| invalid(format!("artifact_image_refused: {reason}"))),
         _ => Ok(()),

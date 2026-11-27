@@ -796,6 +796,7 @@ version = "0.2.0"
 dependencies = [
  "base64 0.22.1",
  "bboxy450-canvas",
+ "bboxy450-cef",
  "bboxy450-den",
  "bboxy450-doc",
  "bboxy450-harness-host",

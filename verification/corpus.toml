@@ -2385,3 +2385,13 @@ frontend = "project"
 name = "BrokenArtifactViewDropsContention"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "BrowserHost"
+frontend = "project"
+expected = "pass"
+
+[[model]]
+name = "BrokenBrowserHost"
+frontend = "project"
+expected = "safety"

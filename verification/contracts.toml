@@ -2139,3 +2139,13 @@ implementation_tests = ["crates/bbt-mux/tests/mcp/artifacts.rs", "crates/bboxy45
 property = "A live completion can present only its current view generation and resolved revision. Equal pixels across A to B to A preserve the new label. The other view stays at its exact first-revision pin. Temporary capacity defers the read and preserves its pending request. Current preparation terminates when capacity returns under fair resolution, presentation and stale-discard actions."
 assumptions = "Two views, three revisions and three monotonic view generations with at most one pending result in each and one modeled capacity deferral. The bounded runtime deadline and retry spacing remain implementation checks. Pixel equality is represented by revision one and three using the same geometry. Actual GPU pixels, cache keys, root selection, Markdown parsing and streamed UI event delivery use native fixtures."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "BrowserHost"
+title = "Seat-owned Chromium pipes and cleanup across crash, cancel and close"
+models = ["BrowserHost", "BrokenBrowserHost"]
+sources = ["crates/bbt-mux/src/logic/browser.rs", "crates/bbt-mux/src/logic/browser/session.rs", "crates/bboxy450-term/src/browser_host.rs", "crates/bboxy450-cef/src/cdp.rs", "crates/bboxy450-term/tests/formal_contracts/browser_host.rs"]
+implementation_tests = ["scripts/test-browser.py", "crates/bboxy450-cef/src/cdp.rs", "crates/bbt-mux/tests/mcp.rs"]
+assumptions = "One seat and owner, absent initially, with three successive pipes (A/1, B/2, A/3) and up to two wire IDs per pipe. Starting, ready, in-flight, crashed and closing are explicit. Admission, timeout, matching reply, seat close and reaping are atomic at the projection boundary. Reap is weakly fair while retiring. Older pipes may conservatively deliver duplicate or delayed replies. No fairness is assumed for CEF, navigation or reply delivery. Separate seats have separate owner maps in the process witness. Tokio and OS pipe scheduling, seatbelt, PNG pixels, cache deletion and wall-clock bounds are implementation checks."
+property = "Only the active pipe and request can deliver a reply. After cancel, delayed or duplicate replies cannot settle a later request. Seat close prevents readmission, and retiring hosts eventually reach absent with profile ownership released. The broken control removes pipe and request matching and must violate OnlyCurrentPipeAndRequestDeliver. scripts/test-browser.py witnesses cancellation while a later request runs, two private seats, an in-flight host crash and clean restart, in-flight seat close and backend retirement. CDP unit tests replay all 630 small duplicate/cancel orders."
+checks = ["make test-formal", "make test"]

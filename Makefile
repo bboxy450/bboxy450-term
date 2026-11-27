@@ -48,7 +48,8 @@ test-dream-c1-integration:
 
 APP := bboxy450-term
 PROFILE ?= release
-BROWSER ?= 1
+BROWSER ?= auto
+browser_enabled = $(if $(filter 1,$(BROWSER)),1,$(if $(and $(filter auto,$(BROWSER)),$(filter release,$(PROFILE))),1,0))
 NOTIFICATION_BIN ?= $(INSTALL_DIR)/$(APP).app/Contents/MacOS/$(APP)
 TARGET_DIR ?= target
 # Make's abspath treats whitespace as a path-list separator.
@@ -397,6 +398,7 @@ help:
 	  'make test-task-reservation      GitKB allocation, shared-root admission and recovery' \
 	  'make install-gitkb-plugin-local  Install into the explicitly selected workspace' \
 	  'make parity-swarm                Existing swarm/sidebar visual parity cases' \
+	  'make test-browser               Private unsigned CEF bundle and seat MCP browser' \
 	  'make smoke                      Unsigned private install + headless smoke' \
 	  'make smoke-installed             Private smoke of the installed signed app' \
 	  'make install                    Release app, Apple identity signed, ~/Applications' \
@@ -458,15 +460,20 @@ bump-harness:
 # `embedded` is named explicitly: it reached the shipped harness only through
 # that unification, and the native rich actor needs it.
 # Release builds carry Chromium (feature `browser`, crates/bboxy450-cef) unless
-# BROWSER=0; debug builds never do. The CEF distribution is shared per machine
+# BROWSER=0; BROWSER=1 also enables debug builds. The distribution is shared per machine
 # through CEF_PATH (scripts/cache-env.sh); its wrapper needs cmake and ninja.
-compile: tools
-	@set -eu; case '$(PROFILE)' in debug) flag='' ;; release) flag='--release' ;; *) echo 'PROFILE must be debug or release' >&2; exit 2 ;; esac; \
-	features=''; if [ '$(PROFILE)' = release ] && [ '$(BROWSER)' != 0 ]; then features='--features browser'; \
+profile_flag = $(if $(filter release,$(PROFILE)),--release)
+.PHONY: compile-app
+compile-app: tools
+	@set -eu; case '$(PROFILE)' in debug|release) ;; *) echo 'PROFILE must be debug or release' >&2; exit 2 ;; esac; \
+	features=''; if [ '$(browser_enabled)' = 1 ]; then features='--features browser'; \
 	  for tool in cmake ninja; do command -v $$tool >/dev/null || { echo "browser build needs $$tool: brew install cmake ninja (or BROWSER=0)" >&2; exit 2; }; done; fi; \
 	. ./scripts/cache-env.sh; \
-	cargo build --locked -p $(APP) -p bboxy450-term-remote --target-dir '$(TARGET_DIR)' $$flag $$features; \
-	cargo build --locked -p bboxy450-harness --features embedded --target-dir '$(TARGET_DIR)' $$flag
+	cargo build --locked -p $(APP) -p bboxy450-term-remote --target-dir '$(TARGET_DIR)' $(profile_flag) $$features
+
+compile: compile-app
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo build --locked -p bboxy450-harness --features embedded --target-dir '$(TARGET_DIR)' $(profile_flag)
 
 test check: tools test-signatures test-yarn-concurrency
 	@set -eu; mkdir -p "$$(dirname '$(CI_LOG)')"; \
@@ -858,43 +865,60 @@ bundle-svg-fonts:
 	@cp crates/bboxy450-svg/fonts/manifest.json crates/bboxy450-svg/fonts/SourceSans3-Regular.ttf crates/bboxy450-svg/fonts/SourceSans3-Bold.ttf crates/bboxy450-svg/fonts/LICENSE.md '$(BUNDLE)/Contents/Resources/chart-fonts/'
 	@cp crates/bboxy450-svg/chart_export.py '$(BUNDLE)/Contents/Resources/'
 
-# The Dream C1 gate admits only its pinned build inputs: ci-local's debug-assertion
-# overrides are for test builds, not for the packaged worker, so they are cleared for it.
-# Keep the bundle probe and its GUI control parent outside inherited QoS clamps.
-bundle-files test-rich-gui-handoff-control: SHELL = $(if $(filter off,$(BBOXY_QOS)),/bin/sh,/bin/sh scripts/qos.sh default /bin/sh)
-bundle-files: check-licenses compile bundle-svg-fonts
+# The browser fixture stages the same executable, plist, notices and CEF
+# children. Its scripted shell seats need no optional Dream or chart assets.
+.PHONY: bundle-core bundle-browser-test
+bundle-core: check-licenses compile-app
 	@set -eu; test "$$(uname -s)" = Darwin || { echo 'macOS is required' >&2; exit 2; }; \
 	case '$(BUNDLE)' in *.app) ;; *) echo 'BUNDLE must end in .app' >&2; exit 2 ;; esac; \
-	$(dream_worker_env); \
-	env -u CARGO_PROFILE_DEV_DEBUG_ASSERTIONS -u CARGO_PROFILE_TEST_DEBUG_ASSERTIONS \
-	  BBOXY_DREAM_BUILD_ENTRY=bundle-files CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(TARGET_ABS)' --worker-only; \
+	. ./scripts/cache-env.sh; \
 	mkdir -p '$(BUNDLE)/Contents/MacOS' '$(BUNDLE)/Contents/Resources'; \
 	cp packaging/macos/Info.plist '$(BUNDLE)/Contents/Info.plist'; \
 	cp '$(TARGET_DIR)/$(PROFILE)/$(APP)' '$(BUNDLE)/Contents/MacOS/$(APP)'; \
-	cp '$(TARGET_DIR)/release/bboxy450-harness' '$(BUNDLE)/Contents/MacOS/bboxy450-harness'; \
-	cp '$(TARGET_DIR)/$(PROFILE)/bboxy450-term-remote' '$(BUNDLE)/Contents/MacOS/bboxy450-term-remote'; \
-	rm -f '$(BUNDLE)/Contents/MacOS/bboxy450-harness.dream-c1.json'; \
-	if test -f '$(TARGET_DIR)/release/bboxy450-harness.dream-c1.json'; then cp '$(TARGET_DIR)/release/bboxy450-harness.dream-c1.json' '$(BUNDLE)/Contents/Resources/bboxy450-harness.dream-c1.json'; else rm -f '$(BUNDLE)/Contents/Resources/bboxy450-harness.dream-c1.json'; fi; \
 	cp LICENSE NOTICE ATTRIBUTION.md LICENSE-MIT LICENSE-APACHE packaging/macos/bboxy.icns '$(BUNDLE)/Contents/Resources/'; \
 	plutil -replace CFBundleShortVersionString -string '$(APP_VERSION)' '$(BUNDLE)/Contents/Info.plist'; \
 	plutil -replace CFBundleVersion -string "$$(git rev-list --count HEAD)" '$(BUNDLE)/Contents/Info.plist'; \
 	revision=$$(git rev-parse HEAD); git diff --quiet HEAD -- || revision="$$revision-dirty"; \
 	plutil -insert BBOXYSourceRevision -string "$$revision" '$(BUNDLE)/Contents/Info.plist'; \
 	plutil -insert BBOXYHarnessRevision -string "$$(git -C crates/bboxy450-harness rev-parse HEAD)" '$(BUNDLE)/Contents/Info.plist'; \
-	plutil -lint '$(BUNDLE)/Contents/Info.plist'
+	plutil -lint '$(BUNDLE)/Contents/Info.plist'; \
+	if [ '$(browser_enabled)' = 1 ]; then sh scripts/bundle-browser.sh copy '$(BUNDLE)'; \
+	else sh scripts/bundle-browser.sh remove '$(BUNDLE)'; fi
+
+# The Dream C1 gate admits only its pinned build inputs: ci-local's debug-assertion
+# overrides are for test builds, not for the packaged worker, so they are cleared for it.
+# Keep the bundle probe and its GUI control parent outside inherited QoS clamps.
+bundle-files test-rich-gui-handoff-control: SHELL = $(if $(filter off,$(BBOXY_QOS)),/bin/sh,/bin/sh scripts/qos.sh default /bin/sh)
+bundle-files: bundle-core compile bundle-svg-fonts
+	@set -eu; $(dream_worker_env); \
+	env -u CARGO_PROFILE_DEV_DEBUG_ASSERTIONS -u CARGO_PROFILE_TEST_DEBUG_ASSERTIONS \
+	  BBOXY_DREAM_BUILD_ENTRY=bundle-files CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(TARGET_ABS)' --worker-only; \
+	cp '$(TARGET_DIR)/release/bboxy450-harness' '$(BUNDLE)/Contents/MacOS/bboxy450-harness'; \
+	cp '$(TARGET_DIR)/$(PROFILE)/bboxy450-term-remote' '$(BUNDLE)/Contents/MacOS/bboxy450-term-remote'; \
+	rm -f '$(BUNDLE)/Contents/MacOS/bboxy450-harness.dream-c1.json'; \
+	if test -f '$(TARGET_DIR)/release/bboxy450-harness.dream-c1.json'; then cp '$(TARGET_DIR)/release/bboxy450-harness.dream-c1.json' '$(BUNDLE)/Contents/Resources/bboxy450-harness.dream-c1.json'; else rm -f '$(BUNDLE)/Contents/Resources/bboxy450-harness.dream-c1.json'; fi
 
 bundle: bundle-files
 	@set -eu; identity='$(SIGNING_IDENTITY)'; [ -n "$$identity" ] || identity=$$(sh scripts/signing-identity.sh '$(TEAM)') || exit 2; \
 	security find-identity -v -p codesigning | grep -qF "$$identity" || { echo "signing identity $$identity is not in the keychain" >&2; exit 2; }; \
 	echo "signing with $$identity"; \
+	if [ '$(browser_enabled)' = 1 ]; then sh scripts/bundle-browser.sh sign '$(BUNDLE)' "$$identity"; fi; \
 	codesign --force --sign "$$identity" --requirements '=designated => $(REQUIREMENT)' --options runtime --timestamp=none '$(BUNDLE)'; \
 	codesign --verify --strict --verbose=2 '$(BUNDLE)'; printf '%s\n' '$(BUNDLE)'
 
-bundle-unsigned: PROFILE=debug
-bundle-unsigned: bundle-files
-	@set -eu; codesign --force --sign - --timestamp=none '$(BUNDLE)'; \
+define sign_unsigned_bundle
+set -eu; if [ '$(browser_enabled)' = 1 ]; then sh scripts/bundle-browser.sh sign '$(BUNDLE)' -; fi; \
+	codesign --force --sign - --timestamp=none '$(BUNDLE)'; \
 	codesign --verify --strict '$(BUNDLE)'; \
 	printf '%s\n' 'Test bundle: ad-hoc signature only; no Apple identity or Keychain access.'
+endef
+
+bundle-unsigned: PROFILE=debug
+bundle-unsigned: bundle-files
+	@$(sign_unsigned_bundle)
+
+bundle-browser-test: bundle-core
+	@$(sign_unsigned_bundle)
 
 # Keep the outer .app inode (Dock/Finder aliases) and the old mapped executable.
 # Previous Contents are retained in the printed private staging directory.
@@ -974,6 +998,16 @@ endef
 smoke: PROFILE=debug
 smoke: install-unsigned
 	@$(call smoke_binary,$(abspath $(UNSIGNED_INSTALL_DIR))/$(APP).app/Contents/MacOS/$(APP),$(call chart_runtime,$(unsigned_chart_home)))
+
+# Build and sign into a disposable private install. The app and all seats use
+# another private run namespace, with no inherited seat or Keychain identity.
+.PHONY: test-browser
+test-browser: init-submodules
+	@set -eu; test "$$(uname -s)" = Darwin; \
+	browser_install=$$(mktemp -d "$${TMPDIR:-/tmp}/bboxy-browser-install.XXXXXX"); \
+	trap 'rm -rf -- "$$browser_install"' EXIT; \
+	$(MAKE) bundle-browser-test PROFILE=debug BROWSER=1 BUNDLE="$$browser_install/$(APP).app"; \
+	python3 -I scripts/test-browser.py "$$browser_install/$(APP).app"
 
 .PHONY: smoke-installed
 smoke-installed:

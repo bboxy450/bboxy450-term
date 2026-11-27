@@ -30,6 +30,7 @@ fn fixture_command(program: &str) -> Command {
         "GNUMAKEFLAGS",
         "TARGET_DIR",
         "PROFILE",
+        "BROWSER",
         "BUNDLE",
         "INSTALL_DIR",
         "UNSIGNED_INSTALL_DIR",
@@ -230,6 +231,20 @@ fn native_bundle_fixture_child() {
         include_str!("../../../scripts/bundle-macos.sh"),
     )
     .unwrap();
+    fs::write(
+        p.join("scripts/bundle-browser.sh"),
+        include_str!("../../../scripts/bundle-browser.sh"),
+    )
+    .unwrap();
+    let contents = p.join("target/debug/bboxy450-term.app/Contents");
+    let stale = contents.join("Frameworks/Chromium Embedded Framework.framework");
+    fs::create_dir_all(&stale).unwrap();
+    fs::create_dir_all(contents.join("Resources")).unwrap();
+    fs::write(
+        contents.join("Resources/CEF-LICENSE.txt"),
+        "stale browser notice",
+    )
+    .unwrap();
     for name in ["Info.plist", "bboxy.icns"] {
         fs::write(p.join("packaging/macos").join(name), "fixture").unwrap();
     }
@@ -367,6 +382,11 @@ with (pathlib.Path(os.environ['FIXTURE_ROOT'])/'calls').open('a') as f:f.write(j
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    assert!(
+        !stale.exists(),
+        "browser-disabled bundle clears stale Chromium"
+    );
+    assert!(!contents.join("Resources/CEF-LICENSE.txt").exists());
     let calls: Vec<Vec<String>> = fs::read_to_string(p.join("calls"))
         .unwrap()
         .lines()

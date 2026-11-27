@@ -2967,6 +2967,31 @@ fn mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority() 
     );
 }
 
+#[cfg(not(all(feature = "browser", target_os = "macos")))]
+#[test]
+fn mcp_browser_tools_are_advertised_and_name_the_missing_build_flag() {
+    let fixture = Fixture::new();
+    for seat in [fixture.own.id, fixture.oracle.id] {
+        let mut bridge = fixture.bridge(seat);
+        initialize(&mut bridge);
+        let catalogue = rpc(&mut bridge, 2, "tools/list", json!({}));
+        let tools = catalogue["result"]["tools"].as_array().unwrap();
+        for (name, arguments) in [
+            ("browser_open", json!({"url":"about:blank"})),
+            ("browser_cdp", json!({"method":"Runtime.evaluate"})),
+            ("browser_screenshot", json!({})),
+            ("browser_close", json!({})),
+        ] {
+            assert!(tools.iter().any(|tool| tool["name"] == name));
+            let response = fixture.call(seat, Ulid::new(), name, arguments);
+            assert_eq!(response["isError"], true);
+            let error = &response["structuredContent"]["error"];
+            assert_eq!(error["code"], "browser_unavailable");
+            assert!(error["message"].as_str().unwrap().contains("BROWSER=1"));
+        }
+    }
+}
+
 // keeps: decision #266
 #[test]
 fn mcp_minted_read_ids_are_retryable_and_every_catalogue_explains_optional_ids() {
@@ -2977,12 +3002,12 @@ fn mcp_minted_read_ids_are_retryable_and_every_catalogue_explains_optional_ids()
         let catalogue = rpc(&mut bridge, 2, "tools/list", json!({}));
         for tool in catalogue["result"]["tools"].as_array().unwrap() {
             let schema = &tool["inputSchema"];
-            assert!(
-                schema["properties"]["op_id"]["description"]
-                    .as_str()
-                    .unwrap()
-                    .contains("retry")
-            );
+            let guidance = schema["properties"]["op_id"]["description"].as_str().unwrap();
+            if matches!(tool["name"].as_str(), Some("browser_open" | "browser_cdp" | "browser_close")) {
+                assert!(guidance.contains("correlation ID"));
+            } else {
+                assert!(guidance.contains("retry"));
+            }
             assert!(
                 schema["required"]
                     .as_array()

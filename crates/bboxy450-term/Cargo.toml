@@ -30,7 +30,7 @@ desktop = [
 notification-probe = ["desktop", "bboxy450-desktop-notifications/probe"]
 # Chromium (CEF). Off for iteration builds; `make build-release`, `make install`
 # and `make release` turn it on (operator, 2026-11-24).
-browser = ["dep:bboxy450-cef", "bboxy450-cef/engine"]
+browser = ["dep:bboxy450-cef", "bboxy450-cef/engine", "dep:objc2", "dep:objc2-app-kit", "bbt-mux/browser"]
 
 [[bin]]
 name = "bboxy450-term"
@@ -92,7 +92,7 @@ bboxy450-desktop-notifications = { package = "bboxy450-desktop-notifications", v
 [target.'cfg(target_os = "macos")'.dependencies]
 block2 = { version = "=0.6.2", optional = true }
 objc2 = { version = "=0.6.5", optional = true }
-objc2-app-kit = { version = "=0.3.2", default-features = false, features = ["std", "NSScreen", "NSOpenPanel", "NSSavePanel", "NSPanel", "NSWindow", "NSResponder", "NSApplication", "block2"], optional = true }
+objc2-app-kit = { version = "=0.3.2", default-features = false, features = ["std", "NSScreen", "NSOpenPanel", "NSSavePanel", "NSPanel", "NSWindow", "NSResponder", "NSApplication", "NSEvent", "block2"], optional = true }
 objc2-foundation = { version = "=0.3.2", default-features = false, features = ["std", "NSObject", "NSRange", "NSRunLoop", "NSString"], optional = true }
 objc2-metal = { version = "=0.3.2", default-features = false, features = ["std", "block2", "objc2-core-foundation", "MTLBlitCommandEncoder", "MTLBuffer", "MTLCommandEncoder", "MTLCommandBuffer", "MTLCommandQueue", "MTLDevice", "MTLDrawable", "MTLResource", "MTLTexture", "MTLTypes"], optional = true }
 objc2-quartz-core = { version = "=0.3.2", default-features = false, features = ["std", "CALayer", "CAMetalLayer", "CAMetalDisplayLink", "CAFrameRateRange", "objc2-metal", "objc2-core-foundation"], optional = true }

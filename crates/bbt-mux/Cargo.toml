@@ -11,6 +11,7 @@ rust-version.workspace = true
 description = "Local terminal sessions, durable messaging and knowledge-provider coordination"
 
 [dependencies]
+bboxy450-cef = { version = "0.2.0", path = "../bboxy450-cef", optional = true }
 shell-words = "1.1.0"
 bboxy450-canvas = { version = "0.2.0", path = "../bboxy450-canvas" }
 bboxy450-svg = { version = "0.2.0", path = "../bboxy450-svg", optional = true }
@@ -49,6 +50,7 @@ ulid = { version = "1", features = ["serde"] }
 zeroize = "1"
 
 [features]
+browser = ["dep:bboxy450-cef"]
 default = ["canvas-image"]
 canvas-image = ["dep:bboxy450-svg", "dep:bbt-ui", "dep:bbt-render", "dep:png"]
 # The shipped TLA+ host plugin models (models/*.tla) as bboxy450-tlc builders.

@@ -37,6 +37,7 @@ impl Worker {
     ) -> Result<()> {
         let id = attachment.seat;
         let generation = attachment.generation;
+        self.retire_browser(id, generation);
         let view = &self.views[&id];
         let shared_codex = view.shared_codex_runtime.is_some();
         if view

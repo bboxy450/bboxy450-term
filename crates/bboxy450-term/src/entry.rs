@@ -6,12 +6,18 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! CLI entry points shared by the node and the rendered app.
 mod qos;
+#[cfg(all(feature = "browser", target_os = "macos"))]
+mod browser_host;
 
 #[cfg(feature = "desktop")]
 include!("main.rs");
 
 #[cfg(not(feature = "desktop"))]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    #[cfg(all(feature = "browser", target_os = "macos"))]
+    if let Some(result) = browser_host::entry() {
+        return result;
+    }
     let args: Vec<_> = std::env::args().skip(1).collect();
     qos::startup(args.first().map_or("", String::as_str));
     if args == ["--version"] || args == ["-V"] {

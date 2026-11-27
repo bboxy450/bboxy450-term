@@ -5,6 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Restartable IO/logic owner. The UI gets an async bounded client, not a DB or PTY.
+mod browser;
 mod codex_close;
 mod history;
 pub(crate) mod inbox;
@@ -245,6 +246,10 @@ enum Command {
     SetCtlRunner(CtlRunner),
     OperatorCloseOrphan(Ulid, Ulid, crate::mcp::Origin, oneshot::Sender<Result<bool>>),
     ControlCatalogue(Ulid, u64, oneshot::Sender<Result<serde_json::Value>>),
+    #[cfg(all(feature = "browser", target_os = "macos"))]
+    BrowserCapture(Box<browser::Capture>),
+    #[cfg(all(feature = "browser", target_os = "macos"))]
+    BrowserRetired(Ulid),
     ControlCall(
         Ulid,
         u64,
@@ -3205,6 +3210,8 @@ mod seat_move_tests {
 
 struct Worker {
     dream_runtime: crate::registry::dream_c1::Runtime,
+    #[cfg(all(feature = "browser", target_os = "macos"))]
+    browsers: browser::Sessions,
     #[cfg(test)]
     dream_read_isolate_identity: bool,
     dream_owned: BTreeSet<(Ulid,u64)>,
@@ -3545,6 +3552,8 @@ impl Worker {
         let dream_runtime=crate::registry::dream_c1::Runtime::new(config.run_dir.join("dream-c1"),std::env::current_exe()?.parent().ok_or_else(||invalid("missing sibling directory"))?.join("bboxy450-harness"),dream_private_provision,&handle);
         let mut worker = Self {
             dream_runtime,
+            #[cfg(all(feature = "browser", target_os = "macos"))]
+            browsers: browser::Sessions::default(),
             #[cfg(test)]
             dream_read_isolate_identity: false,
             dream_owned: BTreeSet::new(),
@@ -7045,6 +7054,11 @@ impl Worker {
         // seat/generation/PID, never by launching another writer.
         self.implementation_workspaces
             .observe_launch(&info)?;
+        if let Some(view) = self.views.get(&info.seat)
+            && view.generation != info.generation
+        {
+            self.retire_browser(info.seat, view.generation);
+        }
         self.parsers.retire(info.seat);
         self.ring_reads.remove(&info.seat);
         let host = self.host_for_seat(info.seat)?;
@@ -9443,6 +9457,7 @@ impl Worker {
             self.registry.exited(id, generation)?;
         }
         if let Event::Exited { status, .. } = &event {
+            self.retire_browser(id, generation);
             self.views
                 .get_mut(&id)
                 .unwrap()
@@ -12138,7 +12153,9 @@ impl Worker {
                         } else {
                             call
                         };
-                        if crate::mcp::canvas::handles(&call.tool) {
+                        if crate::mcp::browser::handles(&call.tool) {
+                            self.start_browser(id, generation, call, reply);
+                        } else if crate::mcp::canvas::handles(&call.tool) {
                             self.start_seat_canvas(id, generation, call, reply);
                         } else if crate::mcp::workspaces::handles(&call.tool) {
                             self.start_workspace_call(id, generation, call, reply);
@@ -12189,6 +12206,10 @@ impl Worker {
                             let _ = reply.send(result);
                         }
                     }
+                    #[cfg(all(feature = "browser", target_os = "macos"))]
+                    Command::BrowserCapture(capture) => self.finish_browser_capture(*capture),
+                    #[cfg(all(feature = "browser", target_os = "macos"))]
+                    Command::BrowserRetired(seat) => self.browsers.forget_retired(seat),
                     Command::RecoverSeats(reply, progress) => {
                         if self.active_recovery.is_some() {
                             let _ = reply.send(Err(invalid("session recovery already active")));
@@ -13440,6 +13461,8 @@ impl Worker {
             );
             turn.finish(Outcome::Ok, 0, 0);
         }
+        #[cfg(all(feature = "browser", target_os = "macos"))]
+        self.browsers.begin_shutdown();
         // Only published seat state is committed; unfinished work remains in
         // the retained ring for replacement-owner replay.
         self.parsers = Default::default();
@@ -13507,6 +13530,8 @@ fn retry_capture(mut request: impl FnMut() -> Result<Reply>) -> Result<Reply> {
 }
 impl Drop for Worker {
     fn drop(&mut self) {
+        #[cfg(all(feature = "browser", target_os = "macos"))]
+        self.browsers.stop_all(&self.handle);
         self.dream_runtime.retire();
         self.workspaces.cache.retire();
         let roots: BTreeSet<_> = self

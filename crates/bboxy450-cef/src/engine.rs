@@ -9,8 +9,9 @@
 //! CEF's in-process DevTools channel (no port).
 use crate::cdp::Request;
 use crate::defaults::{Defaults, SWITCHES, fixed};
+pub use cef;
 use cef::*;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::SyncSender;
 
 /// CEF settings with our defaults applied.
 pub fn settings(defaults: &Defaults) -> Settings {
@@ -61,7 +62,7 @@ pub fn send(host: &BrowserHost, request: &Request) -> bool {
 
 wrap_dev_tools_message_observer! {
     struct Forward {
-        to: Sender<Vec<u8>>,
+        to: SyncSender<Vec<u8>>,
     }
 
     impl DevToolsMessageObserver {
@@ -78,7 +79,7 @@ wrap_dev_tools_message_observer! {
 /// An observer that forwards every raw CDP message to `to`, for
 /// [`crate::cdp::Client::receive`]. Register it with
 /// `host.add_dev_tools_message_observer`; dropping the registration stops it.
-pub fn observer(to: Sender<Vec<u8>>) -> DevToolsMessageObserver {
+pub fn observer(to: SyncSender<Vec<u8>>) -> DevToolsMessageObserver {
     Forward::new(to)
 }
 

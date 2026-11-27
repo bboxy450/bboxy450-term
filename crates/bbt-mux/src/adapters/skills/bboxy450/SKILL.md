@@ -96,6 +96,8 @@ decision, and wait.
 4. **Artifacts.** `artifact_claim` links what you produced to its task. It
    grants no permission over another seat.
 
+Use `browser_open`, `browser_cdp`, `browser_screenshot` and `browser_close` to drive and capture your seat’s offscreen Chromium.
+
 ## Retries
 
 Omit `op_id` unless you are retrying: each tool mints one and returns it. A
