@@ -860,6 +860,8 @@ bundle-svg-fonts:
 
 # The Dream C1 gate admits only its pinned build inputs: ci-local's debug-assertion
 # overrides are for test builds, not for the packaged worker, so they are cleared for it.
+# Keep the bundle probe and its GUI control parent outside inherited QoS clamps.
+bundle-files test-rich-gui-handoff-control: SHELL = $(if $(filter off,$(BBOXY_QOS)),/bin/sh,/bin/sh scripts/qos.sh default /bin/sh)
 bundle-files: check-licenses compile bundle-svg-fonts
 	@set -eu; test "$$(uname -s)" = Darwin || { echo 'macOS is required' >&2; exit 2; }; \
 	case '$(BUNDLE)' in *.app) ;; *) echo 'BUNDLE must end in .app' >&2; exit 2 ;; esac; \
