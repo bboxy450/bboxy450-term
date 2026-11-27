@@ -1,0 +1,48 @@
+module tasks.`2026-11-27-browser-pane`
+
+task BrowserPane {
+  title "Browser pane: draw the built-in Chromium page in a pane, with input, sharing the seat's browser tools"
+  verify $ make test-browser
+  paths "crates/**", "Makefile", "scripts/**", "verification/**", "packaging/**", "Cargo.toml", "Cargo.lock", "ATTRIBUTION.md", "AGENTS.md", "lab/**"
+  brief """
+    # Browser pane
+
+    ROLE: EXECUTOR. Operator, 2026-11-27: "implement all of this". Builds on tasks/2026-11-27-browser-over-mcp.den; do not start before that task is landed on origin/main.
+
+    Create a goal for this task (Codex create_goal) from the outcome below and hold it until the verify command exits 0 and the change is on origin/main.
+
+    ## Outcome
+
+    The operator and an agent can open a browser pane in the window: the page from the built-in Chromium drawn in a pane like a seat, with mouse, scroll, keyboard and a plain address field, and the same browser the pane shows is the one browser_open, browser_cdp and browser_screenshot drive, so a person and an agent share one page.
+
+    ## Build this
+
+    1. Frames. The browser host renders off-screen; frames reach the window process as GPU textures (cef feature accelerated_osr: IOSurface on macOS into the existing wgpu/Metal renderer in crates/bboxy450-term), with a software-paint fallback only if the texture path cannot work, stated in the report. Frame budget and resize follow the existing pane rules.
+    2. Pane kind. A browser pane opens from the GUI and through MCP (seat_spawn and seat_split accept a browser kind, or one new tool if that is fewer concepts) with a url. It has an identity the browser tools can address, closes like any pane, and survives window close and reopen the way seats do.
+    3. Input. Mouse move, click, scroll, key and text input, focus, and copy and paste go to the page; the address field navigates; back, forward and reload exist.
+    4. Proof. Extend make test-browser: headless --capture of a window with a browser pane showing a data: URL page, pixel-checked; a scripted click through ctl or the pane's own control changes the page and the next capture shows it; browser_cdp on the same pane reads the changed DOM. Unattended, no operator, no OS key injection, no screen capture of the desktop.
+    5. Formal, words and licences as in the first task: update the lifecycle model for pane ownership (pane close, window detach, host crash while visible), the README contract and the seat skill.
+
+    ## Rules
+
+    Same as tasks/2026-11-27-browser-over-mcp.den. UI geometry changes run the existing parity check. Latitude: layout and chrome design are yours; keep it plain.
+
+    ## Report
+
+    reports/2026-11-27-browser-pane.den, then task_report with the commit on origin/main and every command with its real exit status.
+    """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"XLMAqZTUlsEIvVxlAso8YDW5Ud3ShPEW3Kz+hD0wm1c=\",\"signer\":\"seat:01M89Z74HN4GSHEPS6TC0H6FDX\"}"
+    created = json"\"2026-11-27T16:56:50.600Z\""
+    created_by = json"\"seat:01M89Z74HN4GSHEPS6TC0H6FDX\""
+    delegated_by = json"\"seat:01M89Z74HN4GSHEPS6TC0H6FDX\""
+    id = json"\"01M8EZ0A40RGY69T9GQZFG9SMN\""
+    number = json"1794292861628017"
+    status = Open
+    swarm = json"\"01M7P04CW1T6KY8CMSS6DQM12Q\""
+    updated = json"\"2026-11-27T16:56:50.600Z\""
+    updated_by = json"\"seat:01M89Z74HN4GSHEPS6TC0H6FDX\""
+    provenance = json"{\"digest\":\"sha256:962adc9e2834baf0452396b916f03019db44356dff494ec809bad9fc4bf9ac16\",\"frontmatter_digest\":\"sha256:1d9d54beda4470c29e21a1af7b4a93ae3e7c00ca3a3f648bee576e99310b6c19\",\"signer\":\"seat:01M89Z74HN4GSHEPS6TC0H6FDX\",\"sig\":\"S8pmRRSakHeKKOVUE/mdY41F9QXoJHO/rAxsuf3dp89NWgCI7brOzrCpfg09KTLhBwvDXAnPHw1TBuWRusDeDA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/2343\",\"event\":{\"id\":\"01M8EZ0CSNK7SKE3A6BBR0A5XC\",\"sequence\":2343,\"hash\":\"5ba449023124982ce4c6b64d64440db51735d29ebc4e359ab3e747b5dff7cf1d\"}}"
+  }
+}
