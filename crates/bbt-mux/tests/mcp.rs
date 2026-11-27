@@ -5062,17 +5062,28 @@ os.execv(BINARY, [BINARY, *args, '--profile', 'exit-fixture'])
     ));
     assert_eq!(spawn["status"], "applied", "{spawn}");
     let seat: Ulid = serde_json::from_value(spawn["seat_id"].clone()).unwrap();
-    let mut task = f.task_metadata();
-    task["status"] = json!("claimed");
-    task["assignee"] = json!(format!("seat:{seat}"));
-    f.task_file(task);
-    let claim = data(f.call(
+    // Hold the delegator's outgoing wake so scripted PTY input owns the first turn.
+    f.registry()
+        .update(f.oracle.id, |record| {
+            record.muted = true;
+            Ok(())
+        })
+        .unwrap();
+    // Use the indexed task mutation so the recipient lookup sees the claim.
+    let claim = data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_reassign",
+        json!({"task_path": f.task_path(), "seat_id": seat}),
+    ));
+    assert_eq!(claim["task_status"], "claimed", "{claim}");
+    let indexed = data(f.call(
         seat,
         Ulid::new(),
-        "task_status",
-        json!({"task_path": f.task_path()}),
+        "task_list",
+        json!({"status": "claimed", "assignee": format!("seat:{seat}")}),
     ));
-    assert_eq!(claim["metadata"]["status"], "claimed", "{claim}");
+    assert_eq!(indexed["items"][0]["id"], json!(f.task), "{indexed}");
     f.wait_screen(seat, "session ");
     f.runtime
         .block_on(f.client().gui_input(
@@ -5084,21 +5095,23 @@ os.execv(BINARY, [BINARY, *args, '--profile', 'exit-fixture'])
         .unwrap();
     let until = Instant::now() + Duration::from_secs(8);
     let sessions = home.join(".bboxy450-harness/sessions");
-    while !std::fs::read_dir(&sessions)
-        .unwrap()
-        .flatten()
-        .any(|entry| {
-            entry.path().extension().is_some_and(|ext| ext == "jsonl")
-                && std::fs::read_to_string(entry.path()).is_ok_and(|log| {
-                    log.lines()
-                        .filter_map(|line| serde_json::from_str::<Value>(line).ok())
-                        .any(|record| {
-                            record["event"]["type"] == "item_started"
-                                && record["event"]["head"]["call_id"] == "recover-tool"
-                        })
-                })
-        })
-    {
+    let journal_has = |predicate: fn(Value) -> bool| {
+        std::fs::read_dir(&sessions)
+            .unwrap()
+            .flatten()
+            .any(|entry| {
+                entry.path().extension().is_some_and(|ext| ext == "jsonl")
+                    && std::fs::read_to_string(entry.path()).is_ok_and(|log| {
+                        log.lines()
+                            .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+                            .any(predicate)
+                    })
+            })
+    };
+    while !journal_has(|record| {
+        record["event"]["type"] == "item_started"
+            && record["event"]["head"]["call_id"] == "recover-tool"
+    }) {
         assert!(Instant::now() < until, "ACP foreground tool did not start");
         std::thread::sleep(Duration::from_millis(10));
     }
@@ -5131,7 +5144,8 @@ os.execv(BINARY, [BINARY, *args, '--profile', 'exit-fixture'])
         }
         assert!(
             Instant::now() < until,
-            "delegator received no ACP exit notice"
+            "delegator received no ACP exit notice (journal recorded exit: {})",
+            journal_has(|record| record["ext"]["agent_exit"].is_object())
         );
         std::thread::sleep(Duration::from_millis(20));
     };

@@ -139,11 +139,13 @@ pub(super) fn run() {
     )
     .unwrap();
     assert_eq!(observed_ms, last["ts_ms"].as_u64().unwrap());
-    let elapsed = Instant::now();
     // Every sample re-checks the quiet status: no unobserved window over 1 s.
     let mut last_sample = Instant::now();
-    loop {
+    let stale_ms = loop {
         let status = read(&f, seat);
+        // The daemon measures silence from the journal event, including the time
+        // spent waiting for the initial report to reach this client.
+        let quiet_ms = bbt_mux::store::now_ms().saturating_sub(observed_ms);
         assert!(
             last_sample.elapsed() < Duration::from_secs(1),
             "unobserved silence window: {:?}",
@@ -160,8 +162,8 @@ pub(super) fn run() {
         assert_eq!(adapter["turn_open"], true);
         if adapter["source"] == "stale" {
             assert!(
-                elapsed.elapsed() >= Duration::from_millis(59_500),
-                "early expiry: {status}"
+                quiet_ms >= 60_000,
+                "early expiry at {quiet_ms} ms: {status}"
             );
             assert_eq!(adapter["detail"], "bash · no word for 1m");
             let gui = f.runtime.block_on(f.client().gui_seat(seat)).unwrap();
@@ -171,15 +173,15 @@ pub(super) fn run() {
             );
             assert_eq!(gui.state.activity, bbt_proto::Activity::Active);
             assert_eq!(gui.state.grade, bbt_proto::Grade::Reported);
-            break;
+            break quiet_ms;
         }
         assert_eq!(adapter["source"], "sessions_file", "{status}");
         assert!(
-            elapsed.elapsed() < Duration::from_millis(62_500),
-            "missing expiry: {status}"
+            quiet_ms < 62_500,
+            "missing expiry at {quiet_ms} ms: {status}"
         );
         std::thread::sleep(Duration::from_millis(200));
-    }
+    };
     assert_eq!(
         std::fs::read(&path).unwrap(),
         bytes,
@@ -194,7 +196,6 @@ pub(super) fn run() {
             .stale
     );
     eprintln!(
-        "harness-native: phase_1c=osc-only,log-only,approval,error,closed stale_ms={}",
-        elapsed.elapsed().as_millis()
+        "harness-native: phase_1c=osc-only,log-only,approval,error,closed stale_ms={stale_ms}"
     );
 }

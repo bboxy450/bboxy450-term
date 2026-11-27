@@ -51,6 +51,9 @@ PROFILE ?= release
 BROWSER ?= 1
 NOTIFICATION_BIN ?= $(INSTALL_DIR)/$(APP).app/Contents/MacOS/$(APP)
 TARGET_DIR ?= target
+# Make's abspath treats whitespace as a path-list separator.
+absolute_path = $(if $(filter /%,$(firstword $(1))),$(1),$(CURDIR)/$(1))
+TARGET_ABS = $(call absolute_path,$(TARGET_DIR))
 
 # Exact-source native pixels, geometry, fonts, resource ceilings and causal controls.
 .PHONY: svg-loop
@@ -142,9 +145,9 @@ GPG_KEY := 9B07E849480C68328CA20684844ECC0587DE7AB0
 REQUIREMENT := identifier "com.bboxy450.term" and anchor apple generic and certificate leaf[subject.OU] = "$(TEAM)"
 APP_VERSION = $(shell python3 -c 'import tomllib; a=tomllib.load(open("crates/bboxy450-term/Cargo.toml","rb"))["package"]["version"]; print(a if isinstance(a,str) else tomllib.load(open("Cargo.toml","rb"))["workspace"]["package"]["version"])')
 ARCHIVE = $(DIST_DIR)/$(APP)-$(APP_VERSION)-macos-$(shell uname -m).zip
-CI_LOG ?= $(abspath $(TARGET_DIR))/ci-local.log
+CI_LOG ?= $(TARGET_ABS)/ci-local.log
 LAND_GATE_LOG ?=
-FORMAL_DIR ?= $(abspath $(TARGET_DIR))/formal
+FORMAL_DIR ?= $(TARGET_ABS)/formal
 CI_ARGS ?=
 CRATES_PUBLISHER_RECEIPT ?= $(HOME)/.local/state/bboxy450-term/crates-publisher.json
 export CARGO_PROFILE_DEV_DEBUG ?= 0
@@ -463,7 +466,7 @@ compile: tools
 
 test check: tools test-signatures test-yarn-concurrency
 	@set -eu; mkdir -p "$$(dirname '$(CI_LOG)')"; \
-	SIGNED_RANGE= BBOXY_GATE_SLOT=none BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))' sh scripts/ci-local.sh $(CI_ARGS) >'$(CI_LOG)' 2>&1 || { code=$$?; tail -60 '$(CI_LOG)'; exit $$code; }; \
+	SIGNED_RANGE= BBOXY_GATE_SLOT=none BBOXY_CARGO_TARGET_DIR='$(TARGET_ABS)' sh scripts/ci-local.sh $(CI_ARGS) >'$(CI_LOG)' 2>&1 || { code=$$?; tail -60 '$(CI_LOG)'; exit $$code; }; \
 	tail -12 '$(CI_LOG)'; printf 'Full gate log: %s\n' '$(CI_LOG)'
 
 .PHONY: check-ui-targets
@@ -858,7 +861,7 @@ bundle-files: check-licenses compile bundle-svg-fonts
 	case '$(BUNDLE)' in *.app) ;; *) echo 'BUNDLE must end in .app' >&2; exit 2 ;; esac; \
 	. ./scripts/cache-env.sh; \
 	env -u CARGO_PROFILE_DEV_DEBUG_ASSERTIONS -u CARGO_PROFILE_TEST_DEBUG_ASSERTIONS \
-	  BBOXY_DREAM_BUILD_ENTRY=bundle-files CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --worker-only; \
+	  BBOXY_DREAM_BUILD_ENTRY=bundle-files CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(TARGET_ABS)' --worker-only; \
 	mkdir -p '$(BUNDLE)/Contents/MacOS' '$(BUNDLE)/Contents/Resources'; \
 	cp packaging/macos/Info.plist '$(BUNDLE)/Contents/Info.plist'; \
 	cp '$(TARGET_DIR)/$(PROFILE)/$(APP)' '$(BUNDLE)/Contents/MacOS/$(APP)'; \
@@ -1037,7 +1040,7 @@ push: land
 # worktree's own warm target. `make land-full` is the full signed gate.
 .PHONY: land land-full land-gate
 land: tools
-	@BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))' sh scripts/land-fast.sh
+	@BBOXY_CARGO_TARGET_DIR='$(TARGET_ABS)' sh scripts/land-fast.sh
 	@python3 -I -B scripts/formal.py --prune-background || true
 
 land-full:
@@ -1947,7 +1950,7 @@ prune-formal-evidence:
 	@KEEP='$(or $(KEEP),10)' DRY_RUN='$(DRY_RUN)' python3 -I -B scripts/formal.py --prune-evidence
 
 check-formal-evidence:
-	@python3 -I -B scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' --verify-evidence
+	@python3 -I -B scripts/formal.py --target '$(TARGET_ABS)/formal' --verify-evidence
 
 test-yarn-model:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -2001,14 +2004,14 @@ test-formal:
 	@python3 -I scripts/formal-stage.py harness-check -- sh scripts/qos.sh utility python3 -I scripts/test-harness-submodule.py
 	@python3 -I scripts/formal-stage.py self-tests -- $(MAKE) test-formal-infrastructure TARGET_DIR='$(TARGET_DIR)'
 	@set -eu; . ./scripts/cache-env.sh; \
-	python3 -I scripts/formal-stage.py tlc-verify -- cargo run --locked -p bboxy450-tlc --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
-	python3 -I scripts/formal-stage.py yarn-verify -- cargo run --locked -p bboxy450-yarn --features model --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
-	python3 -I scripts/formal-stage.py den-verify -- cargo run --locked -p bboxy450-den --example den_corpus --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
-	BBOXY_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/formal/models' python3 -I scripts/formal-stage.py contracts -- cargo nextest run -E 'binary(it)&test(/^(formal_contracts)::/)' --locked -p bboxy450-term --test it --target-dir '$(TARGET_DIR)'; \
-	FORMAL_OUT='$(abspath $(TARGET_DIR))/formal/harness' python3 -I scripts/formal-stage.py harness-native -- cargo test --locked -p bboxy450-harness --test formal_models --test formal_nonvacuity --test reactor_projection --target-dir '$(TARGET_DIR)'; \
-	python3 -I scripts/formal-stage.py harness-export -- python3 -I scripts/harness-submodule.py --models '$(abspath $(TARGET_DIR))/formal/harness' --target '$(abspath $(TARGET_DIR))/formal/models'; \
+	python3 -I scripts/formal-stage.py tlc-verify -- cargo run --locked -p bboxy450-tlc --example verify --target-dir '$(TARGET_DIR)' -- '$(TARGET_ABS)/formal/models'; \
+	python3 -I scripts/formal-stage.py yarn-verify -- cargo run --locked -p bboxy450-yarn --features model --example verify --target-dir '$(TARGET_DIR)' -- '$(TARGET_ABS)/formal/models'; \
+	python3 -I scripts/formal-stage.py den-verify -- cargo run --locked -p bboxy450-den --example den_corpus --target-dir '$(TARGET_DIR)' -- '$(TARGET_ABS)/formal/models'; \
+	BBOXY_FORMAL_OUTPUT='$(TARGET_ABS)/formal/models' python3 -I scripts/formal-stage.py contracts -- cargo nextest run -E 'binary(it)&test(/^(formal_contracts)::/)' --locked -p bboxy450-term --test it --target-dir '$(TARGET_DIR)'; \
+	FORMAL_OUT='$(TARGET_ABS)/formal/harness' python3 -I scripts/formal-stage.py harness-native -- cargo test --locked -p bboxy450-harness --test formal_models --test formal_nonvacuity --test reactor_projection --target-dir '$(TARGET_DIR)'; \
+	python3 -I scripts/formal-stage.py harness-export -- python3 -I scripts/harness-submodule.py --models '$(TARGET_ABS)/formal/harness' --target '$(TARGET_ABS)/formal/models'; \
 	python3 -I scripts/formal-stage.py lean -- $(MAKE) test-lean TARGET_DIR='$(TARGET_DIR)'; \
-	python3 -I scripts/formal-stage.py java-parity -- sh scripts/qos.sh utility python3 -I -B scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' $(if $(filter 1,$(FORMAL_REUSE)),--reuse,)
+	python3 -I scripts/formal-stage.py java-parity -- sh scripts/qos.sh utility python3 -I -B scripts/formal.py --target '$(TARGET_ABS)/formal' $(if $(filter 1,$(FORMAL_REUSE)),--reuse,)
 
 # Run just the two first-answer models through the same exporter and reference checker.
 .PHONY: test-question-answer-formal
@@ -2023,7 +2026,7 @@ test-question-answer-formal:
 # namespace; the `controls` sets must be refused.
 .PHONY: test-lean
 test-lean:
-	@set -eu; . ./scripts/cache-env.sh; out='$(abspath $(TARGET_DIR))/lean'; rm -rf "$$out"; \
+	@set -eu; . ./scripts/cache-env.sh; out='$(TARGET_ABS)/lean'; rm -rf "$$out"; \
 	den() { cargo run --locked -q -p bboxy450-den --target-dir '$(TARGET_DIR)' -- lean "$$@"; }; \
 	den --out "$$out/specs" .bboxy/specs; \
 	den --out "$$out/fixtures" crates/bboxy450-den/tests/sound; \
@@ -2450,7 +2453,7 @@ test-harness-native: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-harness-wake-up --test rich_socket --test harness_status --target-dir '$(TARGET_DIR)'; \
 	cargo build --locked -p bboxy450-harness --features test-fixtures --target-dir '$(TARGET_DIR)'; \
-	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo nextest run -E 'binary(it)&test(/^(mcp)::/)' --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' mcp_harness_seat_ -- --ignored --nocapture; \
+	BBOXY_HARNESS_TEST_BIN='$(TARGET_ABS)/debug/bboxy450-harness' cargo nextest run -E 'binary(it)&test(/^(mcp)::/)' --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' mcp_harness_seat_ -- --ignored --nocapture; \
 	cargo test --locked -p bboxy450-harness --test seat_process --target-dir '$(TARGET_DIR)' non_pty_spawn_does_not_keep_a_sibling_master_alive -- --exact; \
 	$(MAKE) test-rich-controls test-rich-cancel-control test-rich-pane bench-budgets test-rich-app-detach TARGET_DIR='$(TARGET_DIR)'
 	$(MAKE) test-rich-app-input test-rich-launch-context-control test-rich-gui-handoff-control TARGET_DIR='$(TARGET_DIR)'
@@ -2513,7 +2516,7 @@ test-capability-file:
 
 .PHONY: test-capability-control
 test-capability-control:
-	@set -eu; . ./scripts/cache-env.sh; python3 -I -B scripts/test-capability-control.py '$(abspath $(TARGET_DIR))'
+	@set -eu; . ./scripts/cache-env.sh; python3 -I -B scripts/test-capability-control.py '$(TARGET_ABS)'
 
 .PHONY: test-capability-scan
 test-capability-scan:
@@ -2600,7 +2603,7 @@ test-rich-pane: init-submodules
 .PHONY: test-rich-controls
 test-rich-controls:
 	@set -eu; . ./scripts/cache-env.sh; \
-	python3 -I scripts/rich-host-controls.py --target '$(abspath $(TARGET_DIR))'
+	python3 -I scripts/rich-host-controls.py --target '$(TARGET_ABS)'
 
 .PHONY: check-rich-host
 check-rich-host: init-submodules
@@ -2622,12 +2625,12 @@ verify-rich-delivery: check-rich-host
 .PHONY: test-rich-cancel-control
 test-rich-cancel-control: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
-	python3 -I scripts/rich-cancel-control.py --target '$(abspath $(TARGET_DIR))'
+	python3 -I scripts/rich-cancel-control.py --target '$(TARGET_ABS)'
 
 .PHONY: bench-budgets
 bench-budgets: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
-	BBOXY_RICH_BUDGET_OUT='$(abspath $(TARGET_DIR))/rich-budgets' cargo test --locked -p bboxy450-term --bin bboxy450-term --target-dir '$(TARGET_DIR)' rich_faces::budget_verification::rich_four_view_aggregate_budget -- --ignored --exact --nocapture --test-threads=1
+	BBOXY_RICH_BUDGET_OUT='$(TARGET_ABS)/rich-budgets' cargo test --locked -p bboxy450-term --bin bboxy450-term --target-dir '$(TARGET_DIR)' rich_faces::budget_verification::rich_four_view_aggregate_budget -- --ignored --exact --nocapture --test-threads=1
 
 .PHONY: test-harness-status-control test-rich-app-detach test-rich-gui-handoff test-rich-launch-context test-rich-app-input
 test-harness-status-control: init-submodules
@@ -2637,12 +2640,12 @@ test-harness-status-control: init-submodules
 
 test-rich-app-detach: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
-	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo nextest run -E 'binary(it)&test(=swarm_workdir::rich_detach::rich_app_detach_during_native_turn_retains_owner_and_replays)' --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' -- --ignored --nocapture
+	BBOXY_HARNESS_TEST_BIN='$(TARGET_ABS)/debug/bboxy450-harness' cargo nextest run -E 'binary(it)&test(=swarm_workdir::rich_detach::rich_app_detach_during_native_turn_retains_owner_and_replays)' --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' -- --ignored --nocapture
 
 test-rich-gui-handoff: PROFILE=debug
 test-rich-gui-handoff: bundle-unsigned
 	@set -eu; . ./scripts/cache-env.sh; \
-	BBOXY_PREPARED_GUI_BUNDLE='$(abspath $(BUNDLE))' BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo nextest run -E 'binary(it)&test(=swarm_workdir::rich_detach::rich_gui_handoff_preserves_turn_and_rolls_back_failed_activation)' --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' -- --ignored --nocapture
+	BBOXY_PREPARED_GUI_BUNDLE='$(call absolute_path,$(BUNDLE))' BBOXY_HARNESS_TEST_BIN='$(TARGET_ABS)/debug/bboxy450-harness' cargo nextest run -E 'binary(it)&test(=swarm_workdir::rich_detach::rich_gui_handoff_preserves_turn_and_rolls_back_failed_activation)' --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' -- --ignored --nocapture
 
 .PHONY: prepare-rich-native-fixture
 prepare-rich-native-fixture: init-submodules
@@ -2651,19 +2654,19 @@ prepare-rich-native-fixture: init-submodules
 
 test-rich-launch-context: prepare-rich-native-fixture
 	@set -eu; . ./scripts/cache-env.sh; \
-	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo nextest run -E 'binary(it)&test(=swarm_workdir::launch_context::launch_children_receive_workflow_and_call_their_own_admitted_mcp)' --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' -- --ignored --nocapture
+	BBOXY_HARNESS_TEST_BIN='$(TARGET_ABS)/debug/bboxy450-harness' cargo nextest run -E 'binary(it)&test(=swarm_workdir::launch_context::launch_children_receive_workflow_and_call_their_own_admitted_mcp)' --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' -- --ignored --nocapture
 
 test-rich-app-input: prepare-rich-native-fixture
 	@set -eu; . ./scripts/cache-env.sh; \
-	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo nextest run -E 'test(=swarm_workdir::rich_detach::rich_app_routes_composer_approval_scroll_and_focus)' --no-tests=fail --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' -- --ignored --nocapture
+	BBOXY_HARNESS_TEST_BIN='$(TARGET_ABS)/debug/bboxy450-harness' cargo nextest run -E 'test(=swarm_workdir::rich_detach::rich_app_routes_composer_approval_scroll_and_focus)' --no-tests=fail --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' -- --ignored --nocapture
 
 .PHONY: test-rich-gui-handoff-control
 test-rich-gui-handoff-control:
-	@python3 -I scripts/rich-gui-handoff-control.py --target '$(abspath $(TARGET_DIR))'
+	@python3 -I scripts/rich-gui-handoff-control.py --target '$(TARGET_ABS)'
 
 .PHONY: test-rich-launch-context-control
 test-rich-launch-context-control:
-	@python3 -I scripts/rich-launch-context-control.py --target '$(abspath $(TARGET_DIR))'
+	@python3 -I scripts/rich-launch-context-control.py --target '$(TARGET_ABS)'
 
 # Reuse the same atomic installer after a caller has prepared and verified a bundle.
 .PHONY: install-prepared install-prepared-unsigned install-reopen reopen-prepared install-unsigned-reopen
