@@ -26,6 +26,9 @@ macro_rules! swarm_actions {
             SwarmRename { id: Ulid, swarm: Ulid, name: String },
             /// A canonical existing directory; None restores the startup fallback.
             SwarmWorkdir { id: Ulid, swarm: Ulid, path: Option<String> },
+            /// Delete from the operator's view: hides an empty swarm and keeps its
+            /// metadata and task history. Refused while it has open or undoable seats.
+            SwarmArchive { id: Ulid, swarm: Ulid },
         ] $($head)*);
     };
 }

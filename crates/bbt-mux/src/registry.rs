@@ -129,16 +129,19 @@ impl Registry {
             .transpose()
     }
     pub fn swarms(&self) -> Result<Vec<SwarmRecord>> {
-        let records: Vec<SwarmRecord> = self
-            .store
-            .list("swarm/")?
-            .into_iter()
-            .map(|(_, bytes)| Ok(serde_json::from_slice(&bytes)?))
-            .collect::<Result<_>>()?;
-        Ok(records
+        Ok(self
+            .swarms_with_archived()?
             .into_iter()
             .filter(|record| !record.archived)
             .collect())
+    }
+    /// Every swarm record. The window needs the archived ones to drop their rows.
+    pub fn swarms_with_archived(&self) -> Result<Vec<SwarmRecord>> {
+        self.store
+            .list("swarm/")?
+            .into_iter()
+            .map(|(_, bytes)| Ok(serde_json::from_slice(&bytes)?))
+            .collect()
     }
     /// Preserve metadata (and therefore legacy-import custody), hiding only an empty swarm.
     pub(crate) fn archive_empty_swarm(&self, id: Ulid) -> Result<SwarmRecord> {

@@ -582,7 +582,8 @@ impl SwarmMutations {
     fn key(action: &GuiAction) -> Option<(Ulid, Ulid)> {
         match action {
             GuiAction::SwarmRename { id, swarm, .. }
-            | GuiAction::SwarmWorkdir { id, swarm, .. } => Some((*id, *swarm)),
+            | GuiAction::SwarmWorkdir { id, swarm, .. }
+            | GuiAction::SwarmArchive { id, swarm } => Some((*id, *swarm)),
             _ => None,
         }
     }
@@ -648,7 +649,8 @@ impl ActionReplies {
             GuiAction::SwarmList { id } => ActionReply::Swarms(*id),
             GuiAction::SwarmGet { id, .. }
             | GuiAction::SwarmRename { id, .. }
-            | GuiAction::SwarmWorkdir { id, .. } => ActionReply::Swarm(*id),
+            | GuiAction::SwarmWorkdir { id, .. }
+            | GuiAction::SwarmArchive { id, .. } => ActionReply::Swarm(*id),
             GuiAction::Questions { .. } => ActionReply::Questions,
             GuiAction::Answer { op_id, .. } => ActionReply::Answer(*op_id),
             GuiAction::ListSeats => ActionReply::Seats,
@@ -1686,6 +1688,10 @@ async fn run_with_control(
                     },
                     UiMsg::SwarmRename{id,swarm,name}=> {
                         if !swarm_mutations.push(GuiAction::SwarmRename{id:*id,swarm:Ulid(swarm.0.0),name:name.clone()},&mut outgoing) {capture(OperatorAsk::SwarmMetadata{op:*id,result:Err("swarm metadata queue full".into())});}
+                        else {Arc::make_mut(&mut model).swarm_metadata_pending.insert(*swarm);updates.publish(model.clone());}
+                    },
+                    UiMsg::SwarmArchive {swarm}=> {
+                        if !swarm_mutations.push(GuiAction::SwarmArchive{id:Ulid::new(),swarm:Ulid(swarm.0.0)},&mut outgoing) {logger.write("swarm delete queue full; try again");}
                         else {Arc::make_mut(&mut model).swarm_metadata_pending.insert(*swarm);updates.publish(model.clone());}
                     },
                     UiMsg::SwarmWorkdir {swarm,path}=> {

@@ -1107,9 +1107,9 @@ async fn gui_session(
                         identity_sent=true;
                         send(&mut write,&GuiReply::Identity(client.gui_identity().await?)).await?;
                     }
-                    if matches!(&request.action, GuiAction::SwarmList {..}|GuiAction::SwarmGet {..}|GuiAction::SwarmRename {..}|GuiAction::SwarmWorkdir {..}) {
+                    if matches!(&request.action, GuiAction::SwarmList {..}|GuiAction::SwarmGet {..}|GuiAction::SwarmRename {..}|GuiAction::SwarmWorkdir {..}|GuiAction::SwarmArchive {..}) {
                         let op = match &request.action {
-                            GuiAction::SwarmList {id}|GuiAction::SwarmGet {id,..}|GuiAction::SwarmRename {id,..}|GuiAction::SwarmWorkdir {id,..} => *id,
+                            GuiAction::SwarmList {id}|GuiAction::SwarmGet {id,..}|GuiAction::SwarmRename {id,..}|GuiAction::SwarmWorkdir {id,..}|GuiAction::SwarmArchive {id,..} => *id,
                             _ => unreachable!(),
                         };
                         if swarm_jobs.len() >= 8 {
@@ -1248,7 +1248,7 @@ async fn gui_session(
                     };
                     let reply:Result<GuiReply>=async {
                         match request.action {
-                            GuiAction::SwarmList {..}|GuiAction::SwarmGet {..}|GuiAction::SwarmRename {..}|GuiAction::SwarmWorkdir {..}=>unreachable!("swarm metadata dispatched independently"),
+                            GuiAction::SwarmList {..}|GuiAction::SwarmGet {..}|GuiAction::SwarmRename {..}|GuiAction::SwarmWorkdir {..}|GuiAction::SwarmArchive {..}=>unreachable!("swarm metadata dispatched independently"),
                             GuiAction::WindowSave {..}=>unreachable!("window saves handled before state dispatch"),
                             GuiAction::Answer {..}=>unreachable!("answers handled on their own lane"),
                             GuiAction::Questions {after}=> {

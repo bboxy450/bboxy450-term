@@ -209,6 +209,7 @@ action	{"kind":"SwarmGet","body":{"id":"00000000000000000000000001","swarm":"000
 action	{"kind":"SwarmRename","body":{"id":"00000000000000000000000001","swarm":"00000000000000000000000001","name":"Ship terminal"}}
 action	{"kind":"SwarmWorkdir","body":{"id":"00000000000000000000000001","swarm":"00000000000000000000000001","path":"/private/project"}}
 action	{"kind":"SwarmWorkdir","body":{"id":"00000000000000000000000001","swarm":"00000000000000000000000001","path":null}}
+action	{"kind":"SwarmArchive","body":{"id":"00000000000000000000000001","swarm":"00000000000000000000000001"}}
 reply	{"kind":"Swarms","body":{"op":"00000000000000000000000001","records":[{"id":"00000000000000000000000001","name":"Ship terminal","workdir":"/private/project","revision":2}]}}
 reply	{"kind":"Swarm","body":{"op":"00000000000000000000000001","record":{"id":"00000000000000000000000001","name":null,"workdir":null,"revision":0}}}
 reply	{"kind":"Swarm","body":{"op":"00000000000000000000000001","record":null}}

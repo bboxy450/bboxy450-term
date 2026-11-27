@@ -8838,7 +8838,9 @@ impl Worker {
         use bbt_proto::{GuiAction, GuiReply};
         let mutation = match &action {
             GuiAction::SwarmList { .. } | GuiAction::SwarmGet { .. } => false,
-            GuiAction::SwarmRename { .. } | GuiAction::SwarmWorkdir { .. } => true,
+            GuiAction::SwarmRename { .. }
+            | GuiAction::SwarmWorkdir { .. }
+            | GuiAction::SwarmArchive { .. } => true,
             _ => {
                 let _ = reply.send(Err(invalid("operator swarm metadata action required")));
                 return;
@@ -8868,7 +8870,7 @@ impl Worker {
                     GuiAction::SwarmList { id } => {
                         return Ok(GuiReply::Swarms {
                             op: *id,
-                            records: registry.swarms()?,
+                            records: registry.swarms_with_archived()?,
                         });
                     }
                     GuiAction::SwarmGet { id, swarm } => {
@@ -8889,6 +8891,12 @@ impl Worker {
                         "swarm_workdir",
                         serde_json::json!({"swarm":swarm,"path":path}),
                     ),
+                    GuiAction::SwarmArchive { id, swarm } => (
+                        *id,
+                        *swarm,
+                        "swarm_archive",
+                        serde_json::json!({"swarm":swarm}),
+                    ),
                     _ => unreachable!("swarm action checked before IO"),
                 };
                 let call = crate::mcp::Call {
@@ -8908,6 +8916,7 @@ impl Worker {
                             GuiAction::SwarmWorkdir { path, .. } => {
                                 registry.update_swarm_workdir(swarm, path.as_deref())
                             }
+                            GuiAction::SwarmArchive { .. } => registry.archive_empty_swarm(swarm),
                             _ => unreachable!("only mutation actions continue"),
                         };
                         match record {

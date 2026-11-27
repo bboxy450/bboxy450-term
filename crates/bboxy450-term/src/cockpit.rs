@@ -105,6 +105,10 @@ pub enum UiMsg {
         swarm: bbt_proto::SwarmId,
         path: Option<String>,
     },
+    /// Delete an empty swarm from the sidebar; the backend keeps its history.
+    SwarmArchive {
+        swarm: bbt_proto::SwarmId,
+    },
     SwarmLaunchDefaults {
         swarm: bbt_proto::SwarmId,
         directory: String,

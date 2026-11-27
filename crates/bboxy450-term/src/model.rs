@@ -711,6 +711,25 @@ impl Model {
     pub fn apply_swarm_metadata(&mut self) {
         for record in self.swarm_metadata.values() {
             let id = ui::SwarmId::from_u128(record.id.0);
+            if record.archived {
+                // A deleted swarm leaves the sidebar; a row that still shows seats stays
+                // until they are gone.
+                let sidebar = &mut self.ui.window.sidebar;
+                let before = sidebar.swarms.len();
+                sidebar.swarms.retain(|s| s.id != id || !s.tabs.is_empty());
+                if sidebar.swarms.len() != before {
+                    sidebar.open.remove(&id);
+                    let stage = &mut self.ui.window.stage;
+                    if stage.swarm == Some(id) {
+                        *stage = ui::Stage {
+                            swarm: None,
+                            tab: None,
+                            focused: stage.focused,
+                        };
+                    }
+                }
+                continue;
+            }
             if !self.ui.window.sidebar.swarms.iter().any(|s| s.id == id) {
                 self.ui
                     .window
@@ -3075,6 +3094,35 @@ mod event_lane_tests {
 #[cfg(test)]
 mod swarm_metadata_tests {
     use super::*;
+    #[test]
+    fn an_archived_swarm_leaves_the_sidebar_and_returns_when_restored() {
+        let mut model = Model::default();
+        let id = ui::SwarmId::from_u128(8124);
+        let mut record = registry::SwarmRecord::new(Ulid(8124));
+        record.revision = 1;
+        assert!(model.hydrate_swarms([record.clone()]));
+        let listed =
+            |model: &Model| model.ui.window.sidebar.swarms.iter().any(|s| s.id == id);
+        assert!(listed(&model));
+        model.ui.window.stage.swarm = Some(id);
+
+        record.archived = true;
+        record.revision = 2;
+        assert!(model.hydrate_swarms([record.clone()]));
+        assert!(!listed(&model), "a deleted swarm has no row");
+        assert!(!model.ui.window.sidebar.open.contains(&id));
+        assert_eq!(model.ui.window.stage.swarm, None);
+        // An older, unarchived replay cannot bring it back; a newer record does.
+        let mut stale = record.clone();
+        stale.archived = false;
+        stale.revision = 1;
+        assert!(!model.hydrate_swarms([stale]));
+        assert!(!listed(&model));
+        record.archived = false;
+        record.revision = 3;
+        assert!(model.hydrate_swarms([record]));
+        assert!(listed(&model));
+    }
     #[test]
     fn swarm_metadata_versions_survive_rebuild_and_old_replays_cannot_restore_cwd() {
         let mut model = Model::default();

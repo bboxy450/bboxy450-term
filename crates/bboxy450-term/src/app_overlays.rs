@@ -783,6 +783,20 @@ impl App {
                 ("cwd", "Choose cwd…"),
                 ("new-seat", "New seat"),
                 (
+                    "delete",
+                    if self.live_state.as_ref().is_some_and(|m| {
+                        m.ui.window
+                            .sidebar
+                            .swarms
+                            .iter()
+                            .any(|s| s.id == id && s.tabs.is_empty())
+                    }) {
+                        "Delete swarm"
+                    } else {
+                        "Close its seats to delete"
+                    },
+                ),
+                (
                     "collapse",
                     if self.scene.open_swarms.contains(&id) {
                         "Collapse"
@@ -1055,6 +1069,12 @@ impl App {
                             }
                             (Target::Swarm(id), "collapse") => {
                                 self.toggle_sidebar_section(&format!("swarm:{id}"))
+                            }
+                            (Target::Swarm(id), "delete") => {
+                                // The backend refuses a swarm with open or undoable seats.
+                                self.operation_backlog
+                                    .push_back(live::UiMsg::SwarmArchive { swarm: id });
+                                self.flush_operations();
                             }
                             (Target::Swarm(id), "cwd") => {
                                 let directory = self

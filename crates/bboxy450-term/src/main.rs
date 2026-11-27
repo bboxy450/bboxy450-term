@@ -9613,6 +9613,7 @@ fn is_operation(message: &live::UiMsg) -> bool {
             | live::UiMsg::KnowledgeControl { .. }
             | live::UiMsg::IdentityControl { .. }
             | live::UiMsg::SwarmRename { .. }
+            | live::UiMsg::SwarmArchive { .. }
     )
 }
 
@@ -11824,6 +11825,7 @@ mod input_tests {
                 | live::UiMsg::ConfigureRoles { .. }
                 | live::UiMsg::SwarmWorkdir { .. }
                 | live::UiMsg::SwarmRename { .. }
+                | live::UiMsg::SwarmArchive { .. }
                 | live::UiMsg::SwarmLaunchDefaults { .. }
                 | live::UiMsg::Close(_)
                 | live::UiMsg::UndoClose { .. }
