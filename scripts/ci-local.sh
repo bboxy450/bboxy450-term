@@ -97,11 +97,10 @@ ledger smoke sh scripts/qos.sh utility sh scripts/ui-lint.sh
 # in its own gate, make test-dream-c1 (same filters, dream-c1-fixture profile), not
 # here. scripts/landing.py DREAM_C1_GATE_TESTS names the same family.
 dream='(package(bboxy450-term-mux) & (test(dream_c1) | test(dream_public_))) | (package(bboxy450-harness-wake-up) & (test(dream_c1) | test(dream_bootstrap) | binary(dream_c1) | binary(dream_bootstrap)))'
-# Head-of-line recovery and knowledge responsiveness hold wall-clock budgets:
-# run them alone after the parallel suite, not under its contention. Both stages
-# name the same workspace, so the second reuses the first's build; `-p` alone
-# resolves other features and recompiles. Explicit targets skip a second doctest pass.
-timed='package(bboxy450-term-mux) & test(/^(logic::hol_tests::|logic::knowledge_responsiveness_tests::)/)'
+# Run the head-of-line, knowledge responsiveness and shutdown watchdog timing
+# tests alone after the parallel suite. Both stages name the same workspace to
+# reuse the build. Explicit targets skip a second doctest pass.
+timed='package(bboxy450-term-mux) & (test(/^(logic::hol_tests::|logic::knowledge_responsiveness_tests::)/) | test(=logic::idle_command_tests::current_thread_shutdown_and_drop_have_an_external_watchdog))'
 # The suite records each observed result; an invariant whose exact test passed
 # here, first try, on this source and target, is not run again below.
 coverage="$BBOXY_CARGO_TARGET_DIR/ci-local-coverage.json"
