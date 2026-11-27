@@ -71,7 +71,9 @@ decision, and wait.
    `sh("git status --porcelain").out`, `fs.replace(path, old, new)` and
    `store["key"]` for state between runs. Search and read code with
    `tools.bboxy_code.search(patterns=[...], before=2, context=5)`,
-   `.read`, `.symbol` and `.files` rather than `sh("rg ...")` or `sed -n`:
+   `.read`, `.symbol` and `.files` rather than `sh("rg ...")` or `sed -n`
+   (`search(patterns=["Command::new($P)"], ast=True)` matches code shapes
+   through ast-grep, never comments or strings):
    hits come back structured, bounded and labelled with their enclosing
    function. `make tool-usage` shows what seats actually call. One run replaces ten round trips,
    and its final expression is the only thing that returns, so large results

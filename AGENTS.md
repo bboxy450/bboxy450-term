@@ -186,6 +186,8 @@ Drive this app through its flags, `ctl`, sockets and captures. Never inject OS k
 
 ## Coordination
 
+**Spawn on the bboxy harness** (operator, 2026-11-27). Every seat an agent spawns is a `bboxy450-harness` seat: an Executor on the `codex` profile (`seat_spawn approved_profile bboxy450-harness, harness_profile codex`), a Claude role on the `claude` profile. A bare harness only when the operator names it. An Executor holds a Codex goal for its task until the verify command passes.
+
 **Track work in the built-in bboxy task system** (`.bboxy/tasks/`, through the bboxy MCP `knowledge_*`/`task_*` tools or `ctl task`), never in GitKB tasks, even when a seat's swarm selects a GitKB knowledge provider. Create tasks only through `knowledge_write`, `task_delegate` or `ctl task create`, never as hand-written Markdown: the tools set a native status (`open`…`done`) and an owner, which `task_*` lifecycle requires. A task left without an owner is closed by the operator (`ctl task reconcile`); a legacy status goes through `task_import`. Use GitHub for handoffs. **GitKB, ATC and ICQ are retired as workflow tools; never invoke `git-kb` for this repository's tasks or notes.** Only the GitKB plugin and its tests call it. `scripts/land.sh` runs the signed landing gates and records its receipt locally, without messaging. Use it when the brief requires it; use the Make targets above for build/test/install work. Do not recruit, assign, merge or publish outside that brief.
 
 **Close out landed work at once** (operator, 2026-11-02), entirely through MCP, following the hints each step returns:
