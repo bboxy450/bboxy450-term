@@ -424,6 +424,7 @@ def build_closure_after(before, *, runner):
                 refusals.append("build_tool_invocation_changed")
     candidates = []
     selected = []
+    build_dir = Path(before["directories"]["effective_build_dir"])
     # Cargo <= 1.99 keeps `release/.fingerprint/bboxy450-harness-<hash>/` beside
     # `release/deps/bboxy450_harness-<hash>`; Cargo 1.100's build-dir layout keeps
     # `release/build/bboxy450-harness/<hash>/{fingerprint,out}/`. Both are read.
@@ -431,8 +432,8 @@ def build_closure_after(before, *, runner):
                 lambda suffix: target / "release/deps" / ("bboxy450_harness-" + suffix))
                for path in (target / "release/.fingerprint").glob("bboxy450-harness-*/bin-bboxy450-harness.json")]
     layouts += [(path, path.parent.parent.name,
-                 lambda suffix: target / "release/build/bboxy450-harness" / suffix / "out/bboxy450_harness")
-                for path in (target / "release/build/bboxy450-harness").glob("*/fingerprint/bin-bboxy450-harness.json")]
+                 lambda suffix: build_dir / "release/build/bboxy450-harness" / suffix / "out/bboxy450_harness")
+                for path in (build_dir / "release/build/bboxy450-harness").glob("*/fingerprint/bin-bboxy450-harness.json")]
     for path, suffix, binary_for in layouts:
         if len(candidates) >= 32:
             raise ValueError("more than32 worker Cargo fingerprints")
@@ -690,15 +691,19 @@ def check_build_closure_controls(canonical_receipt=None):
             denied_after("more_than_32_fingerprints")
 
             build_target = root / "cargo-build-dir-target"
+            intermediates = root / "cargo-build-dir-intermediates"
             build_runner = build_target / "release/bboxy450-harness"
             build_before = build_closure_before(
                 **{**parameters, "target": build_target, "cargo_argv": [*command[:-1], str(build_target)],
                    "compiler_version": "rustc 1.100.0", "cargo_version": "cargo 1.100.0"},
-                environment=environment,
+                environment={**environment, "CARGO_BUILD_BUILD_DIR": str(intermediates)},
             )
             assert build_before["admissible"], build_before["refusals"]
             put(build_runner, current)
-            build_dir = build_target / "release/build/bboxy450-harness"
+            cached_dir = build_target / "release/build/bboxy450-harness" / current_suffix
+            put(cached_dir / "fingerprint/bin-bboxy450-harness.json", canonical(fingerprint))
+            put(cached_dir / "out/bboxy450_harness", current)
+            build_dir = intermediates / "release/build/bboxy450-harness"
             for suffix in (old_suffix, current_suffix):
                 put(build_dir / suffix / "fingerprint/bin-bboxy450-harness.json", canonical(fingerprint))
             for label, old_bytes, new_bytes, matches in (

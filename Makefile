@@ -55,6 +55,10 @@ TARGET_DIR ?= target
 absolute_path = $(if $(filter /%,$(firstword $(1))),$(1),$(CURDIR)/$(1))
 TARGET_ABS = $(call absolute_path,$(TARGET_DIR))
 
+# kache rewrites registry paths. Give the approved worker its own uncached
+# intermediates so Cargo cannot reuse dependencies built through kache.
+dream_worker_env = export BBOXY_CACHE_MODE=off CARGO_BUILD_BUILD_DIR='$(TARGET_ABS)/dream-worker-build'; . ./scripts/cache-env.sh
+
 # Exact-source native pixels, geometry, fonts, resource ceilings and causal controls.
 .PHONY: svg-loop
 svg-loop: svg-reference svg-exporters svg-native
@@ -445,7 +449,7 @@ lock-online:
 
 .PHONY: bump-harness
 bump-harness:
-	@set -eu; . ./scripts/cache-env.sh; python3 -I scripts/bump-harness.py '$(REV)'; \
+	@set -eu; $(dream_worker_env); python3 -I scripts/bump-harness.py '$(REV)'; \
 	BBOXY_DREAM_BUILD_ENTRY=bump-harness CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(TARGET_DIR)' --stage-worker-build
 
 # The harness builds alone: built with the app in one invocation, Cargo unifies
@@ -859,7 +863,7 @@ bundle-svg-fonts:
 bundle-files: check-licenses compile bundle-svg-fonts
 	@set -eu; test "$$(uname -s)" = Darwin || { echo 'macOS is required' >&2; exit 2; }; \
 	case '$(BUNDLE)' in *.app) ;; *) echo 'BUNDLE must end in .app' >&2; exit 2 ;; esac; \
-	. ./scripts/cache-env.sh; \
+	$(dream_worker_env); \
 	env -u CARGO_PROFILE_DEV_DEBUG_ASSERTIONS -u CARGO_PROFILE_TEST_DEBUG_ASSERTIONS \
 	  BBOXY_DREAM_BUILD_ENTRY=bundle-files CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(TARGET_ABS)' --worker-only; \
 	mkdir -p '$(BUNDLE)/Contents/MacOS' '$(BUNDLE)/Contents/Resources'; \
@@ -2439,8 +2443,8 @@ test-harness-source: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	sh scripts/quarantine-test.sh --locked -p bboxy450-harness --features acp-agent,acp,embedded,test-fixtures --lib --tests --target-dir '$(TARGET_DIR)' -E 'not test(dream::) & not (binary(=dream_c1) | binary(=dream_read))'; \
 	target=$$(cd '$(TARGET_DIR)' && pwd -P); worker="$$target/dream-read-native-profile/worker"; \
-	env -u CARGO_PROFILE_DEV_DEBUG_ASSERTIONS -u CARGO_PROFILE_TEST_DEBUG_ASSERTIONS \
-	  $(MAKE) -C crates/bboxy450-harness prepare-dream-read-worker TARGET_DIR="$$target"; \
+	($(dream_worker_env); env -u CARGO_PROFILE_DEV_DEBUG_ASSERTIONS -u CARGO_PROFILE_TEST_DEBUG_ASSERTIONS \
+	  $(MAKE) -C crates/bboxy450-harness prepare-dream-read-worker TARGET_DIR="$$target"); \
 	env -u CARGO_PROFILE_DEV_DEBUG_ASSERTIONS -u CARGO_PROFILE_TEST_DEBUG_ASSERTIONS \
 	  $(MAKE) admit-dream-c1-file TARGET_DIR="$$target" DREAM_C1_ADMIT_FILE="$$worker"; \
 	DREAM_C1_RUNNER="$$worker" DREAM_READ_RUNNER="$$worker" \
@@ -2989,11 +2993,11 @@ test-dream-c1-profile:
 # Decision65882 permits ONE launch. Its fixed O_EXCL claim is never retired;
 # diagnostics cannot establish ordinary readiness or final runtime conformance.
 diagnose-dream-c1-launch: init-submodules
-	@set -eu; . ./scripts/cache-env.sh; \
+	@set -eu; $(dream_worker_env); \
 	BBOXY_DREAM_BUILD_ENTRY=diagnose-dream-c1-launch CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(TARGET_ABS)' --diagnose-launch
 
 prepare-dream-c1-worker: init-submodules
-	@set -eu; . ./scripts/cache-env.sh; \
+	@set -eu; $(dream_worker_env); \
 	BBOXY_DREAM_BUILD_ENTRY=prepare-dream-c1-worker CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(TARGET_ABS)' --worker-only
 
 # Decision66076: exact reviewed private copy admission, never a Dream run.
@@ -3010,12 +3014,12 @@ prepare-dream-c1-development:
 	@python3 -I scripts/test-dream-c1.py --target '$(TARGET_ABS)' --prepare-development --development-source '$(DREAM_C1_DEVELOPMENT_SOURCE)' --development-worker '$(DREAM_C1_DEVELOPMENT_WORKER)'
 
 prepare-dream-c1: init-submodules
-	@set -eu; . ./scripts/cache-env.sh; \
+	@set -eu; $(dream_worker_env); \
 	BBOXY_DREAM_BUILD_ENTRY=prepare-dream-c1 CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(TARGET_ABS)' --prepare-only
 
 test-dream-c1: init-submodules
 	@python3 -I scripts/test-landing.py CargoProfileForwardingTests IgnoredIntegrationTests
-	@set -eu; . ./scripts/cache-env.sh; \
+	@set -eu; $(dream_worker_env); \
 	BBOXY_DREAM_BUILD_ENTRY=test-dream-c1 CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(TARGET_ABS)'
 
 # Closed Dream reads/feedback, pinned producer codec, private socket and native process.
