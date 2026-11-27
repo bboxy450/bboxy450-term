@@ -873,7 +873,8 @@ bundle-files: check-licenses compile bundle-svg-fonts
 	cp '$(TARGET_DIR)/$(PROFILE)/$(APP)' '$(BUNDLE)/Contents/MacOS/$(APP)'; \
 	cp '$(TARGET_DIR)/release/bboxy450-harness' '$(BUNDLE)/Contents/MacOS/bboxy450-harness'; \
 	cp '$(TARGET_DIR)/$(PROFILE)/bboxy450-term-remote' '$(BUNDLE)/Contents/MacOS/bboxy450-term-remote'; \
-	if test -f '$(TARGET_DIR)/release/bboxy450-harness.dream-c1.json'; then cp '$(TARGET_DIR)/release/bboxy450-harness.dream-c1.json' '$(BUNDLE)/Contents/MacOS/bboxy450-harness.dream-c1.json'; else rm -f '$(BUNDLE)/Contents/MacOS/bboxy450-harness.dream-c1.json'; fi; \
+	rm -f '$(BUNDLE)/Contents/MacOS/bboxy450-harness.dream-c1.json'; \
+	if test -f '$(TARGET_DIR)/release/bboxy450-harness.dream-c1.json'; then cp '$(TARGET_DIR)/release/bboxy450-harness.dream-c1.json' '$(BUNDLE)/Contents/Resources/bboxy450-harness.dream-c1.json'; else rm -f '$(BUNDLE)/Contents/Resources/bboxy450-harness.dream-c1.json'; fi; \
 	cp LICENSE NOTICE ATTRIBUTION.md LICENSE-MIT LICENSE-APACHE packaging/macos/bboxy.icns '$(BUNDLE)/Contents/Resources/'; \
 	plutil -replace CFBundleShortVersionString -string '$(APP_VERSION)' '$(BUNDLE)/Contents/Info.plist'; \
 	plutil -replace CFBundleVersion -string "$$(git rev-list --count HEAD)" '$(BUNDLE)/Contents/Info.plist'; \

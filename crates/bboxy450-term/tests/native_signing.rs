@@ -247,22 +247,25 @@ fn native_bundle_fixture_child() {
     ] {
         fs::write(p.join(name), format!("fixture {name}")).unwrap();
     }
-    fs::write(p.join("target/debug/bboxy450-term"), "fixture binary").unwrap();
+    // Marker bytes identify the three code slots without making any fixture runnable.
+    let mach_o_magic = [0xcf, 0xfa, 0xed, 0xfe];
+    let write_code = |path: &Path, marker: &[u8]| {
+        fs::write(path, [mach_o_magic.as_slice(), marker].concat()).unwrap();
+    };
+    write_code(&p.join("target/debug/bboxy450-term"), b"fixture binary");
     fs::write(p.join("target/debug/bboxy450-harness"), "fixture harness").unwrap();
-    fs::write(
-        p.join("target/debug/bboxy450-term-remote"),
-        "fixture remote",
-    )
-    .unwrap();
+    write_code(
+        &p.join("target/debug/bboxy450-term-remote"),
+        b"fixture remote",
+    );
     // Private recipe seam only: these bytes are deliberately neither an
     // executable worker nor a production Dream provisioning receipt.
     let fake_worker = p.join("tools/private-fake-canonical-worker.txt");
     let fake_proof = p.join("tools/private-fake-canonical-worker-proof.json");
-    fs::write(
+    write_code(
         &fake_worker,
-        "PRIVATE FAKE canonical worker for native_signing recipe tests; NEVER EXECUTE\n",
-    )
-    .unwrap();
+        b"PRIVATE FAKE canonical worker for native_signing recipe tests; NEVER EXECUTE\n",
+    );
     fs::write(
         &fake_proof,
         serde_json::to_vec(&serde_json::json!({
@@ -336,9 +339,13 @@ with (pathlib.Path(os.environ['FIXTURE_ROOT'])/'calls').open('a') as f:f.write(j
     );
     let release_worker = p.join("target/release/bboxy450-harness");
     let release_proof = p.join("target/release/bboxy450-harness.dream-c1.json");
-    let packaged_worker = p.join("target/debug/bboxy450-term.app/Contents/MacOS/bboxy450-harness");
-    let packaged_proof =
-        p.join("target/debug/bboxy450-term.app/Contents/MacOS/bboxy450-harness.dream-c1.json");
+    let contents = p.join("target/debug/bboxy450-term.app/Contents");
+    let macos = contents.join("MacOS");
+    let packaged_worker = macos.join("bboxy450-harness");
+    let packaged_proof = contents.join("Resources/bboxy450-harness.dream-c1.json");
+    let stale_proof = macos.join("bboxy450-harness.dream-c1.json");
+    fs::create_dir_all(&macos).unwrap();
+    fs::copy(&fake_proof, &stale_proof).unwrap();
     assert!(!release_worker.exists());
     assert!(!release_proof.exists());
     let output = fixture_command("sh")
@@ -409,6 +416,28 @@ with (pathlib.Path(os.environ['FIXTURE_ROOT'])/'calls').open('a') as f:f.write(j
     assert_eq!(
         fs::read(&packaged_proof).unwrap(),
         fs::read(&release_proof).unwrap()
+    );
+    assert!(
+        !stale_proof.exists(),
+        "rebuild must remove the old JSON from MacOS"
+    );
+    let mut code_names: Vec<_> = fs::read_dir(&macos)
+        .unwrap()
+        .map(|entry| {
+            let entry = entry.unwrap();
+            assert!(entry.file_type().unwrap().is_file(), "{:?}", entry.path());
+            assert!(
+                fs::read(entry.path()).unwrap().starts_with(&mach_o_magic),
+                "non-Mach-O artifact in {:?}",
+                entry.path()
+            );
+            entry.file_name().into_string().unwrap()
+        })
+        .collect();
+    code_names.sort();
+    assert_eq!(
+        code_names,
+        ["bboxy450-harness", "bboxy450-term", "bboxy450-term-remote"]
     );
     let worker_calls = || {
         fs::read_to_string(p.join("fake-worker-build-calls"))

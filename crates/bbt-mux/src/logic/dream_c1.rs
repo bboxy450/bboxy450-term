@@ -9709,10 +9709,23 @@ pub(crate) mod runner_provision {
         budget: &mut Budget<'_>,
     ) -> Result<(Seal, Seal, WorkerPin), Code> {
         let mut binary = Seal::open(binary, false, budget)?;
-        let mut receipt = Seal::open(&binary.path.with_extension("dream-c1.json"), true, budget)?;
+        let mut receipt = Seal::open(&receipt_path(&binary.path), true, budget)?;
         let (bytes, len) = read_receipt(&mut receipt, budget)?;
         let pin = verify_worker(&mut binary, &bytes[..len], approval, budget)?;
         Ok((binary, receipt, pin))
+    }
+
+    fn receipt_path(binary: &Path) -> PathBuf {
+        if let Some(macos) = binary.parent()
+            && macos.ends_with("Contents/MacOS")
+            && let Some(filename) = binary.file_name()
+        {
+            return macos
+                .with_file_name("Resources")
+                .join(filename)
+                .with_extension("dream-c1.json");
+        }
+        binary.with_extension("dream-c1.json")
     }
 
     fn verify_provision(
@@ -9730,7 +9743,7 @@ pub(crate) mod runner_provision {
             .reserve(HeapLane::Work, ProvisionProof::RETAINED_DECLARED)?;
         let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(30));
         let mut launch = Seal::open(binary, false, &mut budget)?;
-        let mut receipt = Seal::open(&binary.with_extension("dream-c1.json"), true, &mut budget)?;
+        let mut receipt = Seal::open(&receipt_path(binary), true, &mut budget)?;
         let (bytes, len) = read_receipt(&mut receipt, &mut budget)?;
         let role = budget.unit(|| {
             serde_json::from_slice::<Role<'_>>(&bytes[..len]).map_err(|_| Code::RunnerUnavailable)
@@ -9865,9 +9878,21 @@ pub(crate) mod runner_provision {
         }
         fn receipt(binary: &Path, value: &Value) {
             write(
-                &binary.with_extension("dream-c1.json"),
+                &receipt_path(binary),
                 &serde_json::to_vec(value).unwrap(),
                 0o600,
+            );
+        }
+
+        #[test]
+        fn native_provision_receipt_uses_bundle_resources_or_plain_sibling() {
+            assert_eq!(
+                receipt_path(Path::new("/Applications/bboxy450-term.app/Contents/MacOS/bboxy450-harness")),
+                Path::new("/Applications/bboxy450-term.app/Contents/Resources/bboxy450-harness.dream-c1.json")
+            );
+            assert_eq!(
+                receipt_path(Path::new("/tmp/MacOS/worker.test")),
+                Path::new("/tmp/MacOS/worker.dream-c1.json")
             );
         }
 
@@ -10002,7 +10027,7 @@ pub(crate) mod runner_provision {
         fn native_provision_symlink_links_oversize_and_binary_mutation_refuse() {
             for fault in ["symlink", "links", "oversize", "binary"] {
                 let (_root, binary, digest, value) = fixture();
-                let path = binary.with_extension("dream-c1.json");
+                let path = receipt_path(&binary);
                 receipt(&binary, &value);
                 match fault {
                     "symlink" => {
