@@ -7,7 +7,8 @@
 //! Built-in harness presentation. IDs remain launch keys; labels never become argv.
 use crate::{self as ui, components as c};
 
-pub const HARNESSES: [&str; 6] = ["claude", "codex", "pi", "omp", "bboxy450-harness", "zsh"];
+/// bboxy450-harness leads every list: it is the harness we launch by default (operator, 2026-11-27).
+pub const HARNESSES: [&str; 6] = ["bboxy450-harness", "claude", "codex", "pi", "omp", "zsh"];
 pub type Launchable = (
     &'static str,
     &'static str,
@@ -25,7 +26,7 @@ pub fn launchables() -> impl Iterator<Item = Launchable> {
             "pi" => ("pi", "executor by default", "#7C3AED", "Harnesses"),
             "omp" => ("omp", "executor by default", "#0EA5E9", "Harnesses"),
             "zsh" => ("zsh", "shell by default", "#111827", "Shells"),
-            "bboxy450-harness" => (id, "executor by default", "#168BFF", "Harnesses"),
+            "bboxy450-harness" => (id, "executor by default", "#168BFF", "Suggestions"),
             _ => (id, "executor by default", "#111827", "Harnesses"),
         };
         (id, label, sub, tile, section)

@@ -21,7 +21,7 @@ use super::{Call, SeatActor as Actor, tools};
 use crate::registry::Class;
 pub use bbt_proto::gui::SUDO_ROLE;
 
-const PROFILES: [&str; 6] = ["claude", "codex", "pi", "omp", "bboxy450-harness", "zsh"];
+const PROFILES: [&str; 6] = ["bboxy450-harness", "claude", "codex", "pi", "omp", "zsh"];
 
 pub(crate) fn is_sudo(actor: &Actor) -> bool {
     actor.role.name == SUDO_ROLE && actor.role.class == Class::Oracle
