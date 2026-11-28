@@ -8612,18 +8612,8 @@ mod tests {
         }
     }
     #[cfg(target_os = "macos")]
-    fn isolated_actual_store_heap_jobs(instances: usize, old_floor: bool) {
-        let root = PathBuf::from(
-            std::env::var_os("DREAM_C1_STORE_BUNDLE")
-                .expect("DREAM_C1_STORE_BUNDLE required; no synthetic/missing fallback"),
-        );
-        let binary = PathBuf::from(
-            std::env::var_os("DREAM_C1_RUNNER")
-                .expect("DREAM_C1_RUNNER required; no PATH fallback"),
-        );
-        assert!(root.is_absolute() && binary.is_absolute());
-        isolated_heap::ENABLED.store(true, Ordering::Release);
-        sample_isolated_heap();
+    fn store_export(root: &Path) -> (w::Manifest, Bookmark) {
+        assert!(root.is_absolute());
         let manifest_bytes = std::fs::read(root.join("manifest.json")).unwrap();
         transport::preflight_json(&manifest_bytes, transport::JsonShape::Any).unwrap();
         let manifest: w::Manifest = serde_json::from_slice(&manifest_bytes).unwrap();
@@ -8642,7 +8632,7 @@ mod tests {
             "actual Store blob inventory required"
         );
         let mut reader =
-            Reader::open(&root, &expected.session.0, expected.source_generation.0).unwrap();
+            Reader::open(root, &expected.session.0, expected.source_generation.0).unwrap();
         let mut bookmark = None;
         for _ in 0..expected.closed_seq.0 * 8 + 64 {
             if let Some(value) = reader.poll().unwrap().0 {
@@ -8655,20 +8645,50 @@ mod tests {
         assert_eq!(bookmark.closed_line_sha256, expected.closed_line_sha256.0);
         assert_eq!(bookmark.repo, expected.repo.0);
         assert_eq!(bookmark.len, expected.len.0);
-        fn file_sha(path: &Path) -> String {
-            let mut file = File::open(path).unwrap();
-            let mut sha = Sha256::new();
-            let mut bytes = [0; CHUNK];
-            loop {
-                let n = file.read(&mut bytes).unwrap();
-                if n == 0 {
-                    break;
-                }
-                sha.update(&bytes[..n]);
+        assert_eq!(store_file_sha(&bookmark.path), expected.sha256.0);
+        (manifest, bookmark)
+    }
+    #[cfg(target_os = "macos")]
+    fn store_file_sha(path: &Path) -> String {
+        let mut file = File::open(path).unwrap();
+        let mut sha = Sha256::new();
+        let mut bytes = [0; CHUNK];
+        loop {
+            let n = file.read(&mut bytes).unwrap();
+            if n == 0 {
+                break;
             }
-            format!("{:x}", sha.finalize())
+            sha.update(&bytes[..n]);
         }
-        assert_eq!(file_sha(&bookmark.path), expected.sha256.0);
+        format!("{:x}", sha.finalize())
+    }
+    #[cfg(target_os = "macos")]
+    fn isolated_actual_store_heap_jobs(instances: usize, old_floor: bool) {
+        let root = PathBuf::from(
+            std::env::var_os("DREAM_C1_STORE_BUNDLE")
+                .expect("DREAM_C1_STORE_BUNDLE required; no synthetic/missing fallback"),
+        );
+        let binary = PathBuf::from(
+            std::env::var_os("DREAM_C1_RUNNER")
+                .expect("DREAM_C1_RUNNER required; no PATH fallback"),
+        );
+        assert!(binary.is_absolute());
+        isolated_heap::ENABLED.store(true, Ordering::Release);
+        sample_isolated_heap();
+        let (manifest, bookmark) = store_export(&root);
+        let expected = &manifest.sources[0];
+        let mut source_digests = vec![expected.sha256.0.clone()];
+        let mut sources = vec![bookmark];
+        if let Some(second) = std::env::var_os("DREAM_C1_TEST_SECOND_STORE_BUNDLE") {
+            assert_eq!(instances, 1);
+            let (pair, bookmark) = store_export(Path::new(&second));
+            let other = &pair.sources[0];
+            assert_ne!(other.session, expected.session);
+            assert_eq!(other.repo, expected.repo);
+            source_digests.push(other.sha256.0.clone());
+            sources.push(bookmark);
+        }
+        assert!(!old_floor || sources.len() == 2);
         let evidence = private_job().keep();
         let mut runs = Vec::new();
         let mut controls = Vec::new();
@@ -8676,7 +8696,7 @@ mod tests {
             let runtime = evidence.join(format!("dream-c1-{index}"));
             private_dir(&runtime).unwrap();
             drop(Journal::open(&runtime, &public::Ulid(manifest.context.seat.0.clone())).unwrap());
-            let mut record = record(vec![bookmark.clone()]);
+            let mut record = record(sources.clone());
             record.context = mirror(&manifest.context).unwrap();
             record.view.run_id = public::Ulid(if index == 0 {
                 manifest.run_id.0.clone()
@@ -8786,7 +8806,10 @@ mod tests {
         // collective upper bound conservatively proves every per-job parent.
         let parent_ceiling = 32 * 1024 * 1024;
         let parent_conservative = live.max(touched);
-        let receipt = json!({"scope":"isolated actual Store/worker component, not own-seat admission, root caps or SourceKey dedup","measurement":"macOS malloc_zone_statistics all zones; full isolated host including baseline, no subtraction","instances":instances,"same_immutable_store_reused_for_component_load":instances>1,"observed_full_host_live_heap_peak_bytes":live,"allocator_all_zones_max_touched_bytes":if touched>0{json!(touched)}else{Value::Null},"allocator_max_touched_supported":touched>0,"parent_heap_conservative_bytes":parent_conservative,"parent_heap_ceiling_bytes":parent_ceiling,"observed_whole_four_host_below_one_parent_share":instances==4&&parent_conservative<=32*1024*1024,"child_heap_sum_conservative_bytes":child_heap_sum,"child_heap_sum_ceiling_bytes":96*1024*1024*instances as u64,"combined_parent_child_conservative_bytes":parent_conservative+child_heap_sum,"combined_ceiling_bytes":128*1024*1024*instances as u64,"conservative_sum_of_noncoincident_peaks":true,"samples":samples,"not_all_times_proof":true,"heap_observer_thread_cpu_ns":isolated_heap::OBSERVER_CPU_NS.load(Ordering::Acquire),"unit_cpu_excludes_test_heap_observer":true,"owner_cpu_includes_test_heap_observer":true,"hash_unit_bytes":HASH_CHUNK,"runner":binary,"runner_sha256":file_sha(&binary),"store_root":root,"source_session":expected.session.0,"source_sha256":expected.sha256.0,"source_len":expected.len.0,"blob_sha256":expected.blobs[0].sha256.0,"control_measurement":"engine cached atomics; admitted MCP/ctl evidence is separate","status_samples":status_samples,"status_max_wall_ns":status_max_wall_ns,"jobs":job_receipts,"all_jobs_completed":all_ok});
+        let receipt = json!({"scope":"isolated actual Store/worker component, not own-seat admission, root caps or SourceKey dedup","measurement":"macOS malloc_zone_statistics all zones; full isolated host including baseline, no subtraction","instances":instances,"same_immutable_store_reused_for_component_load":instances>1,"observed_full_host_live_heap_peak_bytes":live,"allocator_all_zones_max_touched_bytes":if touched>0{json!(touched)}else{Value::Null},"allocator_max_touched_supported":touched>0,"parent_heap_conservative_bytes":parent_conservative,"parent_heap_ceiling_bytes":parent_ceiling,"observed_whole_four_host_below_one_parent_share":instances==4&&parent_conservative<=32*1024*1024,"child_heap_sum_conservative_bytes":child_heap_sum,"child_heap_sum_ceiling_bytes":96*1024*1024*instances as u64,"combined_parent_child_conservative_bytes":parent_conservative+child_heap_sum,"combined_ceiling_bytes":128*1024*1024*instances as u64,"conservative_sum_of_noncoincident_peaks":true,"samples":samples,"not_all_times_proof":true,"heap_observer_thread_cpu_ns":isolated_heap::OBSERVER_CPU_NS.load(Ordering::Acquire),"unit_cpu_excludes_test_heap_observer":true,"owner_cpu_includes_test_heap_observer":true,"hash_unit_bytes":HASH_CHUNK,"runner":binary,"runner_sha256":store_file_sha(&binary),"store_root":root,"source_session":expected.session.0,"source_sha256":expected.sha256.0,"source_len":expected.len.0,"blob_sha256":expected.blobs[0].sha256.0,"store_source_sha256s":source_digests,"control_measurement":"engine cached atomics; admitted MCP/ctl evidence is separate","status_samples":status_samples,"status_max_wall_ns":status_max_wall_ns,"jobs":job_receipts,"all_jobs_completed":all_ok});
+        for (source, digest) in sources.iter().zip(&source_digests) {
+            assert_eq!(store_file_sha(&source.path), *digest, "original Store bytes immutable");
+        }
         let mut receipt_file = create(&evidence.join("isolated-host-heap.json")).unwrap();
         serde_json::to_writer(&mut receipt_file, &receipt).unwrap();
         receipt_file.sync_all().unwrap();
@@ -8843,11 +8866,6 @@ mod tests {
             status_samples > 0,
             "cached component controls were not sampled"
         );
-        assert_eq!(
-            file_sha(&runs[0].1.sources[0].path),
-            expected.sha256.0,
-            "original Store bytes immutable"
-        );
         // Publish the gate receipt only after the component assertions pass.
         if let Some(driver_path) = std::env::var_os("DREAM_C1_EVIDENCE") {
             let driver_path = PathBuf::from(driver_path);
@@ -8857,7 +8875,9 @@ mod tests {
             let mut runtime = receipt;
             runtime["schema"] = json!("bboxy.dream.c1.runtime-evidence/1");
             runtime["driver_nonce"] = json!(nonce);
-            let path = driver_path.join(if instances == 1 {
+            let path = driver_path.join(if sources.len() == 2 {
+                "runtime-store-two-sources.json"
+            } else if instances == 1 {
                 "runtime-isolated-heap.json"
             } else {
                 "runtime-isolated-four-heap.json"

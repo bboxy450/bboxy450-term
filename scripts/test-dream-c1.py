@@ -3387,6 +3387,7 @@ def main():
                            DREAM_C1_FIXTURES=str(fixtures), DREAM_C1_EVIDENCE=str(evidence),
                            DREAM_C1_GATE_NONCE=nonce)
         environment.pop("DREAM_C1_TEST_RESTORE_STEP_FLOOR", None)
+        environment.pop("DREAM_C1_TEST_SECOND_STORE_BUNDLE", None)
         if receipt.get("bootstrap_corpus"):
             environment["DREAM_BOOTSTRAP_FIXTURES"] = str(fixtures.parent / "dream-bootstrap")
             environment["DREAM_BOOTSTRAP_VECTORS_SHA256"] = BOOTSTRAP_VECTORS_SHA256
@@ -3513,11 +3514,14 @@ def main():
         # Export using the pinned producer's actual Store/Blobs test, then read
         # those immutable bytes from isolated consumer hosts. This is a component
         # memory bound; own-seat admission remains the separate real-app gate.
+        def export_store(bundle):
+            tests("bboxy450-harness", ["--test", "dream_c1",
+                  "-E", "test(=real_store_multi_mib_ir_and_typed_blob_bundle)",
+                  "--run-ignored", "all", "--", "--nocapture"],
+                  profile="release", DREAM_C1_EXPORT_BUNDLE=str(bundle))
+
         bundle = evidence / "actual-store-bundle"
-        tests("bboxy450-harness", ["--test", "dream_c1",
-              "-E", "test(=real_store_multi_mib_ir_and_typed_blob_bundle)",
-              "--run-ignored", "all", "--", "--nocapture"],
-              profile="release", DREAM_C1_EXPORT_BUNDLE=str(bundle))
+        export_store(bundle)
         environment["DREAM_C1_STORE_BUNDLE"] = str(bundle)
         fork_bundle = evidence / "actual-store-fork-bundle"
         tests("bboxy450-harness", ["--test", "dream_c1",
@@ -3535,13 +3539,28 @@ def main():
         tests("bboxy450-term-mux", ["--lib", "--retries=0", "-E",
               "test(isolated_actual_store_worker_full_host_heap) | test(isolated_four_actual_store_workers_full_host_heap) | test(isolated_parent_work_overflow_preserves_controls_and_reaps_real_probe) | test(actual_consumer_store_fork_frontier)", "--run-ignored", "only",
               "--", "--nocapture"])
-        tests("bboxy450-term-mux", ["--lib", "--retries=0", "-E",
-              "test(=logic::dream_c1::tests::isolated_actual_store_worker_full_host_heap_observed_under_32mib)",
-              "--run-ignored", "only", "--", "--nocapture"], DREAM_C1_TEST_RESTORE_STEP_FLOOR="1")
+        # Use the same two independent Store exports in both arms. The ordinary
+        # single-source job can straddle 30s under the old floor on a quiet host.
+        second_bundle = evidence / "second-actual-store-bundle"
+        export_store(second_bundle)
+        store_selection = ["--lib", "--retries=0", "-E",
+                           "test(=logic::dream_c1::tests::isolated_actual_store_worker_full_host_heap_observed_under_32mib)",
+                           "--run-ignored", "only", "--", "--nocapture"]
+        tests("bboxy450-term-mux", store_selection, DREAM_C1_TEST_SECOND_STORE_BUNDLE=str(second_bundle))
+        tests("bboxy450-term-mux", store_selection,
+              DREAM_C1_TEST_SECOND_STORE_BUNDLE=str(second_bundle), DREAM_C1_TEST_RESTORE_STEP_FLOOR="1")
+        positive_path, positive = runtime_record(evidence, "runtime-store-two-sources.json", nonce, provision["binary_sha256"])
         floor_path, floor = runtime_record(evidence, "runtime-store-step-floor.json", nonce, provision["binary_sha256"])
         jobs = floor.get("jobs", [])
-        if floor.get("instances") != 1 or len(jobs) != 1:
-            raise ValueError("rest-floor control requires one exact Store worker")
+        baseline = positive.get("jobs", [])
+        digests = floor.get("store_source_sha256s", [])
+        if (floor.get("instances") != 1 or len(jobs) != 1 or positive.get("instances") != 1
+                or len(baseline) != 1 or len(set(digests)) != 2 or len(digests) != 2
+                or positive.get("store_source_sha256s") != digests
+                or baseline[0].get("result") != "Some(Ok(()))"
+                or baseline[0].get("real_exit_reaped") is not True
+                or baseline[0]["host_metrics"].get("bootstrap_hello_observed") is not True):
+            raise ValueError("rest-floor control requires the same two sources and one exact Store worker in both arms")
         job = jobs[0]
         metrics = job["host_metrics"]
         if (job.get("result") != "Some(Err(Deadline))" or job.get("real_exit_reaped") is not True
@@ -3549,7 +3568,10 @@ def main():
                 or finite_number(metrics.get("work_debt_charged_ns"), "floor charged debt")
                     <= 9 * finite_number(metrics.get("work_debt_cpu_ns"), "floor measured CPU")):
             raise ValueError("rest-floor control did not reproduce the product deadline")
-        receipt["store_step_floor_control"] = {"path": str(floor_path), "sha256": sha(floor_path)}
+        receipt["store_step_floor_control"] = {
+            "measured": {"path": str(positive_path), "sha256": sha(positive_path)},
+            "floor": {"path": str(floor_path), "sha256": sha(floor_path)},
+        }
         tests("bboxy450-term-proto", ["--test", "dream_c1", "--test", "gui_wire_golden"])
         tests("bboxy450-harness-wake-up", ["--lib", "-E", "test(dream_bootstrap) | test(dream_c1)"])
         tests("bboxy450-harness-wake-up", ["--test", "dream_c1", "--test", "dream_bootstrap"])
