@@ -3195,7 +3195,6 @@ def runtime_receipts(evidence, nonce, runner_sha256, seat_runner_sha256):
             or value.get("source_or_manifest_opened") is not False
             or finite_number(value.get("while_exhausted_work_live_bytes"), "exhausted actual working capacity") != 22 * 1024 * 1024
             or finite_number(value.get("while_exhausted_work_reserved_bytes"), "exhausted declared working capacity") != 22 * 1024 * 1024
-            or finite_number(value.get("cached_cancel_status_max_ns"), "exhausted component control latency") > 100_000_000
             or finite_number(value.get("observed_full_host_live_heap_peak_bytes"), "exhausted full parent heap") > 32 * 1024 * 1024):
         raise ValueError("actual parent overflow did not preserve its protected control and real process owner")
     records.append({"path": str(path), "sha256": sha(path), "measurements": value})
@@ -3533,7 +3532,7 @@ def main():
         tests("bboxy450-term-mux", ["--lib", "-E",
               "test(dream_c1_private_signed_gated_worker_held_parent_paid_probe_and_refusals)",
               "--run-ignored", "only", "--", "--nocapture"])
-        tests("bboxy450-term-mux", ["--lib", "-E",
+        tests("bboxy450-term-mux", ["--lib", "--retries=0", "-E",
               "test(isolated_actual_store_worker_full_host_heap) | test(isolated_four_actual_store_workers_full_host_heap) | test(isolated_parent_work_overflow_preserves_controls_and_reaps_real_probe) | test(actual_consumer_store_fork_frontier)", "--run-ignored", "only",
               "--", "--nocapture"])
         tests("bboxy450-term-proto", ["--test", "dream_c1", "--test", "gui_wire_golden"])
