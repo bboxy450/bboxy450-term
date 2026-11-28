@@ -1919,6 +1919,21 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "C1MeasuredWorkDebt"
+frontend = "project"
+expected = "pass"
+
+[[model]]
+name = "BrokenC1MeasuredWorkDebt"
+frontend = "project"
+expected = "safety"
+
+[[model]]
+name = "BrokenC1MeasuredWorkDebtStepFloor"
+frontend = "project"
+expected = "safety"
+
+[[model]]
 name = "C1BootstrapAdmission"
 expected = "pass"
 frontend = "project"

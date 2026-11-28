@@ -42,9 +42,6 @@ pub(crate) const WORK_HEAP: u64 = 22 * 1024 * 1024;
 pub(crate) const CONTROL_HEAP: u64 = 2 * 1024 * 1024;
 pub(crate) const HELPER_HEADROOM: u64 = 8 * 1024 * 1024;
 const RESULT: u64 = 16 * 1024 * 1024;
-/// The target CPU time of one cooperative step, and the unit of pacing: after a
-/// step the owner rests nine times `max(UNIT, used)`.
-const UNIT: Duration = Duration::from_millis(1);
 /// A step is refused only above this. One millisecond of thread CPU cannot be
 /// held by a debug build on a shared machine (observed 1.0 to 2.2 ms at low
 /// load), and a refusal for scheduler noise made Dream fail at random. Fifty
@@ -77,16 +74,16 @@ pub(crate) fn monotonic_ns() -> Result<u64, Code> {
 }
 
 struct WorkDebt {
-    epoch: Instant,
+    rest: RestDebt,
     held: AtomicBool,
     child_work: AtomicBool,
     child_bootstrap: AtomicBool,
-    due_ns: AtomicU64,
     poisoned: AtomicBool,
     spans: AtomicU64,
-    charged_ns: AtomicU64,
-    paid_ns: AtomicU64,
-    max_debt_ns: AtomicU64,
+    #[cfg(test)]
+    step_floor: AtomicBool,
+    #[cfg(test)]
+    restore_step_floor_after_hello: AtomicBool,
     admission_violations: AtomicU64,
     native_process_calls: AtomicU64,
     native_publish_calls: AtomicU64,
@@ -113,16 +110,16 @@ struct WorkDebt {
 impl Default for WorkDebt {
     fn default() -> Self {
         Self {
-            epoch: Instant::now(),
+            rest: RestDebt::default(),
             held: AtomicBool::new(false),
             child_work: AtomicBool::new(false),
             child_bootstrap: AtomicBool::new(false),
-            due_ns: AtomicU64::new(0),
             poisoned: AtomicBool::new(false),
             spans: AtomicU64::new(0),
-            charged_ns: AtomicU64::new(0),
-            paid_ns: AtomicU64::new(0),
-            max_debt_ns: AtomicU64::new(0),
+            #[cfg(test)]
+            step_floor: AtomicBool::new(false),
+            #[cfg(test)]
+            restore_step_floor_after_hello: AtomicBool::new(false),
             admission_violations: AtomicU64::new(0),
             native_process_calls: AtomicU64::new(0),
             native_publish_calls: AtomicU64::new(0),
@@ -155,109 +152,177 @@ struct DebtFrame {
 std::thread_local! {
     static WORK_FRAME: std::cell::RefCell<Option<DebtFrame>> = const { std::cell::RefCell::new(None) };
 }
-impl WorkDebt {
-    fn now_ns(&self) -> u64 {
-        nanos(self.epoch.elapsed())
-    }
+#[cfg(test)]
+fn assert_paid_cpu(debt: &RestDebt) {
+    let cpu = debt.cpu_ns.load(Ordering::Acquire);
+    let paid = debt.paid_ns.load(Ordering::Acquire);
+    assert!(cpu > 0);
+    assert_eq!(debt.remaining_ns(), 0);
+    assert_eq!(paid, 9 * cpu);
+    assert!(
+        debt.wall_ns.load(Ordering::Acquire) - debt.wait_cpu_ns.load(Ordering::Acquire) >= paid
+    );
+}
+
+/// The owning work lease or reactor serializes charges and payments. Only
+/// observed nonbusy sleep after charging can pay debt, with no idle credit.
+#[derive(Default)]
+struct RestDebt {
+    owed_ns: AtomicU64,
+    cpu_ns: AtomicU64,
+    charged_ns: AtomicU64,
+    paid_ns: AtomicU64,
+    max_debt_ns: AtomicU64,
+    wall_ns: AtomicU64,
+    wait_cpu_ns: AtomicU64,
+}
+impl RestDebt {
     fn remaining_ns(&self) -> u64 {
-        self.due_ns
-            .load(Ordering::Acquire)
-            .saturating_sub(self.now_ns())
+        self.owed_ns.load(Ordering::Acquire)
     }
-    fn charge(&self, cpu: Result<Duration, Code>, end: Instant) {
-        let cpu = cpu.unwrap_or_else(|_| {
-            self.poisoned.store(true, Ordering::Release);
-            UNIT
-        });
-        let cost = nanos(cpu.max(UNIT)).saturating_mul(9);
-        let end_ns = nanos(end.saturating_duration_since(self.epoch));
-        self.due_ns
-            .fetch_max(end_ns.saturating_add(cost), Ordering::AcqRel);
+    fn charge(&self, used: Duration, charge: Duration) {
+        let cost = nanos(charge).saturating_mul(9);
+        self.cpu_ns.fetch_add(nanos(used), Ordering::Relaxed);
         self.charged_ns.fetch_add(cost, Ordering::Relaxed);
-        self.max_debt_ns.fetch_max(cost, Ordering::Relaxed);
-        self.spans.fetch_add(1, Ordering::Relaxed);
-        self.inclusive_max_cpu_ns
-            .fetch_max(nanos(cpu), Ordering::Relaxed);
+        let owed = self.owed_ns.load(Ordering::Relaxed).saturating_add(cost);
+        self.owed_ns.store(owed, Ordering::Release);
+        self.max_debt_ns.fetch_max(owed, Ordering::Relaxed);
     }
-    fn wait(&self, deadline: Option<Instant>, required: bool) -> Result<(), Code> {
-        loop {
-            if !required && self.poisoned.load(Ordering::Acquire) {
-                return Err(Code::ResourceLimit);
-            }
-            if deadline.is_some_and(|d| Instant::now() >= d) {
+    fn pay(&self, deadline: Option<Instant>, flush: bool) -> Result<(), Code> {
+        let mut left = self.remaining_ns();
+        if !flush && left < nanos(REST) {
+            return Ok(());
+        }
+        while left != 0 {
+            let at = Instant::now();
+            let until = deadline.map_or(REST, |d| d.saturating_duration_since(at).min(REST));
+            if until.is_zero() {
                 return Err(Code::Deadline);
             }
-            let left = self.remaining_ns();
-            if left == 0 {
-                return Ok(());
-            }
-            let before = Instant::now();
-            std::thread::sleep(Duration::from_nanos(left).min(REST));
-            self.paid_ns
-                .fetch_add(nanos(before.elapsed()).min(left), Ordering::Relaxed);
+            let before = bbt_rt::fault::thread_cpu_time().ok();
+            std::thread::sleep(Duration::from_nanos(left).min(until));
+            let wall = nanos(at.elapsed());
+            let cpu = before
+                .zip(bbt_rt::fault::thread_cpu_time().ok())
+                .and_then(|(before, after)| after.checked_sub(before))
+                .map_or(0, nanos);
+            let paid = wall.saturating_sub(cpu).min(left);
+            left -= paid;
+            self.paid_ns.fetch_add(paid, Ordering::Relaxed);
+            self.wall_ns.fetch_add(wall, Ordering::Relaxed);
+            self.wait_cpu_ns.fetch_add(cpu, Ordering::Relaxed);
+            self.owed_ns.store(left, Ordering::Release);
         }
+        Ok(())
     }
-    fn enter(self: &Arc<Self>, deadline: Option<Instant>, required: bool) -> Result<(), Code> {
-        if WORK_FRAME.with(|f| f.borrow().is_some()) {
-            return Err(Code::Busy);
+}
+impl WorkDebt {
+    fn remaining_ns(&self) -> u64 {
+        self.rest.remaining_ns()
+    }
+    fn charge(&self, cpu: Result<Duration, Code>) {
+        let used = cpu.unwrap_or_else(|_| {
+            self.poisoned.store(true, Ordering::Release);
+            Duration::from_millis(1)
+        });
+        #[cfg(test)]
+        let cost = if self.step_floor.load(Ordering::Relaxed) {
+            used.max(Duration::from_millis(1))
+        } else {
+            used
+        };
+        #[cfg(not(test))]
+        let cost = used;
+        self.rest.charge(used, cost);
+        self.spans.fetch_add(1, Ordering::Relaxed);
+        self.inclusive_max_cpu_ns
+            .fetch_max(nanos(used), Ordering::Relaxed);
+    }
+    fn check(&self, deadline: Option<Instant>, required: bool) -> Result<(), Code> {
+        if !required && self.poisoned.load(Ordering::Acquire) {
+            return Err(Code::ResourceLimit);
         }
+        if deadline.is_some_and(|d| Instant::now() >= d) {
+            return Err(Code::Deadline);
+        }
+        Ok(())
+    }
+    fn child_owns_work(&self) -> bool {
+        self.child_work.load(Ordering::Acquire) || self.child_bootstrap.load(Ordering::Acquire)
+    }
+    fn acquire(&self, deadline: Option<Instant>, required: bool) -> Result<(), Code> {
         loop {
-            self.wait(deadline, required)?;
-            if self.child_work.load(Ordering::Acquire)
-                || self.child_bootstrap.load(Ordering::Acquire)
-            {
-                if !required {
-                    return Err(Code::Busy);
-                }
-                std::thread::sleep(REST);
-                continue;
-            }
+            self.check(deadline, required)?;
             if self
                 .held
                 .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
                 .is_ok()
             {
-                if self.remaining_ns() != 0
-                    || (self.child_work.load(Ordering::Acquire)
-                        || self.child_bootstrap.load(Ordering::Acquire))
-                {
-                    self.held.store(false, Ordering::Release);
-                    continue;
+                if !self.child_owns_work() {
+                    return Ok(());
                 }
-                match bbt_rt::fault::thread_cpu_time() {
-                    Ok(cpu) => {
-                        WORK_FRAME.with(|f| {
-                            *f.borrow_mut() = Some(DebtFrame {
-                                debt: self.clone(),
-                                cpu,
-                            })
-                        });
-                        return Ok(());
-                    }
-                    Err(_) => {
-                        self.poisoned.store(true, Ordering::Release);
-                        if required {
-                            // Retain the exclusive cleanup lease even when its
-                            // measurement is unavailable; no successful work is
-                            // admitted on this poisoned run afterward.
-                            WORK_FRAME.with(|f| {
-                                *f.borrow_mut() = Some(DebtFrame {
-                                    debt: self.clone(),
-                                    cpu: Duration::ZERO,
-                                })
-                            });
-                            return Ok(());
-                        }
-                        self.held.store(false, Ordering::Release);
-                        return Err(Code::ResourceLimit);
-                    }
+                self.held.store(false, Ordering::Release);
+                if !required {
+                    return Err(Code::Busy);
                 }
             }
-            if deadline.is_some_and(|d| Instant::now() >= d) {
-                return Err(Code::Deadline);
-            }
-            std::thread::sleep(REST);
+            std::thread::park_timeout(REST);
         }
+    }
+    fn wait(&self, deadline: Option<Instant>, required: bool) -> Result<(), Code> {
+        self.check(deadline, required)?;
+        let owned = WORK_FRAME.with(|f| {
+            f.borrow()
+                .as_ref()
+                .is_some_and(|f| std::ptr::eq(self, Arc::as_ptr(&f.debt)))
+        });
+        if !owned {
+            self.acquire(deadline, required)?;
+        }
+        let result = self.rest.pay(deadline, true);
+        if !owned {
+            self.held.store(false, Ordering::Release);
+        }
+        result.and_then(|()| self.check(deadline, required))
+    }
+    fn enter(
+        self: &Arc<Self>,
+        deadline: Option<Instant>,
+        required: bool,
+        flush: bool,
+        omit: bool,
+    ) -> Result<bool, Code> {
+        if WORK_FRAME.with(|f| f.borrow().is_some()) {
+            return Err(Code::Busy);
+        }
+        self.acquire(deadline, required)?;
+        let skipped = omit && self.rest.owed_ns.swap(0, Ordering::AcqRel) != 0;
+        let result = self
+            .rest
+            .pay(deadline, flush)
+            .and_then(|()| self.check(deadline, required));
+        if let Err(code) = result {
+            self.held.store(false, Ordering::Release);
+            return Err(code);
+        }
+        let cpu = match bbt_rt::fault::thread_cpu_time() {
+            Ok(cpu) => cpu,
+            Err(_) => {
+                self.poisoned.store(true, Ordering::Release);
+                if !required {
+                    self.held.store(false, Ordering::Release);
+                    return Err(Code::ResourceLimit);
+                }
+                Duration::ZERO
+            }
+        };
+        WORK_FRAME.with(|f| {
+            *f.borrow_mut() = Some(DebtFrame {
+                debt: self.clone(),
+                cpu,
+            })
+        });
+        Ok(skipped)
     }
     // A partial serde owner may require cleanup while its application unit is
     // still on this stack. Pay that prefix before cleanup, keep the exclusive
@@ -274,7 +339,7 @@ impl WorkDebt {
             let used = bbt_rt::fault::thread_cpu_time()
                 .map_err(|_| Code::ResourceLimit)
                 .and_then(|now| now.checked_sub(frame.cpu).ok_or(Code::ResourceLimit));
-            self.charge(used, Instant::now());
+            self.charge(used);
             true
         })
     }
@@ -310,7 +375,7 @@ impl WorkDebt {
                     .map_err(|_| Code::ResourceLimit)
                     .and_then(|now| now.checked_sub(frame.cpu).ok_or(Code::ResourceLimit))
             });
-            self.charge(used, Instant::now());
+            self.charge(used);
             self.held.store(false, Ordering::Release);
         }
     }
@@ -719,6 +784,7 @@ pub(crate) struct Control {
     pub(crate) bootstrap_control_overruns: AtomicU64,
     pub(crate) bootstrap_clock_failures: AtomicU64,
     pub(crate) bootstrap_permit_attempts: AtomicU64,
+    pub(crate) bootstrap_first_hello_read_ns: AtomicU64,
     pub(crate) start_admission_attempts: AtomicU64,
     pub(crate) bootstrap_hello_observed: AtomicBool,
     pub(crate) bootstrap_entry: OnceLock<transport::BootstrapEntryEvidence>,
@@ -770,8 +836,6 @@ pub(crate) struct Control {
     pub process_owner_thread_cpu_ns: AtomicU64,
     pub process_owner_wall_ns: AtomicU64,
     pub work_unit_count: AtomicU64,
-    pub rest_wait_ns: AtomicU64,
-    pub rest_wait_cpu_ns: AtomicU64,
     pub rest_skips: AtomicU64,
     pub rest_violations: AtomicU64,
     pub min_inter_unit_gap_ns: AtomicU64,
@@ -783,7 +847,6 @@ pub(crate) struct Control {
     pub reactor_clock_failures: AtomicU64,
     pub reactor_rest_wall_ns: AtomicU64,
     pub reactor_rest_cpu_ns: AtomicU64,
-    pub reactor_min_gap_ns: AtomicU64,
     pub dispatch_guard_max_cpu_ns: AtomicU64,
     pub dispatch_guard_overruns: AtomicU64,
     pub codec_prepare_max_cpu_ns: AtomicU64,
@@ -821,6 +884,7 @@ impl Default for Control {
             bootstrap_control_overruns: AtomicU64::new(0),
             bootstrap_clock_failures: AtomicU64::new(0),
             bootstrap_permit_attempts: AtomicU64::new(0),
+            bootstrap_first_hello_read_ns: AtomicU64::new(0),
             start_admission_attempts: AtomicU64::new(0),
             bootstrap_hello_observed: AtomicBool::new(false),
             bootstrap_entry: OnceLock::new(),
@@ -869,8 +933,6 @@ impl Default for Control {
             process_owner_thread_cpu_ns: AtomicU64::new(0),
             process_owner_wall_ns: AtomicU64::new(0),
             work_unit_count: AtomicU64::new(0),
-            rest_wait_ns: AtomicU64::new(0),
-            rest_wait_cpu_ns: AtomicU64::new(0),
             rest_skips: AtomicU64::new(0),
             rest_violations: AtomicU64::new(0),
             min_inter_unit_gap_ns: AtomicU64::new(u64::MAX),
@@ -882,7 +944,6 @@ impl Default for Control {
             reactor_clock_failures: AtomicU64::new(0),
             reactor_rest_wall_ns: AtomicU64::new(0),
             reactor_rest_cpu_ns: AtomicU64::new(0),
-            reactor_min_gap_ns: AtomicU64::new(u64::MAX),
             dispatch_guard_max_cpu_ns: AtomicU64::new(0),
             dispatch_guard_overruns: AtomicU64::new(0),
             codec_prepare_max_cpu_ns: AtomicU64::new(0),
@@ -1410,7 +1471,7 @@ impl Reader {
             {
                 return Err(Code::SourceChanged);
             }
-            std::thread::sleep(REST);
+            budget.pay_work_debt()?;
         }
         file.seek(SeekFrom::Start(bookmark.cursor))
             .map_err(|_| Code::SourceChanged)?;
@@ -1492,7 +1553,7 @@ impl Reader {
         control.foreground.store(false, Ordering::Release);
         let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
         let result = self.poll_one(&mut budget);
-        std::thread::sleep(REST);
+        budget.pay_work_debt()?;
         if control.cleanup.overruns.load(Ordering::Acquire) > 0 {
             Err(Code::ResourceLimit)
         } else {
@@ -1721,20 +1782,15 @@ pub(crate) mod disposal {
         // Thread CPU can only be adjusted by cleanup performed on this thread.
         // A concurrent process/snapshot/monitor owner's cleanup is never subtracted.
         static THREAD_CLEANUP_CPU: Cell<u64> = const { Cell::new(0) };
-        static LAST_CLEANUP_END: Cell<Option<Instant>> = const { Cell::new(None) };
     }
     pub(super) fn thread_cleanup_cpu() -> u64 {
         THREAD_CLEANUP_CPU.with(Cell::get)
-    }
-    pub(super) fn last_cleanup_end() -> Option<Instant> {
-        LAST_CLEANUP_END.with(Cell::get)
     }
     #[track_caller]
     pub(super) fn record_cleanup(control: &Cleanup, elapsed: Duration) {
         record_cleanup_at(
             control,
             elapsed,
-            Instant::now(),
             "native_buffer",
             std::panic::Location::caller(),
         );
@@ -1742,7 +1798,6 @@ pub(crate) mod disposal {
     fn record_cleanup_at(
         control: &Cleanup,
         elapsed: Duration,
-        body_end: Instant,
         kind: &'static str,
         origin: &'static std::panic::Location<'static>,
     ) {
@@ -1750,7 +1805,6 @@ pub(crate) mod disposal {
         let _ = (kind, origin);
         let elapsed = nanos(elapsed);
         THREAD_CLEANUP_CPU.with(|cpu| cpu.set(cpu.get().saturating_add(elapsed)));
-        LAST_CLEANUP_END.with(|end| end.set(Some(body_end)));
         control.cpu_ns.fetch_add(elapsed, Ordering::Relaxed);
         control
             .max_unit_cpu_ns
@@ -1794,13 +1848,13 @@ pub(crate) mod disposal {
         ) -> Self {
             let nested = control.debt.suspend();
             if !nested {
-                while control.debt.enter(None, true).is_err() {
+                while control.debt.enter(None, true, false, false).is_err() {
                     control.overruns.fetch_add(1, Ordering::Relaxed);
-                    std::thread::sleep(REST);
+                    std::thread::park_timeout(REST);
                 }
             }
+            let _ = control.debt.rest.pay(None, false);
             let before = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit);
-            let _ = control.debt.wait(None, true);
             Self {
                 control,
                 nested,
@@ -1814,33 +1868,15 @@ pub(crate) mod disposal {
         fn drop(&mut self) {
             let control = self.control;
             let before = self.before;
-            let body_end = Instant::now();
-            let body_cpu = match (before, bbt_rt::fault::thread_cpu_time()) {
-                (Ok(before), Ok(after)) => after.checked_sub(before).ok_or(Code::ResourceLimit),
-                _ => Err(Code::ResourceLimit),
-            };
-            #[cfg(debug_assertions)]
-            if body_cpu.is_err() {
-                eprintln!("C1 cleanup clock unknown region=required_cleanup");
-            }
-            control.debt.charge(body_cpu, body_end);
-            let _ = control.debt.wait(None, true);
-            let elapsed = match (before, bbt_rt::fault::thread_cpu_time()) {
-                (Ok(before), Ok(after)) => after
+            let used = before.and_then(|before| {
+                bbt_rt::fault::thread_cpu_time()
+                    .map_err(|_| Code::ResourceLimit)?
                     .checked_sub(before)
-                    .unwrap_or(OVERRUN + Duration::from_nanos(1)),
-                _ => OVERRUN + Duration::from_nanos(1),
-            };
-            if elapsed > body_cpu.unwrap_or(UNIT) {
-                let cost = nanos(elapsed.max(UNIT)).saturating_mul(9);
-                control.debt.due_ns.fetch_max(
-                    nanos(body_end.saturating_duration_since(control.debt.epoch))
-                        .saturating_add(cost),
-                    Ordering::AcqRel,
-                );
-                let _ = control.debt.wait(None, true);
-            }
-            record_cleanup_at(control, elapsed, body_end, self.kind, self.origin);
+                    .ok_or(Code::ResourceLimit)
+            });
+            control.debt.charge(used);
+            let elapsed = used.unwrap_or(OVERRUN + Duration::from_nanos(1));
+            record_cleanup_at(control, elapsed, self.kind, self.origin);
             if self.nested {
                 control.debt.resume();
             } else {
@@ -2556,7 +2592,7 @@ impl JournalQuantum {
         let before = UnitClock::now()?;
         let owner = Self::default();
         let used = before.elapsed();
-        owner.control.cleanup.debt.charge(used, Instant::now());
+        owner.control.cleanup.debt.charge(used);
         let used = used?;
         owner
             .control
@@ -2780,12 +2816,11 @@ struct Budget<'a> {
     control: &'a Control,
     control_only: bool,
     deadline: Instant,
-    rest_until: Instant,
-    previous_end: Option<Instant>,
     disk: u64,
     input: u64,
     envelopes: u64,
     declared: Option<Reservation>,
+    previous_end: Option<Instant>,
 }
 impl Drop for Budget<'_> {
     fn drop(&mut self) {
@@ -2800,11 +2835,10 @@ impl<'a> Budget<'a> {
             control,
             control_only: false,
             deadline,
-            rest_until: Instant::now(),
-            previous_end: None,
             disk: 0,
             input: 0,
             envelopes: 0,
+            previous_end: None,
             declared: Some(
                 control
                     .heap
@@ -2821,17 +2855,7 @@ impl<'a> Budget<'a> {
         budget
     }
     fn pay_work_debt(&self) -> Result<(), Code> {
-        let debt = &self.control.cleanup.debt;
-        loop {
-            debt.wait(Some(self.deadline), false)?;
-            if !debt.held.load(Ordering::Acquire) && debt.remaining_ns() == 0 {
-                return Ok(());
-            }
-            if Instant::now() >= self.deadline {
-                return Err(Code::Deadline);
-            }
-            std::thread::sleep(REST);
-        }
+        self.control.cleanup.debt.wait(Some(self.deadline), false)
     }
     fn native_process(
         &mut self,
@@ -2844,7 +2868,7 @@ impl<'a> Budget<'a> {
         command: &mut std::process::Command,
         forced: Option<NativeSample>,
     ) -> Result<NativeOutcome<std::process::Child>, Code> {
-        let span = self.begin_unit()?;
+        let span = self.begin_span(true)?;
         self.control
             .cleanup
             .debt
@@ -2967,7 +2991,7 @@ impl<'a> Budget<'a> {
         if publication.prechecked_identity.is_none() || publication.attempted {
             return Err(Code::BadRequest);
         }
-        let span = self.begin_unit()?;
+        let span = self.begin_span(true)?;
         let claimed = self.control.cleanup.debt.native_publish_mask.try_update(
             Ordering::AcqRel,
             Ordering::Acquire,
@@ -3180,73 +3204,33 @@ impl<'a> Budget<'a> {
                 return Ok(());
             }
             self.control.phase(PAUSED);
-            std::thread::sleep(REST);
+            std::thread::park_timeout(REST);
         }
     }
     fn begin_unit(&mut self) -> Result<UnitClock, Code> {
+        self.begin_span(false)
+    }
+    fn begin_span(&mut self, flush: bool) -> Result<UnitClock, Code> {
         loop {
             self.gate()?;
-            if let Some(end) = disposal::last_cleanup_end() {
-                self.rest_until = self.rest_until.max(end + REST);
-                self.previous_end = Some(self.previous_end.map_or(end, |old| old.max(end)));
-            }
-            if let Some(rest) = self.rest_until.checked_duration_since(Instant::now()) {
-                #[cfg(debug_assertions)]
-                let omit =
-                    self.control.private_fixture && self.control.omit_rest.load(Ordering::Acquire);
-                #[cfg(not(debug_assertions))]
-                let omit = false;
-                if omit {
-                    self.control.rest_skips.fetch_add(1, Ordering::Relaxed);
-                } else {
-                    let wall = Instant::now();
-                    let cpu = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit)?;
-                    std::thread::sleep(rest);
-                    self.control
-                        .rest_wait_ns
-                        .fetch_add(nanos(wall.elapsed()), Ordering::Relaxed);
-                    self.control.rest_wait_cpu_ns.fetch_add(
-                        nanos(
-                            bbt_rt::fault::thread_cpu_time()
-                                .map_err(|_| Code::ResourceLimit)?
-                                .saturating_sub(cpu),
-                        ),
-                        Ordering::Relaxed,
-                    );
-                }
-            }
-            self.gate()?;
+            let debt = &self.control.cleanup.debt;
+            #[cfg(debug_assertions)]
+            let omit =
+                self.control.private_fixture && self.control.omit_rest.load(Ordering::Acquire);
+            #[cfg(not(debug_assertions))]
+            let omit = false;
+            let skipped = debt.enter(Some(self.deadline), self.control_only, flush, omit)?;
+            self.control.work_unit_count.fetch_add(1, Ordering::Relaxed);
             if let Some(end) = self.previous_end {
-                let gap = end.elapsed();
                 self.control
                     .min_inter_unit_gap_ns
-                    .fetch_min(nanos(gap), Ordering::Relaxed);
-                if gap < REST {
-                    self.control.rest_violations.fetch_add(1, Ordering::Relaxed);
-                }
+                    .fetch_min(nanos(end.elapsed()), Ordering::Relaxed);
             }
-            self.control.work_unit_count.fetch_add(1, Ordering::Relaxed);
-            #[cfg(debug_assertions)]
-            if self.control.private_fixture && self.control.omit_rest.load(Ordering::Acquire) {
-                // Deliberately broken private control: bypass the same durable
-                // run debt, with an observable causal refusal counter.
-                if self.control.cleanup.debt.remaining_ns() != 0 {
-                    self.control
-                        .cleanup
-                        .debt
-                        .admission_violations
-                        .fetch_add(1, Ordering::Relaxed);
-                    self.control
-                        .cleanup
-                        .debt
-                        .due_ns
-                        .store(self.control.cleanup.debt.now_ns(), Ordering::Release);
-                }
+            if skipped {
+                self.control.rest_skips.fetch_add(1, Ordering::Relaxed);
+                self.control.rest_violations.fetch_add(1, Ordering::Relaxed);
+                debt.admission_violations.fetch_add(1, Ordering::Relaxed);
             }
-            self.control
-                .cleanup
-                .debt
-                .enter(Some(self.deadline), self.control_only)?;
             if let Err(code) = self.gate() {
                 self.control.cleanup.debt.finish(None);
                 return Err(code);
@@ -3316,12 +3300,9 @@ impl<'a> Budget<'a> {
             None
         });
         let elapsed = sampled?;
-        let end = Instant::now();
-        // Test-only allocator observation follows the actual product CPU/end
-        // capture; whole-owner clocks still include and label that probe cost.
+        self.previous_end = Some(Instant::now());
+        // Whole-owner clocks include the test-only allocator observer.
         sample_isolated_heap();
-        self.previous_end = Some(end);
-        self.rest_until = end + REST;
         self.control.max_unit_cpu_ns.fetch_max(
             elapsed.as_nanos().min(u64::MAX as u128) as u64,
             Ordering::Relaxed,
@@ -3516,7 +3497,7 @@ impl<'a> Budget<'a> {
                             // The serde error walk is settlement. Every partial
                             // collection has its own paced owner; conservatively
                             // measure the remaining native/leaf unwind as well.
-                            std::thread::sleep(REST);
+                            let _ = self.budget.control.cleanup.debt.wait(None, true);
                             self.cleanup_tail = UnitClock::now().ok();
                             return Err(std::io::ErrorKind::PermissionDenied.into());
                         }
@@ -5036,7 +5017,7 @@ fn bootstrap_handshake(
         let left = ready
             .checked_duration_since(Instant::now())
             .ok_or(Code::Deadline)?;
-        std::thread::sleep(left.min(REST));
+        std::thread::park_timeout(left.min(REST));
     }
     // Exactly one final control authorization, transfer and permit attempt.
     // 65259 covers only this prepared public guard (not payload/setup work).
@@ -5972,7 +5953,7 @@ impl<'a> ReactorClock<'a> {
             .saturating_sub(self.cpu)
             >= Duration::from_micros(500))
     }
-    fn finish(self) -> Result<(), Code> {
+    fn finish(self, debt: &RestDebt, floor: bool) -> Result<(), Code> {
         let used = bbt_rt::fault::thread_cpu_time()
             .map_err(|_| {
                 self.control
@@ -5981,6 +5962,12 @@ impl<'a> ReactorClock<'a> {
                 Code::ResourceLimit
             })?
             .saturating_sub(self.cpu);
+        let charge = if floor {
+            used.max(Duration::from_millis(1))
+        } else {
+            used
+        };
+        debt.charge(used, charge);
         self.control
             .reactor_cpu_ns
             .fetch_add(nanos(used), Ordering::Relaxed);
@@ -6164,7 +6151,7 @@ fn settle_probe(worker: &mut Worker, control: &Control) {
         if settled {
             break;
         }
-        std::thread::sleep(REST);
+        worker.wait_io(REST);
     }
     if control.cleanup.debt.child_bootstrap.load(Ordering::Acquire) {
         let _ = control.end_child_bootstrap(false);
@@ -6172,6 +6159,11 @@ fn settle_probe(worker: &mut Worker, control: &Control) {
 }
 
 fn retain_child_usage(worker: &Worker, control: &Control) {
+    if let Some(elapsed) = worker.bootstrap_first_stdout_read_elapsed_ns() {
+        control
+            .bootstrap_first_hello_read_ns
+            .store(elapsed, Ordering::Release);
+    }
     if let Some(usage) = worker.usage() {
         control
             .child_peak_rss_bytes
@@ -6219,6 +6211,7 @@ impl<const N: usize> std::io::Write for FixedJsonWriter<'_, N> {
 fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), Code> {
     use std::fmt::Write as _;
     let mut budget = Budget::for_control(control, Instant::now() + Duration::from_secs(30));
+    control.cleanup.debt.wait(Some(budget.deadline), true)?;
     let bytes = budget.unit(|| {
     let work = control.heap.counters(HeapLane::Work);
     let lane = control.heap.counters(HeapLane::Control);
@@ -6268,8 +6261,6 @@ fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), C
             "collection_capacity_refusals",
             &control.cleanup.capacity_refusals,
         ),
-        ("rest_wait_ns", &control.rest_wait_ns),
-        ("rest_wait_cpu_ns", &control.rest_wait_cpu_ns),
         ("rest_skips", &control.rest_skips),
         ("rest_violations", &control.rest_violations),
         ("min_inter_unit_gap_ns", &control.min_inter_unit_gap_ns),
@@ -6296,7 +6287,6 @@ fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), C
         ("reactor_clock_failures", &control.reactor_clock_failures),
         ("reactor_rest_wall_ns", &control.reactor_rest_wall_ns),
         ("reactor_rest_cpu_ns", &control.reactor_rest_cpu_ns),
-        ("reactor_min_gap_ns", &control.reactor_min_gap_ns),
         (
             "dispatch_guard_max_cpu_ns",
             &control.dispatch_guard_max_cpu_ns,
@@ -6334,6 +6324,7 @@ fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), C
         ("bootstrap_control_overruns",&control.bootstrap_control_overruns),
         ("bootstrap_clock_failures",&control.bootstrap_clock_failures),
         ("bootstrap_permit_attempts",&control.bootstrap_permit_attempts),
+        ("bootstrap_first_hello_read_ns", &control.bootstrap_first_hello_read_ns),
         ("bootstrap_parent_handoffs",&control.bootstrap_parent_handoffs),
         ("bootstrap_child_handoffs",&control.bootstrap_child_handoffs),
     ] {
@@ -6348,9 +6339,12 @@ fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), C
     let debt = &control.cleanup.debt;
     for (name, value) in [
         ("work_debt_spans", &debt.spans),
-        ("work_debt_charged_ns", &debt.charged_ns),
-        ("work_debt_paid_wall_ns", &debt.paid_ns),
-        ("work_debt_max_ns", &debt.max_debt_ns),
+        ("work_debt_cpu_ns", &debt.rest.cpu_ns),
+        ("work_debt_charged_ns", &debt.rest.charged_ns),
+        ("work_debt_paid_wall_ns", &debt.rest.paid_ns),
+        ("work_debt_max_ns", &debt.rest.max_debt_ns),
+        ("rest_wait_ns", &debt.rest.wall_ns),
+        ("rest_wait_cpu_ns", &debt.rest.wait_cpu_ns),
         ("work_debt_admission_violations", &debt.admission_violations),
         ("native_process_calls", &debt.native_process_calls),
         ("native_publish_calls", &debt.native_publish_calls),
@@ -6761,6 +6755,15 @@ fn execute_inner(
         return Err(code);
     }
     preparation.deadline = deadline;
+    #[cfg(test)]
+    control.cleanup.debt.step_floor.store(
+        control
+            .cleanup
+            .debt
+            .restore_step_floor_after_hello
+            .load(Ordering::Relaxed),
+        Ordering::Relaxed,
+    );
     drop(birth_journal);
     if worker.protected_capacity_bytes() != transport::PROTECTED_BYTES {
         settle_probe(&mut worker, control);
@@ -6866,15 +6869,14 @@ fn execute_inner(
                     Ok(snapshot)
                 });
             drop(journal);
+            let value = value.and_then(|snapshot| {
+                Budget::new(control, deadline).pay_work_debt()?;
+                Ok(snapshot)
+            });
             let _ = sender.send(value);
         });
-        let mut previous_reactor_end: Option<Instant> = None;
+        let reactor_debt = RestDebt::default();
         loop {
-            if let Some(end) = previous_reactor_end {
-                control
-                    .reactor_min_gap_ns
-                    .fetch_min(nanos(end.elapsed()), Ordering::Relaxed);
-            }
             let meter = ReactorClock::new(control);
             let mut finish = false;
             if meter.is_err() {
@@ -7108,26 +7110,34 @@ fn execute_inner(
             if exit.is_some() && !started && stop.is_none() {
                 stop = Some((Code::WorkerLost, Instant::now()));
             }
+            #[cfg(test)]
+            let floor = control.cleanup.debt.step_floor.load(Ordering::Relaxed);
+            #[cfg(not(test))]
+            let floor = false;
             if let Ok(clock) = meter
-                && clock.finish().is_err()
+                && clock.finish(&reactor_debt, floor).is_err()
             {
                 let since = stop.map_or_else(Instant::now, |(_, since)| since);
                 stop = Some((Code::ResourceLimit, since));
             }
-            previous_reactor_end = Some(Instant::now());
+            reactor_debt.pay(None, finish)?;
             if finish {
+                control.reactor_rest_wall_ns.store(
+                    reactor_debt.wall_ns.load(Ordering::Relaxed),
+                    Ordering::Release,
+                );
+                control.reactor_rest_cpu_ns.store(
+                    reactor_debt.wait_cpu_ns.load(Ordering::Relaxed),
+                    Ordering::Release,
+                );
                 break;
             }
-            let rest_wall = Instant::now();
-            let rest_cpu = bbt_rt::fault::thread_cpu_time().ok();
-            std::thread::sleep(REST);
-            control
-                .reactor_rest_wall_ns
-                .fetch_add(nanos(rest_wall.elapsed()), Ordering::Relaxed);
-            if let (Some(before), Ok(after)) = (rest_cpu, bbt_rt::fault::thread_cpu_time()) {
-                control
-                    .reactor_rest_cpu_ns
-                    .fetch_add(nanos(after.saturating_sub(before)), Ordering::Relaxed);
+            // Pipe and child waits keep an idle reactor from spinning. Their
+            // time is independent of the explicitly paid reactor CPU debt.
+            if worker.is_eof() || !started && stop.is_none() {
+                std::thread::park_timeout(REST);
+            } else {
+                worker.wait_io(REST);
             }
         }
         if child_work_claimed {
@@ -8124,9 +8134,7 @@ mod tests {
                     {
                         std::hint::spin_loop();
                     }
-                    let finished = Instant::now();
                     checkpoint().map_err(|_| Code::ResourceLimit)?;
-                    assert!(finished.elapsed() >= Duration::from_millis(9));
                 }
                 Ok(())
             })
@@ -8137,7 +8145,6 @@ mod tests {
                 .checked_sub(before)
                 .unwrap(),
         );
-        let due = quantum.control.cleanup.debt.due_ns.load(Ordering::Acquire);
         quantum.pay().unwrap();
         let maximum = quantum.max_unit_cpu_ns();
         assert!(cumulative > 1_000_000 && maximum <= nanos(OVERRUN));
@@ -8145,15 +8152,12 @@ mod tests {
         let debt = &quantum.control.cleanup.debt;
         assert!(debt.spans.load(Ordering::Acquire) >= 10);
         assert_eq!(debt.remaining_ns(), 0);
-        // paid_ns counts explicit sleeps, not all after-end elapsed rest.
-        // Each checkpoint above starts the next phase only after its full debt;
-        // the last phase's exact deadline must also have elapsed before return.
-        assert!(debt.now_ns() >= due);
+        assert_paid_cpu(&debt.rest);
         eprintln!(
             "dream_c1_preparation_units cumulative_cpu_ns={cumulative} max_unit_cpu_ns={maximum} spans={} charged_ns={} explicit_sleep_ns={} remaining_ns=0",
             debt.spans.load(Ordering::Acquire),
-            debt.charged_ns.load(Ordering::Acquire),
-            debt.paid_ns.load(Ordering::Acquire)
+            debt.rest.charged_ns.load(Ordering::Acquire),
+            debt.rest.paid_ns.load(Ordering::Acquire)
         );
         let control = Control::default();
         control
@@ -8240,12 +8244,11 @@ mod tests {
         assert_eq!(control.work_unit_count.load(Ordering::Acquire), 3);
         assert_eq!(control.rest_skips.load(Ordering::Acquire), 0);
         assert_eq!(control.rest_violations.load(Ordering::Acquire), 0);
-        assert!(control.min_inter_unit_gap_ns.load(Ordering::Acquire) >= 9_000_000);
-        assert!(control.rest_wait_ns.load(Ordering::Acquire) >= 18_000_000);
-        assert!(
-            control.rest_wait_cpu_ns.load(Ordering::Acquire)
-                < control.rest_wait_ns.load(Ordering::Acquire)
-        );
+        let debt = &control.cleanup.debt.rest;
+        assert!(debt.remaining_ns() > 0);
+        assert_eq!(debt.paid_ns.load(Ordering::Acquire), 0);
+        budget.pay_work_debt().unwrap();
+        assert_paid_cpu(debt);
         #[cfg(debug_assertions)]
         {
             let mutant = Control {
@@ -8260,7 +8263,9 @@ mod tests {
             }
             assert!(mutant.rest_skips.load(Ordering::Acquire) > 0);
             assert!(mutant.rest_violations.load(Ordering::Acquire) > 0);
-            assert!(mutant.min_inter_unit_gap_ns.load(Ordering::Acquire) < 9_000_000);
+            budget.pay_work_debt().unwrap();
+            let debt = &mutant.cleanup.debt.rest;
+            assert!(debt.paid_ns.load(Ordering::Acquire) < 9 * debt.cpu_ns.load(Ordering::Acquire));
         }
     }
 
@@ -8440,13 +8445,14 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[ignore = "requires explicit actual producer Store bundle and pinned real runner"]
     fn isolated_actual_store_worker_full_host_heap_observed_under_32mib() {
-        isolated_actual_store_heap_jobs(1);
+        let restore_step_floor = std::env::var_os("DREAM_C1_TEST_RESTORE_STEP_FLOOR").is_some();
+        isolated_actual_store_heap_jobs(1, restore_step_floor);
     }
     #[test]
     #[cfg(target_os = "macos")]
     #[ignore = "requires explicit actual producer Store bundle and pinned real runner"]
     fn isolated_four_actual_store_workers_full_host_heap_observed_under_128mib() {
-        isolated_actual_store_heap_jobs(4);
+        isolated_actual_store_heap_jobs(4, false);
     }
     #[test]
     #[cfg(target_os = "macos")]
@@ -8565,7 +8571,7 @@ mod tests {
         }
     }
     #[cfg(target_os = "macos")]
-    fn isolated_actual_store_heap_jobs(instances: usize) {
+    fn isolated_actual_store_heap_jobs(instances: usize, old_floor: bool) {
         let root = PathBuf::from(
             std::env::var_os("DREAM_C1_STORE_BUNDLE")
                 .expect("DREAM_C1_STORE_BUNDLE required; no synthetic/missing fallback"),
@@ -8649,6 +8655,11 @@ mod tests {
             runs.push((job, record));
             let control = Arc::new(Control::default());
             control.foreground.store(false, Ordering::Release);
+            control
+                .cleanup
+                .debt
+                .restore_step_floor_after_hello
+                .store(old_floor, Ordering::Relaxed);
             controls.push(control);
         }
         let mut outcomes = vec![None; instances];
@@ -8748,6 +8759,32 @@ mod tests {
             all_ok
         );
         isolated_heap::ENABLED.store(false, Ordering::Release);
+        if old_floor {
+            assert_eq!(
+                outcomes,
+                [Some(Err(Code::Deadline))],
+                "receipt={}",
+                evidence.display()
+            );
+            let control = &controls[0];
+            assert!(control.bootstrap_hello_observed.load(Ordering::Acquire));
+            assert!(control.child_usage_observed.load(Ordering::Acquire));
+            let debt = &control.cleanup.debt.rest;
+            assert!(
+                debt.charged_ns.load(Ordering::Acquire) > 9 * debt.cpu_ns.load(Ordering::Acquire)
+            );
+            if let Some(path) = std::env::var_os("DREAM_C1_EVIDENCE") {
+                let path = PathBuf::from(path);
+                assert!(path.is_absolute());
+                let mut receipt = receipt;
+                receipt["schema"] = json!("bboxy.dream.c1.runtime-evidence/1");
+                receipt["driver_nonce"] = json!(std::env::var("DREAM_C1_GATE_NONCE").unwrap());
+                let mut output = create(&path.join("runtime-store-step-floor.json")).unwrap();
+                serde_json::to_writer(&mut output, &receipt).unwrap();
+                output.sync_all().unwrap();
+            }
+            return;
+        }
         assert!(
             all_ok,
             "actual workers must complete/reap/measure within their declared shares; receipt={}",
@@ -9046,7 +9083,6 @@ mod disposal_tests {
         control.foreground.store(false, Ordering::Release);
         let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(2));
         let mut effects = 0;
-        let start = Instant::now();
         budget
             .unit(|| {
                 effects += 1;
@@ -9055,7 +9091,8 @@ mod disposal_tests {
             .unwrap();
         assert_eq!(effects, 1);
         assert_eq!(calls.load(Ordering::Acquire), 3);
-        assert!(start.elapsed() >= REST * 2);
+        budget.pay_work_debt().unwrap();
+        assert_paid_cpu(&control.cleanup.debt.rest);
         assert_eq!(control.rest_violations.load(Ordering::Acquire), 0);
         assert_eq!(control.unit_overruns.load(Ordering::Acquire), 0);
     }
@@ -9105,7 +9142,6 @@ mod disposal_tests {
             if failure == 3 {
                 budget.deadline = Instant::now() - Duration::from_millis(1);
             }
-            let before = Instant::now();
             let result =
                 budget.finish_unit_sampled(
                     UnitClock::now().unwrap(),
@@ -9123,10 +9159,8 @@ mod disposal_tests {
             );
             assert!(dropped.load(Ordering::Acquire));
             assert_eq!(control.heap.counters(HeapLane::Work).reserved, 0);
-            assert!(
-                before.elapsed() >= REST * 2,
-                "cleanup was not divided by real rests"
-            );
+            control.cleanup.debt.wait(None, true).unwrap();
+            assert_paid_cpu(&control.cleanup.debt.rest);
             cleanup_green(&control);
         }
     }
@@ -9144,7 +9178,6 @@ mod disposal_tests {
         for later_error in [false, true] {
             let control = Control::default();
             control.foreground.store(false, Ordering::Release);
-            let before = Instant::now();
             let result = (|| -> Result<(), Code> {
                 let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(10));
                 let value: Paced<Value> = budget.parse(&bytes)?;
@@ -9165,7 +9198,8 @@ mod disposal_tests {
             );
             assert_eq!(control.heap.counters(HeapLane::Work).reserved, 0);
             assert!(control.cleanup.units.load(Ordering::Acquire) >= 32);
-            assert!(before.elapsed() >= REST * 32);
+            control.cleanup.debt.wait(None, true).unwrap();
+            assert_paid_cpu(&control.cleanup.debt.rest);
             cleanup_green(&control);
         }
     }
@@ -10245,7 +10279,6 @@ mod quantum_debt_tests {
         let control = control();
         let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
         let mut publication = staged(root.path(), "original");
-        let before = control.cleanup.debt.now_ns();
         let mut outcome = budget
             .native_publish_impl(&mut publication, Some(sample(2000, 2500, 1)))
             .unwrap();
@@ -10255,19 +10288,15 @@ mod quantum_debt_tests {
             "real no-replace effect must be retained before its verdict"
         );
         assert_eq!(outcome.verdict, Ok(()));
-        let charged = control.cleanup.debt.charged_ns.load(Ordering::Acquire);
+        let charged = control.cleanup.debt.rest.charged_ns.load(Ordering::Acquire);
         assert_eq!(
             charged, 22_500_000,
             "full2.5ms owes22.5ms; native cost cannot be subtracted"
         );
-        let due = control.cleanup.debt.due_ns.load(Ordering::Acquire);
-        assert!(
-            due.saturating_sub(charged) >= before,
-            "saved earlier idle time paid a later effect"
-        );
+        assert_eq!(control.cleanup.debt.remaining_ns(), charged);
         budget.pay_work_debt().unwrap();
         assert_eq!(control.cleanup.debt.remaining_ns(), 0);
-        assert!(control.cleanup.debt.now_ns() >= due);
+        assert_paid_cpu(&control.cleanup.debt.rest);
         assert_exact_link(&publication);
         assert!(matches!(
             budget.native_publish_impl(&mut publication, Some(sample(0, 0, 0))),
@@ -10419,7 +10448,7 @@ mod quantum_debt_tests {
         assert!(first.effect.take_value().is_ok());
         assert_eq!(first.verdict, Ok(()));
         assert_eq!(
-            control.cleanup.debt.charged_ns.load(Ordering::Acquire),
+            control.cleanup.debt.rest.charged_ns.load(Ordering::Acquire),
             22_500_000
         );
         control.omit_rest.store(true, Ordering::Release);
@@ -10597,7 +10626,7 @@ mod quantum_debt_tests {
                     assert!(control.cleanup.debt.remaining_ns() > 0);
                     budget.pay_work_debt().unwrap();
                     assert_eq!(control.cleanup.debt.remaining_ns(), 0);
-                    let charged = control.cleanup.debt.charged_ns.load(Ordering::Acquire);
+                    let charged = control.cleanup.debt.rest.charged_ns.load(Ordering::Acquire);
                     let effects = AtomicU64::new(0);
                     let swap = Arc::new(std::sync::Mutex::new(None));
                     let hook_swap = swap.clone();
@@ -10692,7 +10721,7 @@ mod quantum_debt_tests {
                         u64::from(matches!(fault, "none" | "clock" | "cpu"))
                     );
                     assert_eq!(
-                        control.cleanup.debt.charged_ns.load(Ordering::Acquire),
+                        control.cleanup.debt.rest.charged_ns.load(Ordering::Acquire),
                         charged,
                         "bounded final control must not recursively create work debt"
                     );

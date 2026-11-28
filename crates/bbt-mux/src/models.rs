@@ -18,6 +18,7 @@ use bboxy450_tlc::{Expr, Model, Response};
 mod artifacts;
 mod hook_budget;
 mod managed_workspace;
+mod measured_work_debt;
 mod transport_launch;
 mod workspace_ready;
 mod workspace_retention;
@@ -60,6 +61,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
             "safety",
         )])
         .chain(artifacts::cases())
+    .chain(measured_work_debt::cases())
         .collect()
 }
 

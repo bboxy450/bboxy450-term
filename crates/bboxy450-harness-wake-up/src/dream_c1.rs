@@ -1213,6 +1213,8 @@ struct BootstrapEntryTracking {
     observed_ns: Option<u64>,
     bounds: Option<BootstrapEntryClockBounds>,
     last_observation_ns: Option<u64>,
+    spawn_returned_at: Option<Instant>,
+    first_stdout_read_elapsed_ns: Option<u64>,
     invalid: bool,
     stderr_eof: bool,
 }
@@ -2345,7 +2347,14 @@ impl Worker {
         returned_at: Instant,
         job_deadline: Instant,
     ) -> Result<(), Code> {
-        self.bootstrap.spawn_returned(returned_at, job_deadline)
+        self.bootstrap.spawn_returned(returned_at, job_deadline)?;
+        self.entry.spawn_returned_at = Some(returned_at);
+        Ok(())
+    }
+
+    /// Monotonic elapsed time from return of the owned spawn to its first stdout read.
+    pub fn bootstrap_first_stdout_read_elapsed_ns(&self) -> Option<u64> {
+        self.entry.first_stdout_read_elapsed_ns
     }
     pub fn bootstrap_grant(&mut self) -> Result<(), Code> {
         self.bootstrap.grant()
@@ -2641,6 +2650,10 @@ impl Worker {
             return Err(Code::ResourceLimit);
         }
         let read_bound = room.min(bytes.len());
+        if let Some(returned) = self.entry.spawn_returned_at.take() {
+            self.entry.first_stdout_read_elapsed_ns =
+                Some(returned.elapsed().as_nanos().min(u64::MAX as u128) as u64);
+        }
         match self.output.read(&mut bytes[..read_bound]) {
             Ok(0) => {
                 self.eof = true;
@@ -2699,14 +2712,38 @@ impl Worker {
     }
 
     pub fn wait_io(&self, timeout: Duration) {
-        let mut fds = [libc::pollfd {
-            fd: self.output.as_raw_fd(),
-            events: libc::POLLIN,
-            revents: 0,
-        }];
+        let timeout = timeout.min(Duration::from_millis(100));
+        if self.eof && self.stderr_eof {
+            std::thread::park_timeout(timeout);
+            return;
+        }
+        let mut fds = [
+            libc::pollfd {
+                fd: if self.eof {
+                    -1
+                } else {
+                    self.output.as_raw_fd()
+                },
+                events: libc::POLLIN,
+                revents: 0,
+            },
+            libc::pollfd {
+                fd: if self.stderr_eof {
+                    -1
+                } else {
+                    self.stderr.as_raw_fd()
+                },
+                events: libc::POLLIN,
+                revents: 0,
+            },
+        ];
         // SAFETY: poll borrows the stack array for this call only.
         unsafe {
-            libc::poll(fds.as_mut_ptr(), 1, timeout.as_millis().min(100) as i32);
+            libc::poll(
+                fds.as_mut_ptr(),
+                fds.len() as libc::nfds_t,
+                timeout.as_millis() as i32,
+            );
         }
     }
 

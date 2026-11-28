@@ -2684,19 +2684,11 @@ def paced_owner_bounds(metrics):
     for name in ("reactor_units", "work_unit_count", "cleanup_units"):
         if finite_number(metrics.get(name), name) <= 1:
             raise ValueError("missing exercised owner units: " + name)
-    for name in ("reactor_min_gap_ns", "min_inter_unit_gap_ns"):
-        if finite_number(metrics.get(name), name) < 9_000_000:
-            raise ValueError("owner rest gap fell below9ms: " + name)
-    for wall_name, cpu_name in (("reactor_rest_wall_ns", "reactor_rest_cpu_ns"),
-                                ("rest_wait_ns", "rest_wait_cpu_ns")):
-        wall = finite_number(metrics.get(wall_name), wall_name)
-        cpu = finite_number(metrics.get(cpu_name), cpu_name)
-        if wall <= 0 or cpu >= wall:
-            raise ValueError("owner rest was not an actual nonbusy wait")
-    cpu = finite_number(metrics.get("reactor_cpu_ns"), "reactor CPU") + metrics["reactor_rest_cpu_ns"]
-    wall = finite_number(metrics.get("reactor_wall_ns"), "reactor wall") + metrics["reactor_rest_wall_ns"]
-    if cpu * 10 > wall:
-        raise ValueError("whole reactor exceeded10% measured compute/rest duty")
+    busy = finite_number(metrics.get("reactor_cpu_ns"), "reactor CPU")
+    rest = finite_number(metrics.get("reactor_rest_wall_ns"), "reactor rest wall")
+    wait_cpu = finite_number(metrics.get("reactor_rest_cpu_ns"), "reactor rest CPU")
+    if rest - wait_cpu < 9 * busy:
+        raise ValueError("reactor did not pay nine parts rest per part measured CPU")
     native_debt_bounds(metrics)
 
 
@@ -2722,9 +2714,14 @@ def native_debt_bounds(metrics):
             or finite_number(metrics.get("inclusive_max_cpu_ns"), "parent inclusive CPU") > 3_000_000
             or known_duration(metrics.get("worker_spawn_cpu_ns"), "prepared spawn native CPU") > 2_000_000):
         raise ValueError("parent native inclusive or surrounding application allocation exceeded")
+    cpu = finite_number(metrics.get("work_debt_cpu_ns"), "shared work CPU")
+    charged = finite_number(metrics.get("work_debt_charged_ns"), "charged debt")
+    paid = finite_number(metrics.get("work_debt_paid_wall_ns"), "paid debt")
+    rest = finite_number(metrics.get("rest_wait_ns"), "work rest wall")
+    wait_cpu = finite_number(metrics.get("rest_wait_cpu_ns"), "work rest CPU")
     if (finite_number(metrics.get("work_debt_spans"), "debt spans") < 1
-            or finite_number(metrics.get("work_debt_charged_ns"), "charged debt") < 9_000_000):
-        raise ValueError("missing exercised parent post-span debt")
+            or cpu <= 0 or charged != 9 * cpu or paid != charged or rest - wait_cpu < paid):
+        raise ValueError("shared work did not pay nine parts rest per part measured CPU")
     if (metrics.get("producer_native_metrics_profile") != "c1-native-debt/1"
             or metrics.get("producer_terminal_cutoff") != "joined_final_control_pre_telemetry"
             or metrics.get("native_metrics_authorized") is not True
@@ -2786,7 +2783,8 @@ def check_native_profile_controls():
         "native_publish_max_cpu_ns": 1_000_000, "native_publish_max_wall_ns": 2_000_000,
         "native_app_max_cpu_ns": 750_000, "inclusive_max_cpu_ns": 2_500_000,
         "worker_spawn_cpu_ns": 1_750_000, "work_debt_spans": 3,
-        "work_debt_charged_ns": 67_500_000,
+        "work_debt_cpu_ns": 7_500_000, "work_debt_charged_ns": 67_500_000,
+        "work_debt_paid_wall_ns": 67_500_000, "rest_wait_ns": 70_000_000, "rest_wait_cpu_ns": 25_000,
         "producer_native_metrics_profile": "c1-native-debt/1",
         "producer_terminal_cutoff": "joined_final_control_pre_telemetry",
         "native_metrics_authorized": True, "native_provision_development": False,
@@ -3084,7 +3082,8 @@ def runtime_receipts(evidence, nonce, runner_sha256, seat_runner_sha256):
             or value.get("actual_reap") is not True or value.get("source_unchanged") is not True
             or finite_number(metrics.get("rest_skips"), "mutant omitted rests") <= 0
             or finite_number(metrics.get("rest_violations"), "mutant duty violations") <= 0
-            or finite_number(metrics.get("min_inter_unit_gap_ns"), "mutant inter-unit gap") >= 9_000_000):
+            or finite_number(metrics.get("work_debt_paid_wall_ns"), "mutant paid debt")
+                >= 9 * finite_number(metrics.get("work_debt_cpu_ns"), "mutant measured work CPU")):
         raise ValueError("actual omitted-REST control failed to falsify scheduling invariant")
     established.add("busy_wait_causal_negative")
     records.append({"path": str(path), "sha256": sha(path), "measurements": value})
@@ -3387,6 +3386,7 @@ def main():
                            NEXTEST_TEST_THREADS="1", BBOXY_TEST_RUNNER="nextest",
                            DREAM_C1_FIXTURES=str(fixtures), DREAM_C1_EVIDENCE=str(evidence),
                            DREAM_C1_GATE_NONCE=nonce)
+        environment.pop("DREAM_C1_TEST_RESTORE_STEP_FLOOR", None)
         if receipt.get("bootstrap_corpus"):
             environment["DREAM_BOOTSTRAP_FIXTURES"] = str(fixtures.parent / "dream-bootstrap")
             environment["DREAM_BOOTSTRAP_VECTORS_SHA256"] = BOOTSTRAP_VECTORS_SHA256
@@ -3535,6 +3535,21 @@ def main():
         tests("bboxy450-term-mux", ["--lib", "--retries=0", "-E",
               "test(isolated_actual_store_worker_full_host_heap) | test(isolated_four_actual_store_workers_full_host_heap) | test(isolated_parent_work_overflow_preserves_controls_and_reaps_real_probe) | test(actual_consumer_store_fork_frontier)", "--run-ignored", "only",
               "--", "--nocapture"])
+        tests("bboxy450-term-mux", ["--lib", "--retries=0", "-E",
+              "test(=logic::dream_c1::tests::isolated_actual_store_worker_full_host_heap_observed_under_32mib)",
+              "--run-ignored", "only", "--", "--nocapture"], DREAM_C1_TEST_RESTORE_STEP_FLOOR="1")
+        floor_path, floor = runtime_record(evidence, "runtime-store-step-floor.json", nonce, provision["binary_sha256"])
+        jobs = floor.get("jobs", [])
+        if floor.get("instances") != 1 or len(jobs) != 1:
+            raise ValueError("rest-floor control requires one exact Store worker")
+        job = jobs[0]
+        metrics = job["host_metrics"]
+        if (job.get("result") != "Some(Err(Deadline))" or job.get("real_exit_reaped") is not True
+                or metrics.get("bootstrap_hello_observed") is not True
+                or finite_number(metrics.get("work_debt_charged_ns"), "floor charged debt")
+                    <= 9 * finite_number(metrics.get("work_debt_cpu_ns"), "floor measured CPU")):
+            raise ValueError("rest-floor control did not reproduce the product deadline")
+        receipt["store_step_floor_control"] = {"path": str(floor_path), "sha256": sha(floor_path)}
         tests("bboxy450-term-proto", ["--test", "dream_c1", "--test", "gui_wire_golden"])
         tests("bboxy450-harness-wake-up", ["--lib", "-E", "test(dream_bootstrap) | test(dream_c1)"])
         tests("bboxy450-harness-wake-up", ["--test", "dream_c1", "--test", "dream_bootstrap"])
