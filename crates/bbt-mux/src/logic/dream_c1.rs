@@ -83,7 +83,7 @@ struct WorkDebt {
     #[cfg(test)]
     step_floor: AtomicBool,
     #[cfg(test)]
-    restore_step_floor_after_hello: AtomicBool,
+    restore_step_floor: AtomicBool,
     admission_violations: AtomicU64,
     native_process_calls: AtomicU64,
     native_publish_calls: AtomicU64,
@@ -119,7 +119,7 @@ impl Default for WorkDebt {
             #[cfg(test)]
             step_floor: AtomicBool::new(false),
             #[cfg(test)]
-            restore_step_floor_after_hello: AtomicBool::new(false),
+            restore_step_floor: AtomicBool::new(false),
             admission_violations: AtomicU64::new(0),
             native_process_calls: AtomicU64::new(0),
             native_publish_calls: AtomicU64::new(0),
@@ -6535,6 +6535,18 @@ fn execute_inner(
     }
     control.phase(PREPARING);
     let deadline = Instant::now() + Duration::from_secs(30);
+    #[cfg(test)]
+    let restore_step_floor = control
+        .cleanup
+        .debt
+        .restore_step_floor
+        .load(Ordering::Relaxed);
+    #[cfg(test)]
+    control
+        .cleanup
+        .debt
+        .step_floor
+        .store(restore_step_floor, Ordering::Relaxed);
     // Manager admits only observed quiescence. A foreground race after that admission
     // pauses this active owner's bounded wall budget; it is not a deferred retry loop.
     let mut preparation = Budget::new(control, deadline);
@@ -6663,6 +6675,10 @@ fn execute_inner(
             .ok_or(Code::RunnerUnavailable)?
             .still_current()
     })?;
+    // Keep the causal control outside the producer's independent entry lease.
+    // Full debt from the preparation steps is paid before this native birth.
+    #[cfg(test)]
+    control.cleanup.debt.step_floor.store(false, Ordering::Relaxed);
     let mut native = preparation.native_process(&mut command)?;
     // Retain the exact Child/pipe/codec owner BEFORE consulting any timing,
     // missing-clock, cancellation or authority verdict from the native span.
@@ -6756,14 +6772,11 @@ fn execute_inner(
     }
     preparation.deadline = deadline;
     #[cfg(test)]
-    control.cleanup.debt.step_floor.store(
-        control
-            .cleanup
-            .debt
-            .restore_step_floor_after_hello
-            .load(Ordering::Relaxed),
-        Ordering::Relaxed,
-    );
+    control
+        .cleanup
+        .debt
+        .step_floor
+        .store(restore_step_floor, Ordering::Relaxed);
     drop(birth_journal);
     if worker.protected_capacity_bytes() != transport::PROTECTED_BYTES {
         settle_probe(&mut worker, control);
@@ -8658,7 +8671,7 @@ mod tests {
             control
                 .cleanup
                 .debt
-                .restore_step_floor_after_hello
+                .restore_step_floor
                 .store(old_floor, Ordering::Relaxed);
             controls.push(control);
         }
