@@ -1171,7 +1171,6 @@ fn close_source(f: &Fixture, name: &str, turns: usize) -> ClosedSource {
 }
 fn prepare_source(f: &Fixture, name: &str, turns: usize) -> OpenSource {
     use bboxy450_term::ctl::{Client, Endpoint};
-    use bbt_proto::{SpawnSpec, SwarmId, TabId, Where, seat_state::Placement};
     let endpoint = Endpoint::read(&f.root.join("run/gui.endpoint")).unwrap();
     let mut client = Client::connect(&endpoint).unwrap();
     let swarm = client
@@ -1179,6 +1178,18 @@ fn prepare_source(f: &Fixture, name: &str, turns: usize) -> OpenSource {
         .unwrap()
         .first()
         .map_or_else(bbt_mux::Ulid::new, |seat| seat.record.swarm);
+    prepare_source_at(&mut client, f, name, turns, swarm, &f.root.join("repository"))
+}
+
+fn prepare_source_at(
+    client: &mut bboxy450_term::ctl::Client,
+    f: &Fixture,
+    name: &str,
+    turns: usize,
+    swarm: bbt_mux::Ulid,
+    repository: &Path,
+) -> OpenSource {
+    use bbt_proto::{SpawnSpec, SwarmId, TabId, Where, seat_state::Placement};
     let launcher = f.seat_launcher();
     assert!(
         launcher.is_file(),
@@ -1191,7 +1202,7 @@ fn prepare_source(f: &Fixture, name: &str, turns: usize) -> OpenSource {
             harness_kind: "bboxy450-harness".into(),
             name: Some(name.into()),
             role: None,
-            cwd: f.root.join("repository").to_str().unwrap().into(),
+            cwd: repository.to_str().unwrap().into(),
             via: None,
             location: Where::Local,
             resume: None,
@@ -2090,8 +2101,11 @@ fn dream_c1_real_daemon_loss_quarantines_predecessor_without_replay_or_adoption(
 #[test]
 #[ignore = "joined real-runner test: runs only via make test-dream-c1 (needs pinned DREAM_C1_RUNNER)"]
 fn dream_c1_four_live_real_jobs_keep_independent_controls_and_exact_settlement() {
+    use bboxy450_term::ctl::{Client, Endpoint};
     let mut f = Fixture::scripted();
     f.start();
+    let endpoint = Endpoint::read(&f.root.join("run/gui.endpoint")).unwrap();
+    let mut client = Client::connect(&endpoint).unwrap();
     let mut prepared = Vec::new();
     for index in 0..4 {
         let repository = f.root.join(format!("parallel-root-{index}"));
@@ -2126,7 +2140,14 @@ fn dream_c1_four_live_real_jobs_keep_independent_controls_and_exact_settlement()
         };
         let swarm = layout["swarm"].as_str().unwrap();
         f.ctl(&["ui", "swarm-workdir", swarm, repository.to_str().unwrap()]);
-        prepared.push(prepare_source(&f, &format!("DreamParallel{index}"), 16));
+        prepared.push(prepare_source_at(
+            &mut client,
+            &f,
+            &format!("DreamParallel{index}"),
+            16,
+            swarm.parse().unwrap(),
+            &repository,
+        ));
     }
     // All real sessions are prepared before any close. Admit all four before
     // waiting for a paced snapshot/worker Start, so the fixed30s wall budgets
