@@ -156,6 +156,13 @@ impl Fixture {
         let fault = r#"
 def protocol_flood(job):
   import collections,select,time
+  gate=int(os.environ['BBOXY_DREAM_BOOTSTRAP'].split(':')[1])
+  permit=b''
+  while len(permit)<128:
+    chunk=os.read(gate,128-len(permit))
+    if not chunk: sys.exit(3)
+    permit+=chunk
+  os.close(gate)
   os.nice(19)
   hello=json.loads(__HELLO__)
   progress=json.loads(__PROGRESS__)
@@ -1532,15 +1539,8 @@ fn dream_c1_real_closed_job_owns_controls_dedup_and_native_frame_overlap() {
     // measured ready interval below starts at its actual authoritative close.
     let mut independent_fixture = Fixture::scripted();
     independent_fixture.start();
-    let probe = f.ctl(&[
-        "seat",
-        "spawn",
-        "zsh",
-        "--place",
-        "tab",
-        "--name",
-        "DreamInput",
-    ])["seat"]
+    // The joined stall process publishes the backend door without a ctl UI owner.
+    let probe = f.ctl(&["seat", "spawn", "zsh", "--name", "DreamInput"])["seat"]
         .as_str()
         .unwrap()
         .to_owned();

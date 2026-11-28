@@ -982,6 +982,16 @@ impl Control {
         self.native_metrics_authorized
             .store(true, Ordering::Release);
     }
+    fn private_protocol_transport(&self) -> bool {
+        #[cfg(debug_assertions)]
+        if self.private_fixture {
+            return self
+                .native_provision
+                .get()
+                .is_some_and(|proof| proof.control_only_wrapper());
+        }
+        false
+    }
     fn begin_child_bootstrap(&self) -> Result<(), Code> {
         let debt = &self.cleanup.debt;
         if debt.poisoned.load(Ordering::Acquire) {
@@ -4880,7 +4890,7 @@ fn probe_gated_core(
                 drop(command.take());
                 drop(unused.take());
                 budget.pay_work_debt()?;
-                budget.unit(|| proof.child_image_matches(worker.pid()))?;
+                budget.unit(|| proof.capability_image_matches(worker.pid()))?;
                 budget.pay_work_debt()?;
                 audit.stage = "permit_hello";
                 bootstrap_handshake(&mut worker, &control, ready, true)
@@ -5034,6 +5044,7 @@ fn bootstrap_handshake(
         control.begin_child_bootstrap()?;
         worker.bootstrap_grant().map_err(wire_error)
     })?;
+    let private_protocol_transport = !probe && control.private_protocol_transport();
     loop {
         if control.cancelled.load(Ordering::Acquire) {
             return Err(Code::Cancelled);
@@ -5047,9 +5058,14 @@ fn bootstrap_handshake(
         // Framing discards the finite Hello inside the measured control span;
         // no allocation-bearing/bulk owner is dropped while child owns work.
         if bootstrap_control(control, || {
-            worker
-                .qualified_hello_entry_step()
-                .map_err(wire_error)
+            if private_protocol_transport {
+                // Protocol faults exercise the owned permit and wire, without
+                // claiming native worker entry or authorizing native metrics.
+                worker.hello_step().map(|hello| hello.is_some())
+            } else {
+                worker.qualified_hello_entry_step()
+            }
+            .map_err(wire_error)
         })? {
             control.end_child_bootstrap(true)?;
             return Ok(());
@@ -6750,11 +6766,7 @@ fn execute_inner(
                     Some(transport::process_stamp(worker.pid()).map_err(wire_error)?);
                 // The explicit private protocol-fault wrapper cannot certify
                 // the pinned production image.
-                #[cfg(debug_assertions)]
-                let private_wrapper = control.private_fixture && proof.control_only_wrapper();
-                #[cfg(not(debug_assertions))]
-                let private_wrapper = false;
-                if !private_wrapper {
+                if !control.private_protocol_transport() {
                     proof.child_image_matches(worker.pid())?;
                 }
                 birth_journal.save(record)
@@ -9477,12 +9489,13 @@ pub(crate) mod runner_provision {
         _credit: Reservation,
     }
     impl ProvisionProof {
-        pub(crate) fn capability_binary(&self) -> &Path {
+        fn capability_image(&self) -> &Seal {
             self.worker
                 .as_ref()
-                .map_or(self.launch.path.as_path(), |(worker, _)| {
-                    worker.path.as_path()
-                })
+                .map_or(&self.launch, |(worker, _)| worker)
+        }
+        pub(crate) fn capability_binary(&self) -> &Path {
+            self.capability_image().path.as_path()
         }
         pub(crate) fn control_only_wrapper(&self) -> bool {
             self.is_private_wrapper()
@@ -9528,12 +9541,15 @@ pub(crate) mod runner_provision {
         /// A private wrapper's JSON is not proof it executed the approved image.
         /// Check the actual child after Hello before enabling native metrics.
         pub(crate) fn child_image_matches(&self, pid: u32) -> Result<(), Code> {
-            self.still_current()?;
             if self.is_private_wrapper() {
                 // A later exec does not retroactively gate an interpreter's
                 // earlier controlled argv/allocation prelude. Fault-only path.
                 return Err(Code::RunnerUnavailable);
             }
+            self.capability_image_matches(pid)
+        }
+        pub(super) fn capability_image_matches(&self, pid: u32) -> Result<(), Code> {
+            self.still_current()?;
             #[cfg(target_os = "macos")]
             {
                 let mut path = [0u8; libc::PROC_PIDPATHINFO_MAXSIZE as usize];
@@ -9554,10 +9570,7 @@ pub(crate) mod runner_provision {
                 let actual = Path::new(std::ffi::OsStr::from_bytes(&path[..end]))
                     .canonicalize()
                     .map_err(|_| Code::RunnerUnavailable)?;
-                let expected = self
-                    .worker
-                    .as_ref()
-                    .map_or(&self.launch, |(worker, _)| worker);
+                let expected = self.capability_image();
                 if actual.as_path() != expected.path.as_path() {
                     return Err(Code::RunnerUnavailable);
                 }
