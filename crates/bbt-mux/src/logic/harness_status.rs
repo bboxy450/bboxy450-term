@@ -231,15 +231,17 @@ fn follow_sources(
     let mut peer_lost = false;
     let mut current_closed = false;
     let mut notified_activity = 0;
-    loop {
-        if stop.load(Ordering::Acquire) {
+    'watch: loop {
+        let stopping = stop.load(Ordering::Acquire);
+        if stopping && !peer_seen {
             return Ok(());
         }
+        let final_deadline = stopping.then(|| Instant::now() + super::dream_c1::JOB_TIMEOUT);
         // Every source unit retains the full actor/root/provider incarnation, including ABA.
         if !authority.matches(&context, &Some(identity_fence.clone())) {
             return Err(Code::StaleContext);
         }
-        if Instant::now() >= discover_at {
+        if stopping || Instant::now() >= discover_at {
             let discovered = bboxy450_harness_wake_up::native::verify_process(&binding)
                 .and_then(|_| {
                     handle.block_on(harness_log::discover_socket(&socket, None, &binding))
@@ -262,7 +264,10 @@ fn follow_sources(
                             && source.proof.pid == binding.pid
                             && source.proof.process_start == binding.process_start;
                     }
-                    if !known.contains(&(binding.generation, session.clone())) && known.len() < 32 {
+                    if !stopping
+                        && !known.contains(&(binding.generation, session.clone()))
+                        && known.len() < 32
+                    {
                         let selection = bbt_proto::dream::Selection {
                             session: bbt_proto::dream::Ulid(session.clone()),
                             source_generation: bbt_proto::dream::Number(binding.generation),
@@ -328,14 +333,19 @@ fn follow_sources(
         let mut index = 0;
         let mut all_at_head = true;
         while index < watched.len() {
-            if stop.load(Ordering::Acquire) {
-                return Ok(());
+            if !stopping && stop.load(Ordering::Acquire) {
+                continue 'watch;
             }
             let captured = latch.load(Ordering::Acquire);
-            let result = watched[index].reader.poll();
+            let reader = &mut watched[index].reader;
+            let result = match final_deadline {
+                Some(deadline) if Instant::now() >= deadline => return Ok(()),
+                Some(deadline) => reader.poll_before(deadline),
+                None => reader.poll(),
+            };
             match result {
                 Ok((closed, active)) => {
-                    all_at_head &= watched[index].reader.at_head();
+                    let at_head = watched[index].reader.at_head();
                     let observed = proof(watched[index].reader.bookmark()?, &watched[index].proof);
                     if observed.cursor != watched[index].saved || closed.is_some() {
                         journal.observe_source(&context, &observed)?;
@@ -372,9 +382,6 @@ fn follow_sources(
                         {
                             current_closed = true;
                         }
-                        if stop.load(Ordering::Acquire) {
-                            return Ok(());
-                        }
                         let _ = handle.block_on(client.dream_closed(
                             binding.seat,
                             binding.generation,
@@ -383,9 +390,16 @@ fn follow_sources(
                         watched.remove(index);
                         continue;
                     }
+                    if stopping && !at_head {
+                        // Drain this bounded source without parking. The same
+                        // final deadline applies across all watched sources.
+                        continue;
+                    }
+                    all_at_head &= at_head;
                     // Peer loss/native EOF is not closure. Retain the bounded exact
                     // reader until closure or proven producer death, including partial LF.
                 }
+                Err(Code::Deadline) if stopping => return Ok(()),
                 Err(code) => {
                     let source = &watched[index].proof;
                     let selection = bbt_proto::dream::Selection {
@@ -402,6 +416,9 @@ fn follow_sources(
                 }
             }
             index += 1;
+        }
+        if final_deadline.is_some_and(|deadline| Instant::now() >= deadline) {
+            return Ok(());
         }
         let activity = latch.load(Ordering::Acquire);
         if activity & 1 == 0 && activity != notified_activity {
@@ -439,6 +456,9 @@ fn follow_sources(
                 // owner for its existing parked tick, then revalidate the full
                 // proof; never overwrite that newer revision or spin in a CAS.
             }
+        }
+        if stopping {
+            return Ok(());
         }
         if all_at_head {
             std::thread::park_timeout(Duration::from_millis(200));

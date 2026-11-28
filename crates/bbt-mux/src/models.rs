@@ -16,6 +16,7 @@ use bboxy450_tlc::{Expr, Model, Response};
 
 /// Every shipped family of this crate.
 mod artifacts;
+mod closed_exit_follower;
 mod hook_budget;
 mod managed_workspace;
 mod measured_work_debt;
@@ -61,7 +62,8 @@ pub fn cases() -> Vec<(Model, &'static str)> {
             "safety",
         )])
         .chain(artifacts::cases())
-    .chain(measured_work_debt::cases())
+        .chain(measured_work_debt::cases())
+        .chain(closed_exit_follower::cases())
         .collect()
 }
 

@@ -1869,6 +1869,16 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "TermDreamC1ClosedExitFollower"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1ClosedExitFollower"
+expected = "liveness"
+frontend = "project"
+
+[[model]]
 name = "TermDreamC1ClosedExitLateCallback"
 expected = "pass"
 frontend = "project"

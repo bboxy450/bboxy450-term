@@ -50,6 +50,7 @@ const RESULT: u64 = 16 * 1024 * 1024;
 /// `dream-c1-measure-not-refuse`, 2026-11-12.
 pub(crate) const OVERRUN: Duration = Duration::from_millis(50);
 const REST: Duration = Duration::from_millis(9);
+pub(super) const JOB_TIMEOUT: Duration = Duration::from_secs(30);
 
 // The run, rather than a Budget instance or owner thread, retains work debt.
 // No controls use this lane. A held native return keeps its lease; another
@@ -1559,9 +1560,16 @@ impl Reader {
 
     /// Each read/hash/parse subunit is measured; large raw rows yield in preflight.
     pub fn poll(&mut self) -> Result<(Option<Bookmark>, Option<bool>), Code> {
+        self.poll_before(Instant::now() + Duration::from_secs(5))
+    }
+
+    pub(super) fn poll_before(
+        &mut self,
+        deadline: Instant,
+    ) -> Result<(Option<Bookmark>, Option<bool>), Code> {
         let control = Control::default();
         control.foreground.store(false, Ordering::Release);
-        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
+        let mut budget = Budget::new(&control, deadline.min(Instant::now() + Duration::from_secs(5)));
         let result = self.poll_one(&mut budget);
         budget.pay_work_debt()?;
         if control.cleanup.overruns.load(Ordering::Acquire) > 0 {
@@ -6388,6 +6396,14 @@ fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), C
     write!(&mut bytes, ",\"work_debt_remaining_ns\":{},\"work_debt_poisoned\":{},\"native_metrics_profile\":\"c1-native-debt/1\",\"metrics_capture_cutoff\":\"after_reap_settlement_before_terminal_metrics_write\"", debt.remaining_ns(),debt.poisoned.load(Ordering::Acquire)).map_err(|_| Code::ResourceLimit)?;
     write!(&mut bytes,",\"native_birth_unknown\":{},\"native_quarantine_observed\":{}",control.native_birth_unknown.load(Ordering::Acquire),control.native_quarantine_observed.load(Ordering::Acquire)).map_err(|_|Code::ResourceLimit)?;
     write!(&mut bytes,",\"bootstrap_profile\":\"dream-bootstrap/1\",\"bootstrap_hello_observed\":{},\"bootstrap_revoked\":{}",control.bootstrap_hello_observed.load(Ordering::Acquire),control.bootstrap_revoked.load(Ordering::Acquire)).map_err(|_|Code::ResourceLimit)?;
+    #[cfg(debug_assertions)]
+    if control.private_fixture {
+        let sealed = control.activity_latch.as_ref().is_some_and(|latch| {
+            latch.load(Ordering::Acquire) & super::harness_status::CLOSED_EXIT_ACTIVITY != 0
+        });
+        write!(&mut bytes, ",\"activity_closed_exit_sealed\":{sealed}")
+            .map_err(|_| Code::ResourceLimit)?;
+    }
     if let Some(launch)=&record.launch {
         write!(&mut bytes,",\"bootstrap_birth\":\"{}\",\"bootstrap_binding\":\"{}\",\"bootstrap_incarnation\":{},\"bootstrap_pipe_fd\":{},\"bootstrap_pipe_dev\":{},\"bootstrap_pipe_ino\":{}",launch.birth.0,launch.binding.0,launch.incarnation,launch.pipe_fd,launch.pipe_device,launch.pipe_inode).map_err(|_|Code::ResourceLimit)?;
     }
@@ -6550,7 +6566,7 @@ fn execute_inner(
         return Err(Code::WorkerLost);
     }
     control.phase(PREPARING);
-    let deadline = Instant::now() + Duration::from_secs(30);
+    let deadline = Instant::now() + JOB_TIMEOUT;
     #[cfg(test)]
     let restore_step_floor = control
         .cleanup

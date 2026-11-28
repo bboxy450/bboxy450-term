@@ -1843,9 +1843,12 @@ fn dream_c1_real_completed_status_rejects_valid_json_page_tamper() {
     wait(
         "durable ordinary close followed by actual exact source-process absence",
         || {
-            (!bbt_mux::adapters::dream_c1::process_stamp(source_pid)
-                .is_ok_and(|stamp| stamp == source_start))
-            .then_some(())
+            let process = &row(&f, &source.seat)["state"]["process"];
+            (process["kind"] == "exited"
+                && process["status"] == 0
+                && !bbt_mux::adapters::dream_c1::process_stamp(source_pid)
+                    .is_ok_and(|stamp| stamp == source_start))
+                .then_some(())
         },
     );
     let inspect_op = "00000000000000000000000024";
@@ -1860,6 +1863,13 @@ fn dream_c1_real_completed_status_rejects_valid_json_page_tamper() {
         "completed",
         "{terminal}\n{}",
         f.log()
+    );
+    let metrics_path = runtime_path(&f).join(format!("dream-c1/{run}/metrics.json"));
+    let metrics: Value = serde_json::from_slice(&fs::read(metrics_path).unwrap()).unwrap();
+    assert_eq!(
+        metrics["activity_closed_exit_sealed"],
+        true,
+        "ordinary source exit did not seal the bound follower's activity latch"
     );
     let (pid, start) = journal_worker(&f, &source.seat, &run)
         .expect("completed real worker lacks retained identity");
