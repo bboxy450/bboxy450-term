@@ -8677,18 +8677,20 @@ mod tests {
         sample_isolated_heap();
         let (manifest, bookmark) = store_export(&root);
         let expected = &manifest.sources[0];
-        let mut source_digests = vec![expected.sha256.0.clone()];
-        let mut sources = vec![bookmark];
+        let mut sources = vec![(bookmark, expected.sha256.0.clone())];
         if let Some(second) = std::env::var_os("DREAM_C1_TEST_SECOND_STORE_BUNDLE") {
             assert_eq!(instances, 1);
             let (pair, bookmark) = store_export(Path::new(&second));
             let other = &pair.sources[0];
             assert_ne!(other.session, expected.session);
             assert_eq!(other.repo, expected.repo);
-            source_digests.push(other.sha256.0.clone());
-            sources.push(bookmark);
+            sources.push((bookmark, other.sha256.0.clone()));
         }
         assert!(!old_floor || sources.len() == 2);
+        sources.sort_by(|(left, _), (right, _)| {
+            (left.generation, &left.session.0).cmp(&(right.generation, &right.session.0))
+        });
+        let source_digests: Vec<_> = sources.iter().map(|(_, digest)| digest).collect();
         let evidence = private_job().keep();
         let mut runs = Vec::new();
         let mut controls = Vec::new();
@@ -8696,7 +8698,7 @@ mod tests {
             let runtime = evidence.join(format!("dream-c1-{index}"));
             private_dir(&runtime).unwrap();
             drop(Journal::open(&runtime, &public::Ulid(manifest.context.seat.0.clone())).unwrap());
-            let mut record = record(sources.clone());
+            let mut record = record(sources.iter().map(|(bookmark, _)| bookmark.clone()).collect());
             record.context = mirror(&manifest.context).unwrap();
             record.view.run_id = public::Ulid(if index == 0 {
                 manifest.run_id.0.clone()
@@ -8807,8 +8809,12 @@ mod tests {
         let parent_ceiling = 32 * 1024 * 1024;
         let parent_conservative = live.max(touched);
         let receipt = json!({"scope":"isolated actual Store/worker component, not own-seat admission, root caps or SourceKey dedup","measurement":"macOS malloc_zone_statistics all zones; full isolated host including baseline, no subtraction","instances":instances,"same_immutable_store_reused_for_component_load":instances>1,"observed_full_host_live_heap_peak_bytes":live,"allocator_all_zones_max_touched_bytes":if touched>0{json!(touched)}else{Value::Null},"allocator_max_touched_supported":touched>0,"parent_heap_conservative_bytes":parent_conservative,"parent_heap_ceiling_bytes":parent_ceiling,"observed_whole_four_host_below_one_parent_share":instances==4&&parent_conservative<=32*1024*1024,"child_heap_sum_conservative_bytes":child_heap_sum,"child_heap_sum_ceiling_bytes":96*1024*1024*instances as u64,"combined_parent_child_conservative_bytes":parent_conservative+child_heap_sum,"combined_ceiling_bytes":128*1024*1024*instances as u64,"conservative_sum_of_noncoincident_peaks":true,"samples":samples,"not_all_times_proof":true,"heap_observer_thread_cpu_ns":isolated_heap::OBSERVER_CPU_NS.load(Ordering::Acquire),"unit_cpu_excludes_test_heap_observer":true,"owner_cpu_includes_test_heap_observer":true,"hash_unit_bytes":HASH_CHUNK,"runner":binary,"runner_sha256":store_file_sha(&binary),"store_root":root,"source_session":expected.session.0,"source_sha256":expected.sha256.0,"source_len":expected.len.0,"blob_sha256":expected.blobs[0].sha256.0,"store_source_sha256s":source_digests,"control_measurement":"engine cached atomics; admitted MCP/ctl evidence is separate","status_samples":status_samples,"status_max_wall_ns":status_max_wall_ns,"jobs":job_receipts,"all_jobs_completed":all_ok});
-        for (source, digest) in sources.iter().zip(&source_digests) {
-            assert_eq!(store_file_sha(&source.path), *digest, "original Store bytes immutable");
+        for (source, digest) in &sources {
+            assert_eq!(
+                store_file_sha(&source.path),
+                *digest,
+                "original Store bytes immutable"
+            );
         }
         let mut receipt_file = create(&evidence.join("isolated-host-heap.json")).unwrap();
         serde_json::to_writer(&mut receipt_file, &receipt).unwrap();
