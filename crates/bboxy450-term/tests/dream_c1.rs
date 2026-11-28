@@ -1877,7 +1877,7 @@ fn dream_c1_real_completed_status_rejects_valid_json_page_tamper() {
         !bbt_mux::adapters::dream_c1::process_stamp(pid).is_ok_and(|value| value == start),
         "Completed preceded actual worker reap"
     );
-    let page = f.ctl(&["dream", "status", &source.seat, &run, "--page", "0"]);
+    let page = f.ctl(&["dream", "status", &source.seat, &run, "0"]);
     assert_eq!(page["ok"], true, "{page}");
     assert!(
         !page["page"]["rows"].as_array().unwrap().is_empty(),
@@ -1896,7 +1896,7 @@ fn dream_c1_real_completed_status_rejects_valid_json_page_tamper() {
     fs::write(&path, &bytes).unwrap();
     // Run/index/manifest remain exact and the page still has a valid wire shape.
     // The actual public API must check the retained descriptor/page hashes.
-    let ctl = f.ctl(&["dream", "status", &source.seat, &run, "--page", "0"]);
+    let ctl = f.ctl(&["dream", "status", &source.seat, &run, "0"]);
     assert_eq!(
         ctl["error"]["code"], "protocol_error",
         "edited rows escaped ctl: {ctl}"
@@ -1918,7 +1918,7 @@ fn dream_c1_real_completed_status_rejects_valid_json_page_tamper() {
         "fixture changed result descriptor"
     );
     fs::write(&path, &original).unwrap();
-    let restored = f.ctl(&["dream", "status", &source.seat, &run, "--page", "0"]);
+    let restored = f.ctl(&["dream", "status", &source.seat, &run, "0"]);
     assert_eq!(
         restored["page"], page["page"],
         "exact restored immutable bytes did not recover"
