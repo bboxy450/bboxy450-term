@@ -108,9 +108,9 @@ impl Fixture {
         private_bytes(&sse, response.as_bytes());
         let profiles = f.root.join("home/.bboxy450-harness/profiles");
         private_bytes(&profiles.join("private-c1.md"), b"---\nname: private-c1\nmodel: scripted\nendpoint: http://127.0.0.1:1/v1\non_unattended: deny\nauto_compact: false\n---\n");
-        // Only managed seats use this deterministic fixture launcher. Runtime's
+        // Managed seats name this fixture launcher explicitly. Runtime's
         // absolute sibling worker remains the ordinary executable above.
-        let shim = f.root.join("seat-bin/bboxy450-harness");
+        let shim = f.seat_launcher();
         fs::write(&shim,format!("#!/usr/bin/python3\nimport json,os,sys\nworker={worker}\nseat={seat}\nargs=sys.argv[1:]\nreal=worker if args[:2]==['dream','inspect-c1'] else seat\nif args[:2]!=['dream','inspect-c1'] and 'BBOXY_SEAT_ID' in os.environ:\n  keys=['BBOXY_SOCK','BBOXY_SEAT_ID','BBOXY_GENERATION','BBOXY_CAPABILITY_FILE']\n  path={root}+'/admission-'+os.environ['BBOXY_SEAT_ID']+'.json'\n  fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)\n  os.write(fd,json.dumps({{k:os.environ[k] for k in keys}}).encode())\n  os.close(fd)\n  args.extend(['--profile','private-c1'])\n  for _ in range(32): args.extend(['--scripted',{script}])\nif '--dream-c1-fixture-next-session' in args:\n  allowed={{'HOME','ZDOTDIR','CODEX_HOME','CLAUDE_CONFIG_DIR','PATH','TERM','LANG','LC_ALL','TMPDIR','TZ','BBOXY_SEAT_ID','BBOXY_GENERATION','BBOXY_ROLE','BBOXY_SOCK','BBOXY_CAPABILITY_FILE','TERM_PROGRAM','TERM_PROGRAM_VERSION'}}\n  os.execve(real,[real,*args],{{k:v for k,v in os.environ.items() if k in allowed}})\nos.execv(real,[real,*args])\n",
             worker=serde_json::to_string(&runner).unwrap(),seat=serde_json::to_string(&seat_runner).unwrap(),script=serde_json::to_string(&sse).unwrap(),root=serde_json::to_string(&f.root).unwrap())).unwrap();
         fs::set_permissions(&shim, fs::Permissions::from_mode(0o700)).unwrap();
@@ -133,6 +133,12 @@ impl Fixture {
         let mut f = Self::scripted();
         f.fault_mode = Some(mode.to_owned());
         f
+    }
+    fn seat_launcher(&self) -> PathBuf {
+        self.root.join("seat-bin/bboxy450-harness")
+    }
+    fn admission_path(&self, seat: &str) -> PathBuf {
+        self.root.join(format!("admission-{seat}.json"))
     }
     fn scripted_progress_flood() -> Self {
         let f = Self::scripted();
@@ -278,7 +284,7 @@ if args[:2]==['dream','inspect-c1']:
             args.push("--scripted".to_owned());
             args.push(path.to_str().unwrap().to_owned());
         }
-        let path = self.root.join("seat-bin/bboxy450-harness");
+        let path = self.seat_launcher();
         let code = fs::read_to_string(&path).unwrap();
         let original = format!(
             "for _ in range(32): args.extend(['--scripted',{}])",
@@ -313,7 +319,7 @@ if args[:2]==['dream','inspect-c1']:
         );
         let done_b = sse(json!({"content":"B foreground complete."}), "stop");
         f.provision_rounds(vec![blob, done_a, busy_b, done_b]);
-        let path = f.root.join("seat-bin/bboxy450-harness");
+        let path = f.seat_launcher();
         let code = fs::read_to_string(&path).unwrap();
         let extra = serde_json::to_string(&vec![
             "--dream-c1-fixture-next-session".to_owned(),
@@ -937,8 +943,7 @@ impl DreamPeer {
 fn mcp(f: &Fixture, seat: &str) -> bbt_mux::mcp::bridge::Bridge {
     use bbt_mux::mcp::bridge::{Bridge, Config};
     let context: Value =
-        serde_json::from_slice(&fs::read(f.root.join(format!("admission-{seat}.json"))).unwrap())
-            .unwrap();
+        serde_json::from_slice(&fs::read(f.admission_path(seat)).unwrap()).unwrap();
     assert_eq!(context["BBOXY_SEAT_ID"], seat);
     let path = Path::new(context["BBOXY_CAPABILITY_FILE"].as_str().unwrap());
     assert!(path.canonicalize().unwrap().starts_with(&f.root));
@@ -1158,18 +1163,49 @@ fn close_source(f: &Fixture, name: &str, turns: usize) -> ClosedSource {
     close_prepared(f, prepare_source(f, name, turns))
 }
 fn prepare_source(f: &Fixture, name: &str, turns: usize) -> OpenSource {
-    let own = f.ctl(&[
-        "seat",
-        "spawn",
-        "bboxy450-harness",
-        "--place",
-        "tab",
-        "--name",
-        name,
-    ])["seat"]
-        .as_str()
+    use bboxy450_term::ctl::{Client, Endpoint};
+    use bbt_proto::{SpawnSpec, SwarmId, TabId, Where, seat_state::Placement};
+    let endpoint = Endpoint::read(&f.root.join("run/gui.endpoint")).unwrap();
+    let mut client = Client::connect(&endpoint).unwrap();
+    let swarm = client
+        .seats()
         .unwrap()
-        .to_owned();
+        .first()
+        .map_or_else(bbt_mux::Ulid::new, |seat| seat.record.swarm);
+    let launcher = f.seat_launcher();
+    assert!(
+        launcher.is_file(),
+        "missing managed seat launcher {}",
+        launcher.display()
+    );
+    let own = client
+        .spawn(SpawnSpec {
+            swarm: SwarmId::from_u128(swarm.0),
+            harness_kind: "bboxy450-harness".into(),
+            name: Some(name.into()),
+            role: None,
+            cwd: f.root.join("repository").to_str().unwrap().into(),
+            via: None,
+            location: Where::Local,
+            resume: None,
+            placement: Some(Placement::NewTab {
+                tab: TabId::from_u128(bbt_mux::Ulid::new().0),
+            }),
+            args: vec!["seat".into()],
+            command: Some(launcher.to_str().unwrap().into()),
+            env: Vec::new(),
+        })
+        .unwrap()
+        .to_string();
+    let admission = f.admission_path(&own);
+    wait(
+        &format!(
+            "managed seat launcher {} writing {}",
+            launcher.display(),
+            admission.display()
+        ),
+        || admission.is_file().then_some(()),
+    );
     let (source_session, source_generation, source_path) = session(f, &own);
     if let Some(mode) = &f.fault_mode {
         // The authenticated private parent creates the exact job's test marker
